@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: adoptify_db
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-adoptify_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-adoptify_password123}
+      POSTGRES_DB: ${DB_NAME:-adoptify_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-adoptify_user} -d ${DB_NAME:-adoptify_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adoptify_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adoptify_backend
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - adoptify_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  adoptify_network:
+    driver: bridge
