@@ -89,6 +89,13 @@ Fase 2/
   }
   ```
 
+### HU-03: Autenticación (Validación de RUT Institucional)
+* **Endpoint:** `POST /api/v1/auth/validate-rut`
+* **Validación de Sintaxis:** Validación estricta de RUT chileno con Regex en Pydantic (`^(\d{1,2}(?:\.\d{3}){2}-[\dkK]|\d{7,8}-[\dkK])$`). Retorna `HTTP 422` ante formatos incorrectos.
+* **Lógica Mock de Autenticidad:**
+  * Retorna `HTTP 200` con `{"is_valid": true}` si el RUT termina en dígito par (`0, 2, 4, 6, 8`).
+  * Retorna `HTTP 400` con `{"is_valid": false}` si el RUT termina en dígito impar (`1, 3, 5, 7, 9`) o letra `K`.
+
 ### HU-04: Modelamiento de Datos (PostGIS + Alembic)
 * **Tablas creadas y migradas:** Modelos `User`, `Foundation` y `Animal` versionados con **Alembic**.
 * **PostGIS Geometry:** El campo `location` de `Animal` utiliza `Geometry('POINT', srid=4326)` con índices espaciales GiST (`idx_animals_location`).
@@ -118,9 +125,11 @@ Para ejecutar la suite completa de pruebas unitarias y de integración dentro de
 docker compose exec backend pytest -v
 ```
 
-Esto ejecuta 12 pruebas asíncronas verificando automáticamente:
+Esto ejecuta 18 pruebas asíncronas verificando automáticamente:
 1. **HU-01:** Carga de `.env`, conexión asíncrona a PostgreSQL, PostGIS 15 y persistencia.
 2. **HU-02:** Swagger UI (`/docs`), OpenAPI v3 y endpoint `/health` validado con Pydantic v2.
-3. **HU-04:** Creación de usuarios con preferencias JSON, fundaciones con RUT y validación de geometrías PostGIS en animales con integridad referencial en cascada.
+3. **HU-03:** Sintaxis de RUT chileno con Regex y regla Mock de dígito par/impar para HTTP 200 y 400.
+4. **HU-04:** Creación de usuarios con preferencias JSON, fundaciones con RUT y validación de geometrías PostGIS en animales con integridad referencial en cascada.
+
 
 
