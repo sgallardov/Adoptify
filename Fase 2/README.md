@@ -42,6 +42,24 @@ Fase 2/
 
 ## 🚀 Requisitos Previos
 
+### Frontend web — HU-06
+
+El portal local está en `portal-fundaciones/`, con Vite, React, TypeScript,
+TailwindCSS y React Router. Incluye Inicio, Mis animales, detalle y Mi fundación,
+con sidebar responsivo y datos de ejemplo.
+
+```powershell
+cd portal-fundaciones
+npm ci
+npm run dev
+```
+
+Para compilar: `npm run build`. Ver `portal-fundaciones/README.md` para el alcance
+y las instrucciones completas. HU-07 conecta listado, detalle y contadores a
+`GET /api/v1/animals`; ahora esas vistas requieren el backend y la base de datos.
+
+### Backend
+
 1. Tener instalado **Docker Desktop** con soporte para Docker Compose v2.
 2. Asegurarse de que Docker Desktop esté iniciado y en ejecución.
 
@@ -116,6 +134,51 @@ Fase 2/
   Esto carga usuarios adoptantes con preferencias, fundaciones con RUTs en Santiago y animales con geolocalización GPS real.
 
 ---
+
+## HU-05: Motor de Match
+
+La función `calculate_match_score(preferences, animal)` en `backend/app/services/match.py`
+calcula localmente un `float` entre `0.0` y `100.0`, sin APIs externas ni consultas a BD.
+Recibe un diccionario de preferencias (por ejemplo, `user.preferences or {}`) y un objeto `Animal`.
+
+| Clave de preferencia | Atributo de Animal | Peso | Coincidencia |
+| --- | --- | --- | --- |
+| `preferred_species` | `species` | 30 | Igualdad de texto |
+| `preferred_size` | `size` | 25 | Igualdad de texto |
+| `min_age_months`, `max_age_months` | `age_months` | 25 | Dentro del rango inclusivo |
+| `preferred_energy_level` | `energy_level` | 20 | Igualdad numérica (escala 1 a 5) |
+
+Los textos ignoran mayúsculas y espacios exteriores. Cada criterio aporta todo su
+peso si coincide y cero si difiere. La fórmula es `100 * pesos_coincidentes / pesos_comparables`,
+redondeada a dos decimales. Las preferencias o atributos ausentes (`None`) se omiten;
+sin criterios comparables el resultado es `0.0`. Se permite indicar solo uno de los
+límites de edad. Un rango con mínimo mayor que máximo produce `ValueError`.
+Otras claves, como `housing_type`, no participan en el cálculo.
+
+```python
+from app.models.animal import Animal
+from app.services.match import calculate_match_score
+
+animal = Animal(species="perro", size="mediano", age_months=18, energy_level=4)
+preferences = {
+    "preferred_species": "perro",
+    "preferred_size": "pequeño",
+    "min_age_months": 6,
+    "max_age_months": 24,
+    "preferred_energy_level": 2,
+}
+score = calculate_match_score(preferences, animal)  # 55.0: especie + edad
+```
+
+Pruebas unitarias (no requieren conexión a BD):
+
+```bash
+docker compose exec backend pytest tests/test_match.py -v
+```
+
+Incluyen los tres escenarios exigidos (total, parcial y nulo), preferencias
+incompletas, edad desconocida y rango de edad invertido. La función puede usarse
+desde futuros endpoints; esta HU no agrega una ruta HTTP.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 
