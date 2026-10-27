@@ -3,6 +3,7 @@ import logging
 from sqlalchemy import select
 from geoalchemy2.elements import WKTElement
 
+from app.core.security import hash_password
 from app.db.database import AsyncSessionLocal
 from app.models.user import User
 from app.models.foundation import Foundation
@@ -10,6 +11,13 @@ from app.models.animal import Animal
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("adoptify-seed")
+
+# Contraseñas de las cuentas de prueba (solo para desarrollo local; ver README)
+SEED_PASSWORDS = {
+    "admin": "Admin2026",
+    "adopter": "Adoptante2026",
+    "foundation": "Fundacion2026",
+}
 
 async def seed_database():
     """
@@ -28,7 +36,8 @@ async def seed_database():
         users = [
             User(
                 email="admin@adoptify.cl",
-                hashed_password="hashed_admin_password_123",
+                rut="11111111-1",
+                hashed_password=hash_password(SEED_PASSWORDS["admin"]),
                 full_name="Administrador Adoptify",
                 phone="+56911223344",
                 role="admin",
@@ -36,7 +45,8 @@ async def seed_database():
             ),
             User(
                 email="matias.adopter@gmail.com",
-                hashed_password="hashed_user_password_123",
+                rut="18765432-1",
+                hashed_password=hash_password(SEED_PASSWORDS["adopter"]),
                 full_name="Matías Morales",
                 phone="+56955667788",
                 role="adopter",
@@ -49,7 +59,8 @@ async def seed_database():
             ),
             User(
                 email="sofia.adopter@gmail.com",
-                hashed_password="hashed_user_password_123",
+                rut="19876543-2",
+                hashed_password=hash_password(SEED_PASSWORDS["adopter"]),
                 full_name="Sofía Castro",
                 phone="+56999887766",
                 role="adopter",
@@ -59,6 +70,15 @@ async def seed_database():
                     "preferred_energy_level": 2,
                     "housing_type": "departamento"
                 }
+            ),
+            User(
+                email="fundacion@adoptify.cl",
+                rut="20123456-3",
+                hashed_password=hash_password(SEED_PASSWORDS["foundation"]),
+                full_name="Garras y Patas",
+                phone="+56922334455",
+                role="foundation",
+                preferences={}
             )
         ]
         session.add_all(users)
