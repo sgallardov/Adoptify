@@ -27,6 +27,10 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 
 ## Contenido
 
+- `/login`: inicio de sesión único con pestañas **Usuario** y **Fundación**; la pestaña Usuario permite registrarse.
+- `/usuario`: inicio del adoptante (requiere cuenta `adopter`). Mapa de Google Maps con las mascotas disponibles
+  y lista al costado; "Usar mi ubicación" filtra por radio (5 a 100 km) y ordena por distancia con `GET /animals/nearby`.
+- Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL, búsqueda por nombre y filtros por especie y estado.
 - `/animales/:id`: ficha de cada animal; IDs desconocidos muestran página no encontrada.
@@ -58,15 +62,32 @@ Se muestra carga, error con reintento y lista vacía. Las peticiones se cancelan
 desmontar la vista. Los estados del backend se traducen al español y las edades
 se muestran en años y meses. Una foto ausente o fallida muestra un icono alternativo.
 El perfil de la organización sigue siendo una maqueta.
-No hay autenticación ni creación, edición o eliminación de animales.
-La API lista animales de todas las fundaciones: el filtrado por la organización
-autenticada queda pendiente para la HU de autenticación.
+La sesión usa el JWT de `POST /api/v1/auth/login`, guardado en `localStorage` y
+enviado en cada petición (`src/services/api.ts`); al recargar se recupera con `GET /auth/me`.
+No hay creación, edición o eliminación de animales.
+La API lista animales de todas las fundaciones: falta vincular cada cuenta de fundación
+con su organización para filtrar por la fundación autenticada.
 
 ## Configurar la API (HU-07)
 
 El valor predeterminado es `http://localhost:8000/api/v1`. Para cambiarlo, copiar
 `.env.example` a `.env.local`, ajustar `VITE_API_URL` y reiniciar Vite.
 Esta variable es pública; no debe contener credenciales.
+
+## Configurar Google Maps
+
+El mapa de `/usuario` necesita `VITE_GOOGLE_MAPS_API_KEY` en `.env.local` (ver `.env.example`).
+Sin ella, el mapa muestra un aviso y la lista y la búsqueda por cercanía siguen funcionando.
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) crear un proyecto y habilitar **Maps JavaScript API**
+   (pide asociar una cuenta de facturación; el uso de desarrollo entra en el crédito gratuito mensual).
+2. En **Credenciales**, crear una **API key** y restringirla:
+   - *Restricción de aplicación*: sitios web (referentes HTTP) → `http://localhost:5173/*`.
+   - *Restricción de API*: solo **Maps JavaScript API**.
+3. Copiarla en `portal-fundaciones/.env.local` como `VITE_GOOGLE_MAPS_API_KEY=...` y reiniciar `npm run dev`.
+
+La key viaja al navegador, así que la restricción por dominio es lo que la protege. `.env.local` no se sube a git.
+`VITE_GOOGLE_MAPS_MAP_ID` puede quedar en `DEMO_MAP_ID` durante el desarrollo.
 
 Desde `Fase 2`, levantar el backend y aplicar las migraciones:
 

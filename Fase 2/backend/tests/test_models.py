@@ -17,6 +17,7 @@ class TestDataModelsHU04:
         """Verifica la persistencia y lectura de usuarios con preferencias JSON."""
         test_user = User(
             email="test_model_user@adoptify.cl",
+            rut="29999999-9",
             hashed_password="secure_hashed_password",
             full_name="Usuario de Prueba",
             role="adopter",
@@ -32,6 +33,7 @@ class TestDataModelsHU04:
         saved_user = result.scalar_one()
         assert saved_user.id is not None
         assert saved_user.role == "adopter"
+        assert saved_user.rut == "29999999-9"
         assert saved_user.preferences["preferred_species"] == "perro"
 
         # Limpiar

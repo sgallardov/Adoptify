@@ -1,4 +1,4 @@
 from app.schemas.health import HealthResponse, DatabaseStatus
-from app.schemas.auth import RUTValidateRequest, RUTValidateResponse
+from app.schemas.user import UserCreate, UserPublic, LoginRequest, TokenResponse
 
-__all__ = ["HealthResponse", "DatabaseStatus", "RUTValidateRequest", "RUTValidateResponse"]
+__all__ = ["HealthResponse", "DatabaseStatus", "UserCreate", "UserPublic", "LoginRequest", "TokenResponse"]

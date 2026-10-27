@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy import String, Integer, Text, ForeignKey, DateTime, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
+from geoalchemy2.shape import to_shape
 from app.db.base import Base
 
 if TYPE_CHECKING:
@@ -50,6 +51,20 @@ class Animal(Base):
         "Foundation",
         back_populates="animals"
     )
+
+    # Coordenadas legibles para la API y el mapa (PostGIS guarda el punto como (longitud, latitud))
+    @property
+    def latitude(self) -> Optional[float]:
+        return to_shape(self.location).y if self.location is not None else None
+
+    @property
+    def longitude(self) -> Optional[float]:
+        return to_shape(self.location).x if self.location is not None else None
+
+    @property
+    def foundation_name(self) -> Optional[str]:
+        """Requiere cargar la relación con selectinload(Animal.foundation) en la consulta."""
+        return self.foundation.name if self.foundation is not None else None
 
     def __repr__(self) -> str:
         return f"<Animal(id={self.id}, name='{self.name}', species='{self.species}', status='{self.status}')>"

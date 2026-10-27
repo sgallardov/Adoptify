@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     DB_PORT: int = 5432
     DATABASE_URL: Optional[str] = None
 
+    # Autenticación JWT
+    SECRET_KEY: str = "cambiar-esta-clave-en-produccion"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

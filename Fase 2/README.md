@@ -107,17 +107,35 @@ y las instrucciones completas. HU-07 conecta listado, detalle y contadores a
   }
   ```
 
-### HU-03: Autenticación (Validación de RUT Institucional)
-* **Endpoint:** `POST /api/v1/auth/validate-rut`
-* **Validación de Sintaxis:** Validación estricta de RUT chileno con Regex en Pydantic (`^(\d{1,2}(?:\.\d{3}){2}-[\dkK]|\d{7,8}-[\dkK])$`). Retorna `HTTP 422` ante formatos incorrectos.
-* **Lógica Mock de Autenticidad:**
-  * Retorna `HTTP 200` con `{"is_valid": true}` si el RUT termina en dígito par (`0, 2, 4, 6, 8`).
-  * Retorna `HTTP 400` con `{"is_valid": false}` si el RUT termina en dígito impar (`1, 3, 5, 7, 9`) o letra `K`.
+### Login con correo y contraseña
+Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañas **Usuario** y **Fundación** del login web.
+
+| Endpoint | Descripción |
+| --- | --- |
+| `POST /api/v1/auth/register` | Registra un **adoptante** (`email`, `rut`, `password`, `full_name`). `201`, o `409` si el correo o el RUT ya existen. |
+| `POST /api/v1/auth/login` | Recibe `email`, `password` y `account_type` (`"user"` o `"foundation"`). Devuelve `access_token` (JWT) y `role`. `401` si las credenciales son incorrectas; `403` si la cuenta no corresponde a la pestaña. |
+| `GET /api/v1/auth/me` | Devuelve el usuario del token enviado en `Authorization: Bearer <token>`. `401` sin token o con token inválido/expirado. |
+
+* **Roles por pestaña:** `user` → `adopter`; `foundation` → `foundation` o `admin`.
+* **Contraseñas:** se guardan con bcrypt. Mínimo 8 caracteres y máximo 72 bytes (la `ñ` y las tildes cuentan doble).
+* **Correos:** se guardan y comparan en minúsculas.
+* **RUT:** atributo obligatorio y único de cada usuario (no se usa para autenticar). Se acepta con o sin puntos (`12.345.678-5` o `12345678-5`), solo se revisa el formato (no el dígito verificador) y se guarda sin puntos con `K` mayúscula. Formato inválido: `422`.
+* **Token:** JWT HS256 firmado con `SECRET_KEY`; dura `ACCESS_TOKEN_EXPIRE_MINUTES` (60 por defecto). Cambia `SECRET_KEY` en `.env` fuera de desarrollo local.
+* **Cuentas de fundación:** no tienen registro público. Se crean desde la terminal:
+  ```bash
+  docker compose exec backend python -m app.db.create_user --email contacto@fundacion.cl --rut 76.452.189-4 --password Clave1234 --name "Nombre Fundación" --role foundation
+  ```
 
 ### HU-04: Modelamiento de Datos (PostGIS + Alembic)
 * **Tablas creadas y migradas:** Modelos `User`, `Foundation` y `Animal` versionados con **Alembic**.
 * **PostGIS Geometry:** El campo `location` de `Animal` utiliza `Geometry('POINT', srid=4326)` con índices espaciales GiST (`idx_animals_location`).
 * **Relaciones FK funcionando:** `Animal.foundation_id -> Foundation.id` con eliminación en cascada (`ON DELETE CASCADE`).
+
+### Mapa y búsqueda por cercanía (PostGIS)
+* `GET /api/v1/animals` incluye `latitude`, `longitude` y `foundation_name` de cada animal (la geometría cruda `location` no se expone).
+* `GET /api/v1/animals/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` devuelve los animales con estado `available` dentro del radio, ordenados del más cercano al más lejano, con `distance_km`.
+  * Parámetros: `lat` (-90 a 90), `lng` (-180 a 180) y `radius_km` (mayor que 0, máximo 100; por defecto 10). Fuera de rango: `422`.
+  * La distancia se calcula con `ST_Distance` sobre `geography` (metros reales sobre la Tierra) y el filtro usa `ST_DWithin`, que aprovecha el índice GiST de `location`.
 
 ---
 
@@ -132,6 +150,14 @@ y las instrucciones completas. HU-07 conecta listado, detalle y contadores a
   docker compose exec backend python -m app.db.seed
   ```
   Esto carga usuarios adoptantes con preferencias, fundaciones con RUTs en Santiago y animales con geolocalización GPS real.
+  Cuentas de prueba creadas por el seed (solo para desarrollo local):
+
+  | Correo | RUT | Contraseña | Rol | Pestaña del login |
+  | --- | --- | --- | --- | --- |
+  | `matias.adopter@gmail.com` | `18765432-1` | `Adoptante2026` | `adopter` | Usuario |
+  | `sofia.adopter@gmail.com` | `19876543-2` | `Adoptante2026` | `adopter` | Usuario |
+  | `fundacion@adoptify.cl` | `20123456-3` | `Fundacion2026` | `foundation` | Fundación |
+  | `admin@adoptify.cl` | `11111111-1` | `Admin2026` | `admin` | Fundación |
 
 ---
 
@@ -191,7 +217,7 @@ docker compose exec backend pytest -v
 Esto ejecuta 18 pruebas asíncronas verificando automáticamente:
 1. **HU-01:** Carga de `.env`, conexión asíncrona a PostgreSQL, PostGIS 15 y persistencia.
 2. **HU-02:** Swagger UI (`/docs`), OpenAPI v3 y endpoint `/health` validado con Pydantic v2.
-3. **HU-03:** Sintaxis de RUT chileno con Regex y regla Mock de dígito par/impar para HTTP 200 y 400.
+3. **Login:** registro con RUT obligatorio y único, login por pestaña (usuario/fundación), sesión con JWT y casos borde (mayúsculas, 72 bytes).
 4. **HU-04:** Creación de usuarios con preferencias JSON, fundaciones con RUT y validación de geometrías PostGIS en animales con integridad referencial en cascada.
 
 

@@ -9,6 +9,11 @@ export type Animal = {
   status: string
   photo: string | null
   description: string
+  // Datos que solo entrega el backend (la maqueta no los tiene)
+  foundationName?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  distanceKm?: number
 }
 
 // Datos exclusivos de la maqueta, sin conexión al backend.
