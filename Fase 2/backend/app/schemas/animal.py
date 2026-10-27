@@ -7,6 +7,7 @@ class AnimalResponse(BaseModel):
 
     id: int
     foundation_id: int
+    foundation_name: str | None
     name: str
     species: str
     breed: str | None
@@ -17,3 +18,10 @@ class AnimalResponse(BaseModel):
     description: str | None
     status: str
     photo_url: str | None
+    latitude: float | None
+    longitude: float | None
+
+
+class NearbyAnimalResponse(AnimalResponse):
+    """Animal encontrado en una búsqueda por cercanía, con su distancia al punto consultado."""
+    distance_km: float
