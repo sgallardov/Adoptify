@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
-import { ChevronRight, Heart, House, Menu, PawPrint, Users, X } from 'lucide-react'
+import { ChevronRight, Heart, House, LogOut, Menu, PawPrint, Users, X } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
   { to: '/', label: 'Inicio', icon: House },
@@ -24,6 +25,8 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
+  const { user, signOut } = useAuth()
+  const initials = (user?.full_name ?? '').split(' ').filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const isAnimalsPage = location.pathname.startsWith('/animales')
   const title = isAnimalsPage ? 'Mis casos' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
 
@@ -43,8 +46,9 @@ export default function Layout() {
           <p className="mt-2 text-sm leading-6 text-stone-600">Gracias por darles una nueva oportunidad.</p>
         </div>
         <div className="mt-6 flex items-center gap-3 border-t border-stone-100 pt-6">
-          <span className="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">GP</span>
-          <div><p className="text-sm font-semibold">Garras y Patas</p><p className="text-xs text-stone-500">Portal de fundaciones</p></div>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">{initials}</span>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user?.full_name}</p><p className="truncate text-xs text-stone-500">{user?.email}</p></div>
+          <button onClick={signOut} aria-label="Cerrar sesión" title="Cerrar sesión" className="rounded-lg p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900"><LogOut size={18} /></button>
         </div>
       </aside>
       <header className="flex min-h-20 items-center justify-between gap-3 border-b border-stone-200 bg-white px-5 sm:px-9">
@@ -56,7 +60,7 @@ export default function Layout() {
         </div>
         <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-800">{isAnimalsPage || location.pathname === '/' ? 'Datos del backend' : 'Vista de ejemplo'}</span>
       </header>
-      {menuOpen && <div id="mobile-navigation" className="border-b border-stone-200 bg-white p-4 lg:hidden"><Navigation onNavigate={() => setMenuOpen(false)} /></div>}
+      {menuOpen && <div id="mobile-navigation" className="border-b border-stone-200 bg-white p-4 lg:hidden"><Navigation onNavigate={() => setMenuOpen(false)} /><button onClick={signOut} className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-500 hover:bg-stone-50 hover:text-stone-900"><LogOut size={19} />Cerrar sesión</button></div>}
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10"><Outlet /></main>
       <footer className="mx-5 mt-8 flex flex-wrap justify-between gap-2 border-t border-stone-200 py-6 text-xs text-stone-500 sm:mx-9">
         <span>Adoptify · Conectamos vidas, creamos hogares.</span><span>Portal de fundaciones</span>

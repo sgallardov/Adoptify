@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { ArrowRight, ArrowUpRight, Check, Heart, PawPrint, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAnimals } from '../hooks/useAnimals'
+import { useAuth } from '../hooks/useAuth'
 import AnimalsState from '../components/AnimalsState'
 import AnimalCard from '../components/AnimalCard'
 import PageHeading from '../components/PageHeading'
@@ -12,8 +13,9 @@ function StatCard({ icon: Icon, title, value, caption }: { icon: LucideIcon; tit
 
 export default function Dashboard() {
   const { animals, loading, error, retry } = useAnimals()
+  const { user } = useAuth()
   return <>
-    <PageHeading eyebrow="Un nuevo día, nuevas oportunidades" title="Hola, Garras y Patas 👋" description="Este es el espacio de quienes hacen posible una segunda oportunidad." />
+    <PageHeading eyebrow="Un nuevo día, nuevas oportunidades" title={`Hola, ${user?.full_name ?? 'fundación'} 👋`} description="Este es el espacio de quienes hacen posible una segunda oportunidad." />
     <section className="relative mb-7 overflow-hidden rounded-3xl bg-[#163d35] p-7 text-white sm:p-9" aria-label="Bienvenida">
       <PawPrint className="pointer-events-none absolute -right-6 -top-5 size-60 -rotate-12 text-white/5" strokeWidth={1} />
       <div className="relative max-w-xl">
