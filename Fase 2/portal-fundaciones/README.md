@@ -28,8 +28,12 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 ## Contenido
 
 - `/login`: inicio de sesión único con pestañas **Usuario** y **Fundación**; la pestaña Usuario permite registrarse.
-- `/usuario`: inicio del adoptante (requiere cuenta `adopter`). Mapa de Google Maps con las mascotas disponibles
-  y lista al costado; "Usar mi ubicación" filtra por radio (5 a 100 km) y ordena por distancia con `GET /animals/nearby`.
+- `/usuario`: inicio del adoptante (requiere cuenta `adopter`). Mapa de OpenStreetMap con las mascotas disponibles
+  (pines naranjos) y los perros abandonados reportados (pines rojos), con la lista de mascotas al costado;
+  "Usar mi ubicación" filtra por radio (5 a 100 km) y ordena por distancia con `GET /animals/nearby` y `GET /reports/nearby`.
+  Sin ubicación, los reportes se buscan a 100 km de Santiago.
+- `/reportar`: formulario para reportar un perro abandonado (requiere cuenta `adopter`). Se marca el lugar haciendo clic
+  en el mapa, arrastrando el pin o con "Usar mi ubicación", y se envía con `POST /reports`. No se publican los datos de quien reporta.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL, búsqueda por nombre y filtros por especie y estado.
@@ -74,20 +78,18 @@ El valor predeterminado es `http://localhost:8000/api/v1`. Para cambiarlo, copia
 `.env.example` a `.env.local`, ajustar `VITE_API_URL` y reiniciar Vite.
 Esta variable es pública; no debe contener credenciales.
 
-## Configurar Google Maps
+## Mapa (Leaflet + OpenStreetMap)
 
-El mapa de `/usuario` necesita `VITE_GOOGLE_MAPS_API_KEY` en `.env.local` (ver `.env.example`).
-Sin ella, el mapa muestra un aviso y la lista y la búsqueda por cercanía siguen funcionando.
+Los mapas usan [Leaflet](https://leafletjs.com/) con `react-leaflet` y los mosaicos públicos de OpenStreetMap.
+No requieren API key, cuenta ni tarjeta. La configuración compartida (URL de mosaicos, atribución, íconos)
+está en `src/components/mapTiles.ts`.
 
-1. En [Google Cloud Console](https://console.cloud.google.com/) crear un proyecto y habilitar **Maps JavaScript API**
-   (pide asociar una cuenta de facturación; el uso de desarrollo entra en el crédito gratuito mensual).
-2. En **Credenciales**, crear una **API key** y restringirla:
-   - *Restricción de aplicación*: sitios web (referentes HTTP) → `http://localhost:5173/*`.
-   - *Restricción de API*: solo **Maps JavaScript API**.
-3. Copiarla en `portal-fundaciones/.env.local` como `VITE_GOOGLE_MAPS_API_KEY=...` y reiniciar `npm run dev`.
-
-La key viaja al navegador, así que la restricción por dominio es lo que la protege. `.env.local` no se sube a git.
-`VITE_GOOGLE_MAPS_MAP_ID` puede quedar en `DEMO_MAP_ID` durante el desarrollo.
+- La atribución "© OpenStreetMap" es obligatoria y ya se muestra en el mapa.
+- Los mosaicos de `tile.openstreetmap.org` tienen una [política de uso justo](https://operations.osmfoundation.org/policies/tiles/):
+  sirven para desarrollo y un piloto. Si el tráfico crece, cambiar `OSM_TILES` por la URL de un proveedor de mosaicos
+  (por ejemplo MapTiler); los componentes no cambian.
+- Al ver un mapa, el navegador del usuario pide mosaicos a OpenStreetMap, que recibe su IP y la zona que está viendo.
+- "Usar mi ubicación" requiere `localhost` o HTTPS.
 
 Desde `Fase 2`, levantar el backend y aplicar las migraciones:
 
@@ -109,7 +111,7 @@ Ante errores SQL devuelve HTTP 503 con un mensaje público.
 Pruebas de backend:
 
 ```powershell
-docker compose exec backend pytest tests/test_animals.py -v
+docker compose exec backend pytest tests/test_animals.py tests/test_reports.py -v
 ```
 
 Validado: `npm run build`, navegación móvil, búsqueda, filtros combinados,

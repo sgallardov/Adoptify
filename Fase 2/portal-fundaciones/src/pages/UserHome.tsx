@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { LoaderCircle, LocateFixed, LogOut, MapPin, PawPrint, TriangleAlert, X } from 'lucide-react'
+import { Link, useLocation } from 'react-router'
+import { CircleCheck, LoaderCircle, LocateFixed, LogOut, MapPin, Megaphone, PawPrint, TriangleAlert, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useMapAnimals } from '../hooks/useMapAnimals'
+import { useNearbyReports } from '../hooks/useNearbyReports'
+import { SANTIAGO } from '../components/mapTiles'
 import type { LatLng } from '../hooks/useMapAnimals'
 import type { Animal } from '../data/demo'
 import { StatusBadge } from '../components/AnimalCard'
@@ -11,6 +14,8 @@ import AnimalsState from '../components/AnimalsState'
 import PageHeading from '../components/PageHeading'
 
 const RADIUS_OPTIONS = [5, 10, 25, 50, 100]
+// Sin tu ubicación, los reportes se buscan alrededor de Santiago con el radio máximo
+const DEFAULT_REPORTS_RADIUS_KM = 100
 
 function AnimalThumb({ animal }: { animal: Animal }) {
   const [failed, setFailed] = useState(false)
@@ -30,6 +35,9 @@ export default function UserHome() {
   const [geoError, setGeoError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const { animals, loading, error, retry } = useMapAnimals(origin, radiusKm)
+  const reports = useNearbyReports(origin ?? SANTIAGO, origin ? radiusKm : DEFAULT_REPORTS_RADIUS_KM)
+  // Aviso de éxito al volver desde /reportar
+  const justReported = Boolean((useLocation().state as { reported?: boolean } | null)?.reported)
   const firstName = user?.full_name.split(' ')[0] ?? ''
 
   function locate() {
@@ -72,12 +80,14 @@ export default function UserHome() {
           <span className="text-xl font-extrabold tracking-tight">adoptify<span className="text-orange-600">.</span></span>
         </span>
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-stone-600 sm:inline">{user?.email}</span>
+          <span className="hidden text-sm text-stone-600 lg:inline">{user?.email}</span>
+          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
           <button onClick={signOut} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"><LogOut size={16} />Cerrar sesión</button>
         </div>
       </header>
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10">
         <PageHeading eyebrow="Mascotas cerca de ti" title={`Hola, ${firstName} 👋`} description="Explora en el mapa a las mascotas que buscan hogar y encuentra las que están más cerca de ti." />
+        {justReported && <p role="status" className="mb-5 flex items-start gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-900"><CircleCheck className="mt-0.5 shrink-0" size={16} />¡Gracias! Tu reporte quedó publicado en el mapa.</p>}
 
         <div className="mb-5 flex flex-wrap items-center gap-3">
           {origin ? <>
@@ -97,8 +107,15 @@ export default function UserHome() {
         {geoError && <p role="alert" className="mb-5 flex items-start gap-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-900"><TriangleAlert className="mt-0.5 shrink-0" size={16} />{geoError}</p>}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section aria-label="Mapa de mascotas" className="h-[420px] lg:h-[600px]">
-            <AnimalsMap animals={animals} origin={origin} selectedId={selectedId} onSelect={setSelectedId} />
+          <section aria-label="Mapa de mascotas y perros reportados" className="flex h-[420px] flex-col gap-2 lg:h-[600px]">
+            <div className="min-h-0 flex-1">
+              <AnimalsMap animals={animals} reports={reports} origin={origin} selectedId={selectedId} onSelect={setSelectedId} />
+            </div>
+            <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-orange-600" />Mascotas en adopción</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-red-600" />Perros reportados ({reports.length})</span>
+              {origin && <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sky-600" />Tu ubicación</span>}
+            </p>
           </section>
 
           <section aria-label="Lista de mascotas" className="lg:max-h-[600px] lg:overflow-y-auto">

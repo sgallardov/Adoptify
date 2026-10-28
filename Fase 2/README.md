@@ -137,6 +137,12 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
   * Parámetros: `lat` (-90 a 90), `lng` (-180 a 180) y `radius_km` (mayor que 0, máximo 100; por defecto 10). Fuera de rango: `422`.
   * La distancia se calcula con `ST_Distance` sobre `geography` (metros reales sobre la Tierra) y el filtro usa `ST_DWithin`, que aprovecha el índice GiST de `location`.
 
+### Reportes de perros abandonados
+* Tabla `abandoned_dog_reports` (migración `0003`): descripción, foto opcional, estado (`reported`, `in_rescue`, `resolved`), autor y `location` como `Geometry('POINT', srid=4326)` con índice GiST.
+* `POST /api/v1/reports` (requiere token Bearer): crea un reporte con `latitude`, `longitude` y `description` (10 a 1000 caracteres). Devuelve `201`.
+* `GET /api/v1/reports/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` (público): reportes no resueltos dentro del radio, del más cercano al más lejano, con `distance_km`. Mismos límites de parámetros que `/animals/nearby`.
+* La respuesta no expone quién hizo el reporte (`reporter_id`) ni la geometría cruda.
+
 ---
 
 ## 🗄️ Migraciones y Datos de Prueba (Seed)
@@ -145,6 +151,11 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
   ```bash
   docker compose exec backend alembic upgrade head
   ```
+* **Crear una migración nueva:** los archivos de `alembic/versions/` se nombran `NNNN_descripcion.py` para que se lean en orden. Al crear una, pasar el siguiente número con `--rev-id`:
+  ```bash
+  docker compose exec backend alembic revision --autogenerate --rev-id 0003 -m "add_abandoned_dog_reports"
+  ```
+  Las dos primeras migraciones conservan sus IDs originales (`36de03be1873` y `74255429a3a5`) dentro del archivo porque ya están registrados en la tabla `alembic_version` de las bases existentes; solo se renombró el archivo.
 * **Cargar datos de prueba (Seed):**
   ```bash
   docker compose exec backend python -m app.db.seed
