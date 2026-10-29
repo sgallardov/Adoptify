@@ -1,4 +1,4 @@
-# Adoptify — App móvil (HU-08)
+# Adoptify — App móvil (HU-08 y HU-14)
 
 App Flutter para ciudadanos y adoptantes. Consume la misma API que el portal web (`Fase 2/backend`).
 
@@ -38,21 +38,34 @@ Android permite `http` sin cifrar (`usesCleartextTraffic`) solo para desarrollo;
 lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
-  core/           # config.dart (URL de la API)
+  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart
   features/       # una carpeta por pantalla: home, map, report, account, auth
+    auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
   shared/widgets/ # app_shell.dart (barra inferior), coming_soon.dart
-test/             # widget tests de navegación
+test/             # widget tests de navegación y login (fake_api.dart simula el backend)
 ```
 
 ## Navegación
 Barra inferior con cuatro pestañas (`StatefulShellRoute`, cada una conserva su historial):
 `/inicio`, `/mapa`, `/reportar`, `/cuenta`. `/login` se abre a pantalla completa.
 
+## Inicio de sesión (HU-14)
+Mismo formato y mismas cuentas que el login del portal web:
+- Pestañas **Usuario** y **Fundación** (`account_type` `user` / `foundation`); solo Usuario permite registrarse.
+- Consume `POST /auth/login`, `POST /auth/register` y `GET /auth/me`; los mensajes de error son los del backend
+  y siguen las mismas reglas que `errorMessage()` del portal.
+- El token se guarda cifrado con `flutter_secure_storage` y `ApiClient` lo envía como `Authorization: Bearer` en cada petición.
+- Al abrir la app se recupera la sesión con `GET /auth/me`. Si la API responde 401 (token vencido), se cierra la sesión;
+  sin conexión el token se conserva para el próximo intento.
+- La pestaña **Cuenta** muestra el perfil (nombre, rol, correo, RUT) y permite cerrar sesión.
+
+Para probar con el backend local (desde `Fase 2`): `docker compose up -d` y `python -m app.db.seed`;
+cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
+
 ## Librerías
-`go_router` (rutas), `http` (API), `geolocator` (ubicación), `camera` (fotos de reportes).
+`go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `geolocator` (ubicación), `camera` (fotos de reportes).
 Permisos declarados en `android/app/src/main/AndroidManifest.xml` (internet, ubicación, cámara)
 e `ios/Runner/Info.plist` (ubicación y cámara).
 
 ## Próximas HU
-- **HU-14:** login y registro con la cuenta del portal (token en `flutter_secure_storage`).
 - **HU-15:** mapa con `flutter_map` + OpenStreetMap y reporte con GPS.
