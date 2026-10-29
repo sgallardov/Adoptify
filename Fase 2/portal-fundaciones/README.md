@@ -2,6 +2,13 @@
 
 Maqueta web con Vite, React, TypeScript, TailwindCSS y React Router.
 
+## HU-11 — Identidad visual
+
+Los colores y la tipografía se definen en `src/index.css` mediante `@theme` de
+Tailwind v4. `Brand` comparte el logo con el favicon y `Feedback` unifica los
+estados de carga, error, vacío y éxito en login, usuario y portal.
+Ver [guía de identidad visual y revisión responsive](docs/identidad-visual.md).
+
 ## Iniciar
 
 Requiere Node.js 22.12+ (o 20.19+) y npm. Desde esta carpeta: Adoptify\Fase 2\portal-fundaciones
@@ -116,6 +123,28 @@ docker compose exec backend pytest tests/test_animals.py tests/test_reports.py -
 
 Validado: `npm run build`, navegación móvil, búsqueda, filtros combinados,
 estado sin resultados, restablecimiento y apertura del detalle de un animal.
+
+## Carrusel de adopción en `/usuario`
+
+El mapa ocupa el ancho superior y las mascotas disponibles aparecen debajo en
+`AdoptionCarousel`. Las tarjetas se recorren deslizando horizontalmente, con los
+botones anterior/siguiente o con las flechas del teclado al enfocar el carrusel.
+No hay avance automático. Si el contenedor tiene al menos 900 px, se muestran
+tres tarjetas completas dentro del mismo ancho del mapa, con solo la central
+resaltada. En espacios menores se muestra una tarjeta completa. Las flechas y
+el desplazamiento táctil recorren el resto; al detenerse, las tarjetas encajan
+sin recortes. Al llegar al inicio o al final quedan espacios libres a los lados
+para mantener centrada la tarjeta activa, sin duplicar animales. Al cambiar el
+ancho de pantalla se conserva la tarjeta activa. Solo se muestran las flechas
+inferiores, sin barra de desplazamiento ni contador visible.
+
+El mapa y las tarjetas comparten los resultados y el filtro de cercanía.
+Seleccionar un marcador centra su tarjeta; «Ver en el mapa» abre la ubicación
+del animal y desplaza la página hasta el mapa. Los animales sin coordenadas
+siguen apareciendo, con el aviso «Ubicación no registrada». Si falta la foto o
+falla su carga, aparece una huella. Se conservan los estados de carga, error
+con reintento y lista vacía. El carrusel es de exploración: no registra likes
+ni solicitudes de adopción.
 
 ## FALTA POR AGREGAR¡¡¡¡¡
 Una seccion en donde se pueda agregar un nuevo animal en adopcion en portal-fundaciones

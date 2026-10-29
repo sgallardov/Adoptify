@@ -14,7 +14,7 @@ export const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/co
 export function dotIcon(className: string, size: number) {
   return L.divIcon({
     className: '',
-    html: `<span class="block rounded-full border-[3px] border-white shadow-md ${className}" style="width:${size}px;height:${size}px"></span>`,
+    html: `<span class="block rounded-full border-[3px] border-surface shadow-md ${className}" style="width:${size}px;height:${size}px"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2],

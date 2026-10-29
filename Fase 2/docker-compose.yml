@@ -40,6 +40,18 @@ services:
     networks:
       - adoptify_network
 
+  adminer:
+    image: adminer:latest
+    container_name: adoptify_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - adoptify_network
+
 volumes:
   postgres_data:
     driver: local

@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router'
-import { CircleCheck, LoaderCircle, LocateFixed, LogOut, MapPin, Megaphone, PawPrint, TriangleAlert, X } from 'lucide-react'
+import { LoaderCircle, LocateFixed, LogOut, Megaphone, X } from 'lucide-react'
+import AppHeader from '../components/AppHeader'
+import Feedback from '../components/Feedback'
 import { useAuth } from '../hooks/useAuth'
 import { useMapAnimals } from '../hooks/useMapAnimals'
 import { useNearbyReports } from '../hooks/useNearbyReports'
 import { SANTIAGO } from '../components/mapTiles'
 import type { LatLng } from '../hooks/useMapAnimals'
-import type { Animal } from '../data/demo'
-import { StatusBadge } from '../components/AnimalCard'
-import { capitalize } from '../services/animals'
+import AdoptionCarousel from '../components/AdoptionCarousel'
 import AnimalsMap from '../components/AnimalsMap'
 import AnimalsState from '../components/AnimalsState'
 import PageHeading from '../components/PageHeading'
@@ -17,18 +17,10 @@ const RADIUS_OPTIONS = [5, 10, 25, 50, 100]
 // Sin tu ubicación, los reportes se buscan alrededor de Santiago con el radio máximo
 const DEFAULT_REPORTS_RADIUS_KM = 100
 
-function AnimalThumb({ animal }: { animal: Animal }) {
-  const [failed, setFailed] = useState(false)
-  return (
-    <span className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-100">
-      {failed || !animal.photo ? <PawPrint size={24} className="text-stone-300" /> : <img src={animal.photo} alt="" onError={() => setFailed(true)} loading="lazy" className="h-full w-full object-cover" />}
-    </span>
-  )
-}
-
 // Inicio del adoptante: mapa de mascotas disponibles y búsqueda por cercanía
 export default function UserHome() {
   const { user, signOut } = useAuth()
+  const mapSection = useRef<HTMLElement>(null)
   const [origin, setOrigin] = useState<LatLng | null>(null)
   const [radiusKm, setRadiusKm] = useState(10)
   const [locating, setLocating] = useState(false)
@@ -74,75 +66,53 @@ export default function UserHome() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex min-h-20 items-center justify-between gap-3 border-b border-stone-200 bg-white px-5 sm:px-9">
-        <span className="flex items-center gap-2.5">
-          <span className="rounded-xl bg-orange-600 p-2 text-white"><PawPrint size={22} /></span>
-          <span className="text-xl font-extrabold tracking-tight">adoptify<span className="text-orange-600">.</span></span>
-        </span>
-        <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-stone-600 lg:inline">{user?.email}</span>
-          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
-          <button onClick={signOut} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"><LogOut size={16} />Cerrar sesión</button>
-        </div>
-      </header>
+      <AppHeader>
+          <span className="hidden text-sm text-base-600 lg:inline">{user?.email}</span>
+          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-danger-600 px-4 py-2 text-sm font-semibold text-surface hover:bg-danger-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
+          <button onClick={signOut} className="button-secondary" aria-label="Cerrar sesión"><LogOut size={16} /><span className="hidden sm:inline">Cerrar sesión</span></button>
+      </AppHeader>
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10">
         <PageHeading eyebrow="Mascotas cerca de ti" title={`Hola, ${firstName} 👋`} description="Explora en el mapa a las mascotas que buscan hogar y encuentra las que están más cerca de ti." />
-        {justReported && <p role="status" className="mb-5 flex items-start gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-900"><CircleCheck className="mt-0.5 shrink-0" size={16} />¡Gracias! Tu reporte quedó publicado en el mapa.</p>}
+        {justReported && <div className="mb-5"><Feedback kind="success" title="¡Gracias! Tu reporte quedó publicado en el mapa." compact /></div>}
 
         <div className="mb-5 flex flex-wrap items-center gap-3">
           {origin ? <>
             <label className="flex items-center gap-2 text-sm font-medium">Radio
-              <select value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm">
+              <select value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} className="rounded-xl border border-base-200 bg-surface px-3 py-2 text-sm">
                 {RADIUS_OPTIONS.map(km => <option key={km} value={km}>{km} km</option>)}
               </select>
             </label>
-            <button onClick={clearLocation} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"><X size={16} />Ver todas</button>
+            <button onClick={clearLocation} className="inline-flex items-center gap-2 rounded-xl border border-base-200 bg-surface px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50"><X size={16} />Ver todas</button>
           </> : (
-            <button onClick={locate} disabled={locating} className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60">
+            <button onClick={locate} disabled={locating} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-surface hover:bg-brand-700 disabled:opacity-60">
               {locating ? <LoaderCircle className="animate-spin" size={17} /> : <LocateFixed size={17} />}Usar mi ubicación
             </button>
           )}
-          {!loading && !error && <p className="text-sm text-stone-500" aria-live="polite">{summary}</p>}
+          {!loading && !error && <p className="text-sm text-base-500" aria-live="polite">{summary}</p>}
         </div>
-        {geoError && <p role="alert" className="mb-5 flex items-start gap-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-900"><TriangleAlert className="mt-0.5 shrink-0" size={16} />{geoError}</p>}
+        {geoError && <div className="mb-5"><Feedback kind="error" title={geoError} compact /></div>}
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section aria-label="Mapa de mascotas y perros reportados" className="flex h-[420px] flex-col gap-2 lg:h-[600px]">
+        <div className="space-y-8">
+          <section ref={mapSection} aria-label="Mapa de mascotas y perros reportados" className="flex h-[380px] scroll-mt-5 flex-col gap-2 sm:h-[460px]">
             <div className="min-h-0 flex-1">
               <AnimalsMap animals={animals} reports={reports} origin={origin} selectedId={selectedId} onSelect={setSelectedId} />
             </div>
-            <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
-              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-orange-600" />Mascotas en adopción</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-red-600" />Perros reportados ({reports.length})</span>
-              {origin && <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-sky-600" />Tu ubicación</span>}
+            <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-500">
+              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-brand-600" />Mascotas en adopción</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-danger-600" />Perros reportados ({reports.length})</span>
+              {origin && <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-info-600" />Tu ubicación</span>}
             </p>
           </section>
 
-          <section aria-label="Lista de mascotas" className="lg:max-h-[600px] lg:overflow-y-auto">
+          <section aria-labelledby="adoption-heading" className="min-w-0">
+            <h2 id="adoption-heading" className="mb-2 text-2xl font-bold tracking-tight">Tu próximo compañero</h2>
             {loading || error ? <AnimalsState loading={loading} retry={retry} /> : animals.length === 0 ? (
-              <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">
-                <MapPin className="mx-auto mb-3 text-stone-300" size={30} />
-                {origin ? <>No hay mascotas disponibles a menos de {radiusKm} km. Prueba con un radio mayor.</> : 'No hay mascotas disponibles por el momento.'}
-              </div>
+              <Feedback kind="empty" title="No hay mascotas disponibles" description={origin ? `No hay mascotas a menos de ${radiusKm} km. Prueba con un radio mayor.` : 'Vuelve pronto para conocer nuevas historias.'} />
             ) : (
-              <ul className="space-y-3">
-                {animals.map(animal => (
-                  <li key={animal.id}>
-                    <button onClick={() => setSelectedId(animal.id)} aria-pressed={animal.id === selectedId}
-                      className={`flex w-full items-center gap-4 rounded-2xl border bg-white p-3 text-left transition-colors hover:border-orange-300 ${animal.id === selectedId ? 'border-orange-500 ring-2 ring-orange-100' : 'border-stone-200'}`}>
-                      <AnimalThumb animal={animal} />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="truncate font-bold">{animal.name}</span>
-                          {animal.distanceKm != null ? <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-800">{animal.distanceKm.toLocaleString('es-CL')} km</span> : <StatusBadge status={animal.status} />}
-                        </span>
-                        <span className="mt-1 block truncate text-xs text-stone-500">{capitalize(animal.species)} · {animal.age} · {animal.size}</span>
-                        {animal.foundationName && <span className="mt-0.5 block truncate text-xs text-stone-400">{animal.foundationName}</span>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <AdoptionCarousel animals={animals} selectedId={selectedId} onLocate={id => {
+                setSelectedId(id)
+                mapSection.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+              }} />
             )}
           </section>
         </div>

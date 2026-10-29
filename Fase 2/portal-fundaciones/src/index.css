@@ -2,16 +2,98 @@
 
 @theme {
   --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-brand: var(--font-sans);
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-500: #ea580c;
+  --color-brand-600: #c2410c;
+  --color-brand-700: #9a3412;
+  --color-brand-800: #7c2d12;
+  --color-brand-900: #652510;
+  --color-base-50: #faf9f6;
+  --color-base-100: #f5f5f4;
+  --color-base-200: #e7e5e4;
+  --color-base-300: #d6d3d1;
+  --color-base-400: #78716c;
+  --color-base-500: #66605b;
+  --color-base-600: #57534e;
+  --color-base-700: #44403c;
+  --color-base-800: #292524;
+  --color-base-900: #1c1917;
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
+  --color-success-950: #022c22;
+  --color-warning-50: #fffbeb;
+  --color-warning-800: #92400e;
+  --color-danger-50: #fef2f2;
+  --color-danger-200: #fecaca;
+  --color-danger-600: #b91c1c;
+  --color-danger-700: #991b1b;
+  --color-danger-900: #7f1d1d;
+  --color-info-50: #f0f9ff;
+  --color-info-600: #0369a1;
+  --color-info-800: #075985;
+  --color-forest: #163d35;
+  --color-surface: #ffffff;
 }
 
 @layer base {
-  body { @apply m-0 bg-[#faf9f6] font-sans text-stone-800 antialiased; }
+  body { @apply m-0 bg-base-50 font-sans text-base-800 antialiased; }
+  h1, h2, h3 { @apply font-brand; overflow-wrap: anywhere; }
   button, a, input, select { -webkit-tap-highlight-color: transparent; }
   button, select { cursor: pointer; }
-  :focus-visible { outline: 3px solid #c2410c; outline-offset: 4px; }
-  ::selection { background: #ffedd5; color: #7c2d12; }
+  :focus-visible { outline: 3px solid var(--color-brand-600); outline-offset: 4px; }
+  ::selection { background: var(--color-brand-100); color: var(--color-brand-800); }
+  .leaflet-container { font-family: var(--font-sans); }
+  .leaflet-popup-content { overflow-wrap: anywhere; }
 }
 
+@layer components {
+  .button-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-surface transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60; }
+  .button-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-base-200 bg-surface px-4 py-2.5 text-sm font-medium text-base-700 hover:bg-base-50 disabled:cursor-not-allowed disabled:opacity-60; }
+}
+
+/* Leaflet distribuye CSS sin capas; esta regla conserva la fuente de Adoptify. */
+.leaflet-container.leaflet-container { font-family: var(--font-sans); }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Una tarjeta completa en móvil; tres dentro del ancho del mapa en escritorio. */
+@layer components {
+  .adoption-carousel {
+    --visible-cards: 1;
+    --card-width: min(calc(100cqw - 16px), 400px);
+    display: flex;
+    position: relative;
+    gap: 1.25rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    max-width: 416px;
+    margin-inline: auto;
+    padding: 0.5rem 8px 1rem;
+    scrollbar-width: none;
+  }
+  .adoption-carousel::-webkit-scrollbar { display: none; }
+  .adoption-carousel > article { width: var(--card-width); }
+  .adoption-carousel-region {
+    container-type: inline-size;
+    width: 100%;
+    margin-inline: auto;
+  }
+  @container (min-width: 900px) {
+    .adoption-carousel {
+      --visible-cards: 3;
+      --card-width: calc((100cqw - 56px) / 3);
+      max-width: none;
+      padding-inline: calc((100% - var(--card-width)) / 2);
+    }
+  }
 }

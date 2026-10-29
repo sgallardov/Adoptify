@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate } from 'react-router'
-import { Building2, LoaderCircle, PawPrint, TriangleAlert, UserRound } from 'lucide-react'
+import { Building2, UserRound } from 'lucide-react'
+import Brand from '../components/Brand'
+import Feedback from '../components/Feedback'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { errorMessage } from '../services/api'
@@ -13,7 +15,7 @@ const tabs: { id: AccountType; label: string; icon: LucideIcon }[] = [
   { id: 'foundation', label: 'Fundación', icon: Building2 },
 ]
 
-const inputClass = 'mt-2 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm placeholder:text-stone-400 hover:border-stone-300'
+const inputClass = 'mt-2 w-full rounded-xl border border-base-200 bg-surface px-4 py-3 text-sm placeholder:text-base-400 hover:border-base-300'
 
 export default function Login() {
   const { user, loading, signIn, signUp } = useAuth()
@@ -27,6 +29,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
 
   // Con sesión iniciada no tiene sentido ver el login: se va a su inicio
+  if (loading) return <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-5"><Brand to="/login" /><Feedback kind="loading" title="Cargando sesión…" /></main>
   if (!loading && user) return <Navigate to={homeFor(user)} replace />
 
   const isRegister = tab === 'user' && registering
@@ -54,23 +57,20 @@ export default function Login() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
-      <div className="mb-8 flex items-center gap-2.5">
-        <span className="rounded-xl bg-orange-600 p-2 text-white"><PawPrint size={24} /></span>
-        <span className="text-2xl font-extrabold tracking-tight">adoptify<span className="text-orange-600">.</span></span>
-      </div>
+      <div className="mb-8"><Brand to="/login" /></div>
 
-      <section className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-6 sm:p-8" aria-labelledby="login-title">
-        <div role="tablist" aria-label="Tipo de cuenta" className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1">
+      <section className="w-full max-w-md rounded-3xl border border-base-200 bg-surface p-6 sm:p-8" aria-labelledby="login-title">
+        <div role="tablist" aria-label="Tipo de cuenta" className="grid grid-cols-2 gap-1 rounded-xl bg-base-100 p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => changeTab(id)}
-              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${tab === id ? 'bg-white text-orange-800 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}>
+              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${tab === id ? 'bg-surface text-brand-800 shadow-sm' : 'text-base-500 hover:text-base-900'}`}>
               <Icon size={17} />{label}
             </button>
           ))}
         </div>
 
         <h1 id="login-title" className="mt-8 text-2xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-2 text-sm text-stone-500">{description}</p>
+        <p className="mt-2 text-sm text-base-500">{description}</p>
 
         <form onSubmit={handleSubmit} className="mt-7 space-y-5">
           {isRegister && (
@@ -90,17 +90,17 @@ export default function Login() {
             <input className={inputClass} type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={isRegister ? 8 : undefined} autoComplete={isRegister ? 'new-password' : 'current-password'} placeholder={isRegister ? 'Mínimo 8 caracteres' : 'Tu contraseña'} />
           </label>
 
-          {error && <p role="alert" className="flex items-start gap-2 rounded-xl bg-orange-50 p-3 text-sm text-orange-900"><TriangleAlert className="mt-0.5 shrink-0" size={16} />{error}</p>}
+          {error && <Feedback kind="error" title={error} compact />}
+          {submitting && <Feedback kind="loading" title={isRegister ? 'Creando tu cuenta…' : 'Iniciando sesión…'} compact />}
 
-          <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60">
-            {submitting && <LoaderCircle className="animate-spin" size={17} />}
+          <button type="submit" disabled={submitting || loading} className="button-primary w-full">
             {isRegister ? 'Crear cuenta' : 'Iniciar sesión'}
           </button>
         </form>
 
-        <p className="mt-6 border-t border-stone-100 pt-6 text-center text-sm text-stone-500">
+        <p className="mt-6 border-t border-base-100 pt-6 text-center text-sm text-base-500">
           {tab === 'user'
-            ? <>{isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'} <button type="button" onClick={() => { setRegistering(!registering); setError(null) }} className="font-semibold text-orange-700 hover:underline">{isRegister ? 'Inicia sesión' : 'Regístrate'}</button></>
+            ? <>{isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'} <button type="button" onClick={() => { setRegistering(!registering); setError(null) }} className="font-semibold text-brand-700 hover:underline">{isRegister ? 'Inicia sesión' : 'Regístrate'}</button></>
             : 'Las cuentas de fundación las crea el equipo de Adoptify.'}
         </p>
       </section>
