@@ -43,3 +43,6 @@ postgres_data/
 .idea/
 *.swp
 *.swo
+
+# Fotos subidas por los usuarios (HU-16)
+backend/uploads/

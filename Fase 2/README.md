@@ -143,6 +143,13 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * `GET /api/v1/reports/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` (público): reportes no resueltos dentro del radio, del más cercano al más lejano, con `distance_km`. Mismos límites de parámetros que `/animals/nearby`.
 * La respuesta no expone quién hizo el reporte (`reporter_id`) ni la geometría cruda.
 
+### HU-16: Subida de imágenes (backend)
+* `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
+* **Validación:** solo JPG y PNG, reconocidos por el contenido del archivo (no por el nombre ni el `Content-Type`). Otro formato: `415`. Más de 5 MB (`MAX_UPLOAD_MB`): `413`. Sin sesión: `401`. Sin archivo: `422`.
+* **Almacenamiento (decisión provisoria):** volumen local `backend/uploads/` (`UPLOAD_DIR`), ignorado por git y servido en `GET /uploads/<archivo>`. El nombre es un UUID: nunca se usa el nombre que envía el cliente. Para migrar a S3 o Cloudinary solo habría que cambiar la escritura en `endpoints/uploads.py`.
+* **URL devuelta:** se arma con `PUBLIC_BASE_URL` si está definida; si no, con la dirección desde la que se llamó a la API. Al probar desde el emulador Android (`10.0.2.2`) la URL saldría con esa dirección y la web no podría abrirla; en un entorno desplegado hay que definir `PUBLIC_BASE_URL`.
+* Requiere `python-multipart` (ya en `requirements.txt`), por lo que hay que reconstruir la imagen: `docker compose up --build -d`.
+
 ---
 
 ## 🗄️ Migraciones y Datos de Prueba (Seed)

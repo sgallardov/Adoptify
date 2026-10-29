@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "cambiar-esta-clave-en-produccion"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Fotos subidas (HU-16): carpeta local servida en /uploads y tamaño máximo por archivo
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_MB: int = 5
+    # URL pública del backend para armar el enlace de cada foto; si está vacía se usa la del request
+    PUBLIC_BASE_URL: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

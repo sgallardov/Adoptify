@@ -35,7 +35,7 @@ Fase 2/backend/app/
   models/                  # user, foundation, animal, report (AbandonedDogReport)
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
-  api/v1/endpoints/        # health, auth, animals, reports
+  api/v1/endpoints/        # health, auth, animals, reports, uploads
   alembic/versions/        # 0001..0003, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
@@ -90,6 +90,6 @@ Pendiente (en orden aproximado de prioridad):
 2. Vincular cuenta `foundation` con su `Foundation` y filtrar "Mis casos" por la fundación autenticada.
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
-5. Subida de fotos (hoy solo `photo_url`).
+5. (Backend hecho, HU-16: `POST /uploads`) Falta el componente de subida en el portal y la foto en la app.
 6. App móvil Flutter: HU-08, HU-14 y HU-15 hechas; la foto en reportes queda para HU-16.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
 
@@ -57,3 +59,7 @@ app.include_router(health_router, tags=["Health"])
 
 # Router principal con prefijo /api/v1
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Fotos subidas (HU-16): se sirven tal cual en /uploads/<archivo>
+Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
