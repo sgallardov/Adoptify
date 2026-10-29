@@ -10,6 +10,7 @@ import '../../core/api_client.dart';
 import '../../core/location_service.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/coming_soon.dart';
+import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
 import '../map/map_service.dart';
@@ -25,7 +26,7 @@ class ReportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Reportar')),
+      appBar: AppBar(title: const Text('Reportar mascota')),
       body: auth.loading
           ? const Center(child: CircularProgressIndicator())
           : auth.user == null
@@ -41,23 +42,22 @@ class _LoginRequired extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const Expanded(
-          child: ComingSoon(
-            icon: Icons.add_location_alt,
-            title: 'Reportar un perro abandonado',
-            message: 'Inicia sesión para reportar. Tu nombre y tus datos no se publican.',
+    return ContentWidth(
+      child: Column(
+        children: [
+          const Expanded(
+            child: ComingSoon(
+              icon: Icons.add_location_alt,
+              title: 'Reportar un perro abandonado',
+              message: 'Inicia sesión para reportar. Tu nombre y tus datos no se publican.',
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: FilledButton(
-            onPressed: () => context.push('/login'),
-            child: const Text('Iniciar sesión'),
+          Padding(
+            padding: const EdgeInsets.all(AdoptifySpacing.xl),
+            child: FilledButton(onPressed: () => context.push('/login'), child: const Text('Iniciar sesión')),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -127,10 +127,7 @@ class _ReportFormState extends State<_ReportForm> {
       return;
     }
     if (description.length < _minDescription) {
-      setState(
-        () => _error =
-            'Describe al perro con al menos $_minDescription caracteres.',
-      );
+      setState(() => _error = 'Describe al perro con al menos $_minDescription caracteres.');
       return;
     }
     setState(() {
@@ -138,14 +135,10 @@ class _ReportFormState extends State<_ReportForm> {
       _error = null;
     });
     try {
-      final report = await MapService(AuthScope.of(context).api)
-          .createReport(position, description);
+      final report = await MapService(AuthScope.of(context).api).createReport(position, description);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Gracias! Tu reporte quedó publicado en el mapa.'),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('¡Gracias! Tu reporte quedó publicado en el mapa.')));
       setState(() {
         _sending = false;
         _position = null;
@@ -156,10 +149,7 @@ class _ReportFormState extends State<_ReportForm> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = errorMessage(
-          error,
-          'No se pudo enviar el reporte. Inténtalo nuevamente.',
-        );
+        _error = errorMessage(error, 'No se pudo enviar el reporte. Inténtalo nuevamente.');
         _sending = false;
       });
     }
@@ -168,159 +158,160 @@ class _ReportFormState extends State<_ReportForm> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final muted = textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AdoptifySpacing.lg,
+        AdoptifySpacing.sm,
+        AdoptifySpacing.lg,
+        AdoptifySpacing.xxl,
+      ),
+      child: ContentWidth(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Encabezado centrado
+            Text(
+              'AYUDA A UN PERRO',
+              textAlign: TextAlign.center,
+              style: textTheme.labelSmall?.copyWith(color: AdoptifyColors.primaryDark),
+            ),
+            const SizedBox(height: AdoptifySpacing.xs),
+            Text('Reportar perro abandonado', textAlign: TextAlign.center, style: textTheme.headlineSmall),
+            const SizedBox(height: AdoptifySpacing.sm),
+            Text(
+              'Marca en el mapa dónde viste al perro y cuéntanos cómo está. Las fundaciones cercanas podrán verlo.',
+              textAlign: TextAlign.center,
+              style: muted,
+            ),
+            const SizedBox(height: AdoptifySpacing.xl),
+            _Section(
+              title: '1. ¿Dónde está el perro?',
+              children: [
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _locating ? null : _locate,
+                      icon: _locating
+                          ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.my_location, size: 20),
+                      label: const Text('Usar mi ubicación'),
+                    ),
+                    const SizedBox(width: AdoptifySpacing.md),
+                    Expanded(
+                      child: Text(
+                        _position != null
+                            ? 'Punto marcado. Toca otro lugar del mapa para moverlo.'
+                            : 'O toca el mapa para marcar el lugar.',
+                        style: textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+                Container(
+                  height: 320,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AdoptifyColors.border),
+                    borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+                  ),
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(initialCenter: santiago, initialZoom: 12, onTap: (_, point) => _place(point)),
+                    children: [
+                      osmTileLayer(),
+                      if (_position != null)
+                        MarkerLayer(
+                          markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
+                        ),
+                      osmAttribution,
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '2. Describe al perro y su estado',
+              children: [
+                TextField(
+                  controller: _description,
+                  maxLines: 4,
+                  maxLength: _maxDescription,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    hintText:
+                        'Ej.: perro mediano café, con collar rojo, parece herido de una pata. Está cerca del paradero.',
+                    hintMaxLines: 3,
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.sm),
+                Container(
+                  padding: const EdgeInsets.all(AdoptifySpacing.md),
+                  decoration: BoxDecoration(
+                    color: AdoptifyColors.muted,
+                    borderRadius: BorderRadius.circular(AdoptifyRadius.md),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.lock_outline, size: 16, color: AdoptifyColors.textMuted),
+                      const SizedBox(width: AdoptifySpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'El reporte muestra solo la ubicación del perro y la descripción. Tu nombre y tus datos no se publican.',
+                          style: textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (_error != null) ...[const SizedBox(height: AdoptifySpacing.lg), MessageBox.error(message: _error!)],
+            const SizedBox(height: AdoptifySpacing.xl),
+            FilledButton.icon(
+              onPressed: _sending ? null : _submit,
+              icon: _sending
+                  ? const SizedBox.square(
+                      dimension: 17,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.send, size: 20),
+              label: Text(_sending ? 'Enviando…' : 'Enviar reporte'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Bloque del formulario: tarjeta blanca con título, mismo borde y sombra que el resto de la app
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AdoptifySpacing.lg),
+      decoration: BoxDecoration(
+        color: AdoptifyColors.surface,
+        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+        border: Border.all(color: AdoptifyColors.border),
+        boxShadow: AdoptifyShadows.soft,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'AYUDA A UN PERRO',
-            style: textTheme.labelMedium?.copyWith(
-              color: AdoptifyColors.primaryDark,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Reportar perro abandonado',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Marca en el mapa dónde viste al perro y cuéntanos cómo está. Las fundaciones cercanas podrán verlo.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: AdoptifyColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            '1. ¿Dónde está el perro?',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: _locating ? null : _locate,
-                icon: _locating
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location, size: 18),
-                label: const Text('Usar mi ubicación'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AdoptifyColors.text,
-                  backgroundColor: AdoptifyColors.surface,
-                  minimumSize: const Size(0, 44),
-                  side: const BorderSide(color: AdoptifyColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _position != null
-                      ? 'Punto marcado. Toca otro lugar del mapa para moverlo.'
-                      : 'O toca el mapa para marcar el lugar.',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AdoptifyColors.textMuted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              height: 320,
-              decoration: BoxDecoration(
-                border: Border.all(color: AdoptifyColors.border),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: santiago,
-                  initialZoom: 12,
-                  onTap: (_, point) => _place(point),
-                ),
-                children: [
-                  osmTileLayer(),
-                  if (_position != null)
-                    MarkerLayer(
-                      markers: [
-                        mapMarker(
-                          _position!,
-                          MapPins.reportPicker,
-                          key: const ValueKey('picker'),
-                        ),
-                      ],
-                    ),
-                  osmAttribution,
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            '2. Describe al perro y su estado',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _description,
-            maxLines: 4,
-            maxLength: _maxDescription,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              hintText: 'Ej.: perro mediano café, con collar rojo, parece herido de una pata. Está cerca del paradero.',
-              hintMaxLines: 3,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AdoptifyColors.muted,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'El reporte muestra solo la ubicación del perro y la descripción. Tu nombre y tus datos no se publican.',
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.5,
-                color: AdoptifyColors.textMuted,
-              ),
-            ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            MessageBox.error(message: _error!),
-          ],
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _sending ? null : _submit,
-            icon: _sending
-                ? const SizedBox.square(
-                    dimension: 17,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.send, size: 18),
-            label: Text(
-              _sending ? 'Enviando…' : 'Enviar reporte',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AdoptifySpacing.md),
+          ...children,
         ],
       ),
     );
