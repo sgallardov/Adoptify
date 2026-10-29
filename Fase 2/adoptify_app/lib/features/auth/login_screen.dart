@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../shared/widgets/message_box.dart';
 import 'auth_controller.dart';
 import 'auth_service.dart';
 
@@ -178,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 20),
-                            _ErrorBox(message: _error!),
+                            MessageBox.error(message: _error!),
                           ],
                           const SizedBox(height: 20),
                           FilledButton(
@@ -361,39 +362,6 @@ class _Field extends StatelessWidget {
           decoration: InputDecoration(hintText: hint),
         ),
       ],
-    );
-  }
-}
-
-class _ErrorBox extends StatelessWidget {
-  const _ErrorBox({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      liveRegion: true,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AdoptifyColors.primarySoft,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 1),
-              child: Icon(Icons.warning_amber_rounded, size: 16, color: AdoptifyColors.primaryTextDark),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message, style: const TextStyle(fontSize: 14, color: AdoptifyColors.primaryTextDark)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

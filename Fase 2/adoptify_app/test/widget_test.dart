@@ -15,7 +15,7 @@ void main() {
 
     await tester.tap(find.text('Mapa'));
     await tester.pumpAndSettle();
-    expect(find.text('Mapa de mascotas y reportes'), findsOneWidget);
+    expect(find.text('Usar mi ubicación'), findsOneWidget);
 
     await tester.tap(find.text('Cuenta'));
     await tester.pumpAndSettle();
@@ -30,6 +30,6 @@ void main() {
 
     await tester.tap(find.text('Reportar un perro abandonado'));
     await tester.pumpAndSettle();
-    expect(find.text('Pronto podrás marcar en el mapa dónde está y enviar el reporte desde aquí.'), findsOneWidget);
+    expect(find.text('Inicia sesión para reportar. Tu nombre y tus datos no se publican.'), findsOneWidget);
   });
 }

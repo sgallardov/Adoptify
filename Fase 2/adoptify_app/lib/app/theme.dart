@@ -15,6 +15,10 @@ class AdoptifyColors {
   static const text = Color(0xFF292524); // stone-800
   static const textMuted = Color(0xFF78716C); // stone-500
   static const report = Color(0xFFDC2626); // red-600, pines de reportes
+  static const reportText = Color(0xFFB91C1C); // red-700
+  static const origin = Color(0xFF0284C7); // sky-600, tu ubicación
+  static const success = Color(0xFF14532D); // green-900
+  static const successSoft = Color(0xFFF0FDF4); // green-50
 }
 
 ThemeData buildAdoptifyTheme() {

@@ -1,4 +1,4 @@
-# Adoptify — App móvil (HU-08 y HU-14)
+# Adoptify — App móvil (HU-08, HU-14 y HU-15)
 
 App Flutter para ciudadanos y adoptantes. Consume la misma API que el portal web (`Fase 2/backend`).
 
@@ -38,11 +38,14 @@ Android permite `http` sin cifrar (`usesCleartextTraffic`) solo para desarrollo;
 lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
-  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart
+  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS)
   features/       # una carpeta por pantalla: home, map, report, account, auth
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
-  shared/widgets/ # app_shell.dart (barra inferior), coming_soon.dart
-test/             # widget tests de navegación y login (fake_api.dart simula el backend)
+    map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
+    report/       # report_screen.dart (formulario de reporte)
+  shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
+  shared/widgets/ # app_shell.dart (barra inferior), coming_soon.dart, message_box.dart
+test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend y GPS)
 ```
 
 ## Navegación
@@ -62,10 +65,25 @@ Mismo formato y mismas cuentas que el login del portal web:
 Para probar con el backend local (desde `Fase 2`): `docker compose up -d` y `python -m app.db.seed`;
 cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 
+## Mapa y reportes (HU-15)
+Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
+naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
+- **Mapa** (`/mapa`): sin ubicación muestra todas las mascotas disponibles (`GET /animals`) y los reportes
+  a 100 km de Santiago. Con "Usar mi ubicación" busca con `GET /animals/nearby` y `GET /reports/nearby`
+  en el radio elegido (5 a 100 km). Tocar un pin o una tarjeta abre su ficha.
+- **Reportar** (`/reportar`): requiere sesión. Se marca el punto tocando el mapa o con el GPS
+  y se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin.
+  Los reportes creados en la app se ven en la web y viceversa (es la misma API).
+- La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.
+
+**GPS en el emulador:** por defecto está en California. Para probar la búsqueda por cercanía, en el emulador
+abrir los tres puntos (Extended controls) → Location, buscar Santiago y pulsar **Set location**.
+
 ## Librerías
-`go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `geolocator` (ubicación), `camera` (fotos de reportes).
+`go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `flutter_map` + `latlong2` (mapa),
+`geolocator` (ubicación), `camera` (fotos de reportes, para HU-16).
 Permisos declarados en `android/app/src/main/AndroidManifest.xml` (internet, ubicación, cámara)
 e `ios/Runner/Info.plist` (ubicación y cámara).
 
 ## Próximas HU
-- **HU-15:** mapa con `flutter_map` + OpenStreetMap y reporte con GPS.
+- **HU-16:** subir una foto real al reportar (depende del endpoint `POST /uploads`).

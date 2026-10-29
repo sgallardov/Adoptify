@@ -38,13 +38,17 @@ class ApiClient {
     await _tokenStorage.write(token);
   }
 
-  Future<dynamic> get(String path) => _send('GET', path);
+  Future<dynamic> get(String path, {Map<String, Object>? query}) => _send('GET', path, query: query);
 
-  Future<dynamic> post(String path, Map<String, dynamic> body) => _send('POST', path, body);
+  Future<dynamic> post(String path, Map<String, dynamic> body) => _send('POST', path, body: body);
 
-  Future<dynamic> _send(String method, String path, [Map<String, dynamic>? body]) async {
+  Future<dynamic> _send(String method, String path, {Map<String, dynamic>? body, Map<String, Object>? query}) async {
     final token = _token;
-    final request = http.Request(method, Uri.parse('$_baseUrl$path'))
+    var uri = Uri.parse('$_baseUrl$path');
+    if (query != null) {
+      uri = uri.replace(queryParameters: query.map((key, value) => MapEntry(key, '$value')));
+    }
+    final request = http.Request(method, uri)
       ..headers['Accept'] = 'application/json';
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     if (body != null) {
