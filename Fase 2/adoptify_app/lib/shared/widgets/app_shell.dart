@@ -44,13 +44,12 @@ class AppShell extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
+                    // Los tres elementos tienen el mismo ancho; Reportar destaca solo por su fondo rojo
                     Expanded(
-                      flex: 5,
                       child: _ReportTab(active: current == _reportTab, onTap: () => _go(_reportTab)),
                     ),
                     const SizedBox(width: AdoptifySpacing.sm),
                     Expanded(
-                      flex: 3,
                       child: _NavTab(
                         label: 'Mapa',
                         icon: Icons.map_outlined,
@@ -60,7 +59,6 @@ class AppShell extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      flex: 3,
                       child: _NavTab(
                         label: 'Perfil',
                         icon: Icons.person_outline,
@@ -91,7 +89,7 @@ class _ReportTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(AdoptifyRadius.lg);
+    final radius = BorderRadius.circular(AdoptifyRadius.md);
     return Semantics(
       button: true,
       selected: active,
@@ -104,7 +102,7 @@ class _ReportTab extends StatelessWidget {
           // Activo: anillo suave alrededor para distinguirlo del estado normal
           boxShadow: [
             if (active) BoxShadow(color: AdoptifyColors.report.withValues(alpha: 0.25), spreadRadius: 3),
-            const BoxShadow(color: Color(0x33DC2626), blurRadius: 10, offset: Offset(0, 4)),
+            const BoxShadow(color: Color(0x26DC2626), blurRadius: 6, offset: Offset(0, 2)),
           ],
         ),
         child: Material(
@@ -115,9 +113,10 @@ class _ReportTab extends StatelessWidget {
             hoverColor: const Color(0x1AFFFFFF),
             focusColor: const Color(0x33FFFFFF),
             splashColor: const Color(0x26FFFFFF),
+            // Misma estructura que Mapa y Perfil: ícono de 24 px arriba y etiqueta abajo
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md),
-              child: Row(
+              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xs),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
@@ -125,14 +124,12 @@ class _ReportTab extends StatelessWidget {
                     color: Colors.white,
                     size: _iconSize,
                   ),
-                  const SizedBox(width: AdoptifySpacing.sm),
-                  Flexible(
-                    child: Text(
-                      'Reportar mascota',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white),
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Reportar mascota',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
                   ),
                 ],
               ),
