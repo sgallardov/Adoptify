@@ -47,8 +47,8 @@ Fase 2/portal-fundaciones/src/
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router, StatefulShellRoute con 4 pestañas), theme.dart (paleta del portal)
-  core/config.dart         # apiUrl: 10.0.2.2 en emulador Android, localhost en web, --dart-define=API_URL para otro
-  features/<pantalla>/     # home, map, report, account, auth
+  core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL), api_client.dart, token_storage.dart
+  features/<pantalla>/     # home, map, report, account, auth (AuthController + AuthScope = sesión)
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
 
@@ -79,7 +79,8 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Una carpeta por pantalla en `features/`; colores solo desde `AdoptifyColors` (`app/theme.dart`), no hardcodeados.
 - Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
 - Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
-- Cada pantalla nueva con su widget test en `test/`.
+- HTTP solo a través de `ApiClient` (`AuthScope.of(context).api`); errores al usuario con `errorMessage(err, fallback)`, igual que el portal.
+- Cada pantalla nueva con su widget test en `test/`; la API se simula con `test/fake_api.dart` (MockClient + MemoryTokenStorage).
 
 ## Estado y pendientes
 Hecho: HU-01 a HU-07, búsqueda por cercanía, mapa Leaflet/OSM y reportes de perros abandonados (rama `feat/mapa-leaflet-reportes`).
@@ -89,5 +90,5 @@ Pendiente (en orden aproximado de prioridad):
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
 5. Subida de fotos (hoy solo `photo_url`).
-6. App móvil Flutter: HU-08 base hecha (rama `feat/hu08-app-movil`); faltan HU-14 login y HU-15 mapa + reportes.
+6. App móvil Flutter: HU-08 base y HU-14 login hechos; falta HU-15 mapa + reportes.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.

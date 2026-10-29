@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adoptify_app/app/app.dart';
 
+import 'fake_api.dart';
+
 void main() {
   testWidgets('abre en Inicio y navega por las pestañas', (tester) async {
-    await tester.pumpWidget(const AdoptifyApp());
+    await tester.pumpWidget(AdoptifyApp(auth: FakeApi().auth));
     await tester.pumpAndSettle();
 
     expect(find.text('Adoptify'), findsOneWidget);
@@ -19,11 +21,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Iniciar sesión'));
     await tester.pumpAndSettle();
-    expect(find.text('Inicio de sesión'), findsOneWidget);
+    expect(find.text('Hola de nuevo'), findsOneWidget);
   });
 
   testWidgets('la tarjeta de reporte lleva a la pestaña Reportar', (tester) async {
-    await tester.pumpWidget(const AdoptifyApp());
+    await tester.pumpWidget(AdoptifyApp(auth: FakeApi().auth));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Reportar un perro abandonado'));
