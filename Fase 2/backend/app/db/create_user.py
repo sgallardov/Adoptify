@@ -12,7 +12,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("adoptify-create-user")
 
 
-async def create_user(email: str, rut: str, password: str, full_name: str, role: str) -> None:
+async def create_user(
+    email: str, rut: str, password: str, full_name: str, role: str, foundation_id: int | None = None
+) -> None:
     """
     Crea un usuario con el rol indicado. Sirve para cuentas que no pueden
     registrarse solas desde la web, como las de fundación o administrador.
@@ -29,6 +31,7 @@ async def create_user(email: str, rut: str, password: str, full_name: str, role:
             hashed_password=hash_password(password),
             full_name=full_name,
             role=role,
+            foundation_id=foundation_id,
             preferences={}
         ))
         await session.commit()
@@ -42,6 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("--password", required=True)
     parser.add_argument("--name", required=True, help="Nombre completo o nombre de la fundación")
     parser.add_argument("--role", choices=["adopter", "foundation", "admin"], default="foundation")
+    parser.add_argument("--foundation-id", type=int, help="ID de la fundación a la que pertenece la cuenta (rol foundation)")
     args = parser.parse_args()
 
     try:
@@ -49,4 +53,4 @@ if __name__ == "__main__":
     except ValueError as exc:
         parser.error(str(exc))
 
-    asyncio.run(create_user(args.email.strip().lower(), rut, args.password, args.name, args.role))
+    asyncio.run(create_user(args.email.strip().lower(), rut, args.password, args.name, args.role, args.foundation_id))

@@ -36,7 +36,7 @@ Fase 2/backend/app/
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
   api/v1/endpoints/        # health, auth, animals, reports
-  alembic/versions/        # 0001..0003, nombrados NNNN_descripcion.py
+  alembic/versions/        # 0001..0004, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
@@ -86,8 +86,8 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 ## Estado y pendientes
 Hecho: HU-01 a HU-07, búsqueda por cercanía, mapa Leaflet/OSM y reportes de perros abandonados (rama `feat/mapa-leaflet-reportes`).
 Pendiente (en orden aproximado de prioridad):
-1. CRUD de animales para fundaciones (`POST/PUT/DELETE /animals` + formulario en el portal).
-2. Vincular cuenta `foundation` con su `Foundation` y filtrar "Mis casos" por la fundación autenticada.
+1. Formulario de alta/edición de animales en el portal (HU-13). El backend ya está: `POST/PATCH/DELETE /animals` (HU-12).
+2. (Hecho en backend, HU-12) `users.foundation_id` y `GET /animals` filtrado por fundación; falta consumirlo en "Mis casos" del portal.
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
 5. Subida de fotos (hoy solo `photo_url`).

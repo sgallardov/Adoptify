@@ -11,6 +11,7 @@ from app.schemas.user import LoginRequest, TokenResponse, UserCreate, UserPublic
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
+optional_bearer_scheme = HTTPBearer(auto_error=False)
 
 # Roles que puede tener una cuenta para entrar por cada pestaña del login
 ACCOUNT_TYPE_ROLES = {
@@ -36,6 +37,23 @@ async def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado")
     return user
+
+
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """
+    Igual que get_current_user, pero para rutas públicas que cambian según quién consulta.
+    Sin token, o con un token inválido, retorna None y se trata como visitante.
+    """
+    if credentials is None:
+        return None
+    email = decode_access_token(credentials.credentials)
+    if email is None:
+        return None
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
 
 
 @router.post(
