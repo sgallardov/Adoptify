@@ -46,9 +46,9 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router, StatefulShellRoute con 4 pestañas), theme.dart (paleta del portal)
+  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Reportar, Mapa, Perfil), theme.dart (colores, espaciado, radios, sombra y escala tipográfica)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL), api_client.dart, token_storage.dart
-  features/<pantalla>/     # home, map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
@@ -77,7 +77,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Accesibilidad: etiquetas en formularios, navegación por teclado, estados vacíos y de error visibles.
 
 **App móvil**
-- Una carpeta por pantalla en `features/`; colores solo desde `AdoptifyColors` (`app/theme.dart`), no hardcodeados.
+- Una carpeta por pantalla en `features/`. Colores, espaciado, radios, sombras y textos solo desde `app/theme.dart` (`AdoptifyColors`, `AdoptifySpacing`, `AdoptifyRadius`, `AdoptifyShadows`, `Theme.of(context).textTheme`); nada de tamaños o colores sueltos. Títulos centrados.
 - Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
 - Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
 - HTTP solo a través de `ApiClient` (`AuthScope.of(context).api`); errores al usuario con `errorMessage(err, fallback)`, igual que el portal.

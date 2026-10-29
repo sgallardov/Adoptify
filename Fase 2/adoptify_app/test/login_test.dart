@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:adoptify_app/app/app.dart';
 
 import 'fake_api.dart';
 
-// Abre la app y entra al login desde la pestaña Cuenta
+// Abre la app y entra al login desde la pestaña Perfil
 Future<void> openLogin(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Cuenta'));
+  await tester.tap(find.text('Perfil'));
   await tester.pumpAndSettle();
   await tester.tap(find.widgetWithText(FilledButton, 'Iniciar sesión'));
   await tester.pumpAndSettle();
 }
 
 Finder field(String hint) => find.widgetWithText(TextFormField, hint);
+
+// Solo las llamadas a /auth: el mapa, que es la pantalla inicial, también hace peticiones
+List<http.Request> authRequests(FakeApi api) => api.requests.where((r) => r.url.path.startsWith('/auth')).toList();
 
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
@@ -31,7 +35,7 @@ Future<void> submit(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets('inicia sesión, guarda el token y muestra el perfil', (tester) async {
+  testWidgets('inicia sesión, guarda el token, vuelve al mapa y muestra el perfil', (tester) async {
     final api = FakeApi();
     await openLogin(tester, api);
 
@@ -40,6 +44,11 @@ void main() {
     await submit(tester, 'Iniciar sesión');
 
     expect(api.storage.token, validToken);
+    // Con la sesión iniciada, la app abre en el mapa
+    expect(find.text('Usar mi ubicación'), findsOneWidget);
+
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
     expect(find.text('Matías Adoptante'), findsOneWidget);
     expect(find.text('Adoptante'), findsOneWidget);
     expect(find.text('18765432-1'), findsOneWidget);
@@ -89,7 +98,7 @@ void main() {
     expect(find.text('Ingresa tu RUT'), findsOneWidget);
     expect(find.text('Ingresa un correo válido'), findsOneWidget);
     expect(find.text('La contraseña debe tener al menos 8 caracteres'), findsOneWidget);
-    expect(api.requests, isEmpty);
+    expect(authRequests(api), isEmpty);
   });
 
   testWidgets('registra una cuenta y deja la sesión iniciada', (tester) async {
@@ -103,8 +112,8 @@ void main() {
     await tester.enterText(field('Mínimo 8 caracteres'), 'Adoptante2026');
     await submit(tester, 'Crear cuenta');
 
-    expect(api.requests.first.url.path, '/auth/register');
-    expect(api.requests.first.body, contains('"rut":"18.765.432-1"'));
+    expect(authRequests(api).first.url.path, '/auth/register');
+    expect(authRequests(api).first.body, contains('"rut":"18.765.432-1"'));
     expect(api.requests.map((r) => r.url.path), containsAllInOrder(['/auth/register', '/auth/login']));
   });
 
@@ -124,7 +133,7 @@ void main() {
     api.storage.token = validToken;
     await tester.pumpWidget(AdoptifyApp(auth: api.auth));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cuenta'));
+    await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
 
     expect(find.text('Matías Adoptante'), findsOneWidget);

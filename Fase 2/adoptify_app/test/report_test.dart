@@ -11,7 +11,7 @@ import 'fake_api.dart';
 Future<void> openReport(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Reportar'));
+  await tester.tap(find.text('Reportar mascota'));
   await tester.pumpAndSettle();
 }
 
