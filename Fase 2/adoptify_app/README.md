@@ -39,18 +39,32 @@ lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
   core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS)
-  features/       # una carpeta por pantalla: home, map, report, account, auth
+  features/       # una carpeta por pantalla: map, report, account, auth
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
   shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
-  shared/widgets/ # app_shell.dart (barra inferior), coming_soon.dart, message_box.dart
+  shared/widgets/ # app_shell.dart (barra inferior), adoptify_logo.dart, content_width.dart, coming_soon.dart, message_box.dart
 test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend y GPS)
 ```
 
 ## Navegación
-Barra inferior con cuatro pestañas (`StatefulShellRoute`, cada una conserva su historial):
-`/inicio`, `/mapa`, `/reportar`, `/cuenta`. `/login` se abre a pantalla completa.
+La app abre en el **Mapa** (también al iniciar sesión). Barra inferior con 3 elementos
+(`StatefulShellRoute`, cada uno conserva su historial), de izquierda a derecha:
+- **Reportar mascota** (`/reportar`): acción principal, botón rojo destacado.
+- **Mapa** (`/mapa`).
+- **Perfil** (`/cuenta`).
+
+`/login` se abre a pantalla completa.
+
+## Diseño
+Todo el estilo sale de `lib/app/theme.dart` (misma paleta que el portal):
+- `AdoptifyColors`: colores. `AdoptifySpacing` (4/8/12/16/24/32) y `AdoptifyRadius` (8/12/16/24): medidas.
+- `AdoptifyShadows.soft`: la única sombra, para tarjetas, fichas y la barra.
+- Escala tipográfica en `textTheme` (`headlineSmall` títulos de página, `titleLarge` headers, `titleMedium`
+  títulos de tarjeta, `titleSmall` etiquetas, `bodyMedium` texto, `bodySmall` notas). No usar tamaños sueltos.
+- Botones con estados hover, focus (contorno naranjo oscuro) y presionado. Títulos y logo centrados.
+- En pantallas anchas el contenido se limita a 640 px y se centra (`shared/widgets/content_width.dart`).
 
 ## Inicio de sesión (HU-14)
 Mismo formato y mismas cuentas que el login del portal web:

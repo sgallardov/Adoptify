@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../shared/widgets/adoptify_logo.dart';
 import '../../shared/widgets/message_box.dart';
 import 'auth_controller.dart';
 import 'auth_service.dart';
@@ -69,12 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await auth.signIn(email, _password.text, _tab);
       }
       if (!mounted) return;
-      // Vuelve a la pantalla desde donde se abrió el login
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go('/cuenta');
-      }
+      // Con la sesión iniciada, la app abre en el mapa
+      context.go('/mapa');
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -88,12 +85,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final isUser = _tab == AccountType.user;
-    final title = _isRegister ? 'Crea tu cuenta' : isUser ? 'Hola de nuevo' : 'Portal de fundaciones';
+    final title = _isRegister
+        ? 'Crea tu cuenta'
+        : isUser
+        ? 'Hola de nuevo'
+        : 'Portal de fundaciones';
     final description = _isRegister
         ? 'Regístrate para encontrar a tu próximo compañero.'
         : isUser
-            ? 'Inicia sesión para encontrar a tu próximo compañero.'
-            : 'Inicia sesión para gestionar a tus rescatados.';
+        ? 'Inicia sesión para encontrar a tu próximo compañero.'
+        : 'Inicia sesión para gestionar a tus rescatados.';
 
     return Scaffold(
       appBar: AppBar(),
@@ -101,19 +102,20 @@ class _LoginScreenState extends State<LoginScreen> {
         top: false,
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+            padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, 0, AdoptifySpacing.lg, 40),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 448),
               child: Column(
                 children: [
-                  const _Logo(),
-                  const SizedBox(height: 32),
+                  const AdoptifyLogo(),
+                  const SizedBox(height: AdoptifySpacing.xxl),
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(AdoptifySpacing.xl),
                     decoration: BoxDecoration(
                       color: AdoptifyColors.surface,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AdoptifyRadius.xl),
                       border: Border.all(color: AdoptifyColors.border),
+                      boxShadow: AdoptifyShadows.soft,
                     ),
                     child: Form(
                       key: _formKey,
@@ -121,11 +123,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _AccountTabs(selected: _tab, onChanged: _changeTab),
-                          const SizedBox(height: 32),
-                          Text(title, style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 8),
-                          Text(description, style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted)),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: AdoptifySpacing.xxl),
+                          Text(title, style: textTheme.headlineSmall, textAlign: TextAlign.center),
+                          const SizedBox(height: AdoptifySpacing.sm),
+                          Text(
+                            description,
+                            style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AdoptifySpacing.xl),
                           if (_isRegister) ...[
                             _Field(
                               label: 'Nombre completo',
@@ -133,18 +139,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               hint: 'Tu nombre',
                               autofillHints: const [AutofillHints.name],
                               textCapitalization: TextCapitalization.words,
-                              validator: (value) => (value ?? '').trim().length < 2
-                                  ? 'El nombre debe tener al menos 2 caracteres'
-                                  : null,
+                              validator: (value) =>
+                                  (value ?? '').trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres' : null,
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: AdoptifySpacing.lg),
                             _Field(
                               label: 'RUT',
                               controller: _rut,
                               hint: '12.345.678-5',
                               validator: (value) => (value ?? '').trim().isEmpty ? 'Ingresa tu RUT' : null,
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: AdoptifySpacing.lg),
                           ],
                           _Field(
                             label: 'Correo electrónico',
@@ -159,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AdoptifySpacing.lg),
                           _Field(
                             label: 'Contraseña',
                             controller: _password,
@@ -178,10 +183,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                           if (_error != null) ...[
-                            const SizedBox(height: 20),
+                            const SizedBox(height: AdoptifySpacing.lg),
                             MessageBox.error(message: _error!),
                           ],
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AdoptifySpacing.lg),
                           FilledButton(
                             onPressed: _submitting ? null : _submit,
                             child: Row(
@@ -192,23 +197,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                     dimension: 17,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: AdoptifySpacing.sm),
                                 ],
-                                Text(
-                                  _isRegister ? 'Crear cuenta' : 'Iniciar sesión',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
+                                Text(_isRegister ? 'Crear cuenta' : 'Iniciar sesión'),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 24),
-                          const Divider(height: 1, color: AdoptifyColors.muted),
-                          const SizedBox(height: 16),
-                          _Footer(
-                            isUser: isUser,
-                            isRegister: _isRegister,
-                            onToggle: _toggleRegister,
-                          ),
+                          const SizedBox(height: AdoptifySpacing.xl),
+                          const Divider(color: AdoptifyColors.muted),
+                          const SizedBox(height: AdoptifySpacing.lg),
+                          _Footer(isUser: isUser, isRegister: _isRegister, onToggle: _toggleRegister),
                         ],
                       ),
                     ),
@@ -223,39 +221,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// Logo "adoptify." como en el portal
-class _Logo extends StatelessWidget {
-  const _Logo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AdoptifyColors.primary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.pets, color: Colors.white, size: 24),
-        ),
-        const SizedBox(width: 10),
-        Text.rich(
-          const TextSpan(
-            text: 'adoptify',
-            children: [TextSpan(text: '.', style: TextStyle(color: AdoptifyColors.primary))],
-          ),
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-        ),
-      ],
-    );
-  }
-}
-
 class _AccountTabs extends StatelessWidget {
   const _AccountTabs({required this.selected, required this.onChanged});
 
@@ -264,23 +229,21 @@ class _AccountTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelStyle = Theme.of(context).textTheme.labelLarge;
     return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AdoptifyColors.muted,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.all(AdoptifySpacing.xs),
+      decoration: BoxDecoration(color: AdoptifyColors.muted, borderRadius: BorderRadius.circular(AdoptifyRadius.md)),
       child: Row(
         children: [
-          _tab(AccountType.user, 'Usuario', Icons.person_outline),
-          const SizedBox(width: 4),
-          _tab(AccountType.foundation, 'Fundación', Icons.business_outlined),
+          _tab(AccountType.user, 'Usuario', Icons.person_outline, labelStyle),
+          const SizedBox(width: AdoptifySpacing.xs),
+          _tab(AccountType.foundation, 'Fundación', Icons.business_outlined, labelStyle),
         ],
       ),
     );
   }
 
-  Widget _tab(AccountType type, String label, IconData icon) {
+  Widget _tab(AccountType type, String label, IconData icon, TextStyle? labelStyle) {
     final active = selected == type;
     final color = active ? AdoptifyColors.primaryText : AdoptifyColors.textMuted;
     return Expanded(
@@ -291,22 +254,20 @@ class _AccountTabs extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             color: active ? AdoptifyColors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: active
-                ? const [BoxShadow(color: Color(0x14000000), blurRadius: 2, offset: Offset(0, 1))]
-                : null,
+            borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
+            boxShadow: active ? AdoptifyShadows.soft : null,
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
             onTap: () => onChanged(type),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 17, color: color),
-                  const SizedBox(width: 8),
-                  Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14)),
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: AdoptifySpacing.sm),
+                  Text(label, style: labelStyle?.copyWith(color: color)),
                 ],
               ),
             ),
@@ -347,8 +308,8 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
+        Text(label, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: AdoptifySpacing.sm),
         TextFormField(
           controller: controller,
           validator: validator,
@@ -375,9 +336,13 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const muted = TextStyle(fontSize: 14, color: AdoptifyColors.textMuted);
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
     if (!isUser) {
-      return const Text('Las cuentas de fundación las crea el equipo de Adoptify.', style: muted, textAlign: TextAlign.center);
+      return Text(
+        'Las cuentas de fundación las crea el equipo de Adoptify.',
+        style: muted,
+        textAlign: TextAlign.center,
+      );
     }
     return Wrap(
       alignment: WrapAlignment.center,
@@ -386,11 +351,8 @@ class _Footer extends StatelessWidget {
         Text(isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?', style: muted),
         TextButton(
           onPressed: onToggle,
-          style: TextButton.styleFrom(
-            foregroundColor: AdoptifyColors.primaryDark,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-          ),
-          child: Text(isRegister ? 'Inicia sesión' : 'Regístrate', style: const TextStyle(fontWeight: FontWeight.w600)),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.sm)),
+          child: Text(isRegister ? 'Inicia sesión' : 'Regístrate'),
         ),
       ],
     );

@@ -24,17 +24,23 @@ class MessageBox extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.all(AdoptifySpacing.md),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(AdoptifyRadius.md),
+          border: Border.all(color: foreground.withValues(alpha: 0.12)),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 1),
-              child: Icon(icon, size: 16, color: foreground),
+              child: Icon(icon, size: 18, color: foreground),
             ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message, style: TextStyle(fontSize: 14, color: foreground))),
+            const SizedBox(width: AdoptifySpacing.sm),
+            Expanded(
+              child: Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: foreground)),
+            ),
           ],
         ),
       ),
