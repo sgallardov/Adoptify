@@ -20,9 +20,10 @@ docker compose exec backend pytest -v                 # o un archivo: pytest tes
 docker compose exec backend alembic revision --autogenerate --rev-id 0004 -m "descripcion"
 ```
 Portal (desde `Fase 2/portal-fundaciones/`): `npm run dev` (http://localhost:5173), `npm run build` (incluye `tsc -b`), `npm run lint` (oxlint).
+App móvil (desde `Fase 2/adoptify_app/`): `flutter run` (emulador) o `flutter run -d chrome`, `flutter analyze`, `flutter test`. En el equipo de Santiago, Flutter está en `C:\src\flutter\bin`.
 Swagger: http://localhost:8000/docs.
 
-**Verificación antes de dar algo por terminado:** backend → `pytest` dentro del contenedor; portal → `npm run build` y `npm run lint`.
+**Verificación antes de dar algo por terminado:** backend → `pytest` dentro del contenedor; portal → `npm run build` y `npm run lint`; app → `flutter analyze` y `flutter test`.
 Las pruebas del backend usan la **BD real del contenedor** (no hay BD de test aislada): requieren `docker compose up` y escriben datos; usar correos/RUT únicos por prueba.
 
 ## Estructura
@@ -44,6 +45,11 @@ Fase 2/portal-fundaciones/src/
   components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
   pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
+Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
+  app/                     # app.dart, router.dart (go_router, StatefulShellRoute con 4 pestañas), theme.dart (paleta del portal)
+  core/config.dart         # apiUrl: 10.0.2.2 en emulador Android, localhost en web, --dart-define=API_URL para otro
+  features/<pantalla>/     # home, map, report, account, auth
+  shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
 
 ## Dominio
@@ -69,6 +75,12 @@ Fase 2/portal-fundaciones/src/
 - Estilos con clases Tailwind, íconos de `lucide-react`. Mapas con Leaflet/react-leaflet usando lo de `mapTiles.ts` (mantener la atribución de OSM).
 - Accesibilidad: etiquetas en formularios, navegación por teclado, estados vacíos y de error visibles.
 
+**App móvil**
+- Una carpeta por pantalla en `features/`; colores solo desde `AdoptifyColors` (`app/theme.dart`), no hardcodeados.
+- Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
+- Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
+- Cada pantalla nueva con su widget test en `test/`.
+
 ## Estado y pendientes
 Hecho: HU-01 a HU-07, búsqueda por cercanía, mapa Leaflet/OSM y reportes de perros abandonados (rama `feat/mapa-leaflet-reportes`).
 Pendiente (en orden aproximado de prioridad):
@@ -77,5 +89,5 @@ Pendiente (en orden aproximado de prioridad):
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
 5. Subida de fotos (hoy solo `photo_url`).
-6. App móvil Flutter (HU-08 swipe, HU-09 mapa de alertas con GPS/cámara).
+6. App móvil Flutter: HU-08 base hecha (rama `feat/hu08-app-movil`); faltan HU-14 login y HU-15 mapa + reportes.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.
