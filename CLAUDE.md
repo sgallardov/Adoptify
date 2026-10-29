@@ -1,7 +1,7 @@
 # Adoptify
 
 Plataforma de rescate y adopción animal (proyecto de título Capstone, Duoc UC). Equipo: Tiare Alarcón, Santiago Gallardo, Vittorio Dotte.
-Arquitectura: API FastAPI + PostGIS, portal web React (fundaciones y adoptantes) y, a futuro, app móvil Flutter (no iniciada).
+Arquitectura: API FastAPI + PostGIS, portal web React (fundaciones y adoptantes) y app móvil Flutter (`Fase 2/adoptify_app`, en desarrollo).
 
 ## Cómo trabajar en este repo
 - Responde y escribe código, comentarios, mensajes de error y docs **en español**. Identificadores en inglés (como el código actual).
