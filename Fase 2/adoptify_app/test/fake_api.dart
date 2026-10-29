@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:adoptify_app/core/api_client.dart';
+import 'package:adoptify_app/core/location_service.dart';
 import 'package:adoptify_app/core/token_storage.dart';
 import 'package:adoptify_app/features/auth/auth_controller.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:latlong2/latlong.dart';
 
 const validToken = 'token-valido';
 
@@ -16,11 +18,49 @@ const matias = {
   'role': 'adopter',
 };
 
-// API simulada con las mismas respuestas que el backend para /auth
+const luna = {
+  'id': 7,
+  'foundation_id': 1,
+  'foundation_name': 'Fundación Patitas',
+  'name': 'Luna',
+  'species': 'perro',
+  'breed': null,
+  'age_months': 18,
+  'gender': 'hembra',
+  'size': 'mediano',
+  'energy_level': 3,
+  'description': null,
+  'status': 'available',
+  'photo_url': null,
+  'latitude': -33.4378,
+  'longitude': -70.6505,
+};
+
+final rocky = {
+  ...luna,
+  'id': 8,
+  'name': 'Rocky',
+  'status': 'adopted',
+};
+
+// API simulada con las mismas respuestas que el backend para /auth, /animals y /reports
 class FakeApi {
   final requests = <http.Request>[];
   final storage = MemoryTokenStorage();
   bool offline = false;
+  bool animalsFail = false;
+  final reports = <Map<String, dynamic>>[
+    {
+      'id': 1,
+      'description': 'Perro café con collar rojo cerca del paradero',
+      'photo_url': null,
+      'status': 'reported',
+      'latitude': -33.44,
+      'longitude': -70.66,
+      'created_at': '2026-10-28T15:30:00Z',
+      'distance_km': 2.5,
+    },
+  ];
 
   late final AuthController auth = AuthController(
     ApiClient(tokenStorage: storage, httpClient: MockClient(_handle), baseUrl: 'http://api'),
@@ -48,6 +88,31 @@ class FakeApi {
           return _json(401, {'detail': 'Token inválido o expirado'});
         }
         return _json(200, matias);
+      case '/animals':
+        if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
+        return _json(200, [luna, rocky]);
+      case '/animals/nearby':
+        if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
+        return _json(200, [
+          {...luna, 'distance_km': 1.25},
+        ]);
+      case '/reports/nearby':
+        return _json(200, reports);
+      case '/reports':
+        if (request.headers['Authorization'] != 'Bearer $validToken') {
+          return _json(401, {'detail': 'Not authenticated'});
+        }
+        final report = {
+          'id': reports.length + 1,
+          'description': body['description'],
+          'photo_url': null,
+          'status': 'reported',
+          'latitude': body['latitude'],
+          'longitude': body['longitude'],
+          'created_at': '2026-10-29T12:00:00Z',
+        };
+        reports.add({...report, 'distance_km': 0.1});
+        return _json(201, report);
     }
     return _json(404, {'detail': 'Not Found'});
   }
@@ -57,4 +122,18 @@ class FakeApi {
         status,
         headers: {'content-type': 'application/json'},
       );
+}
+
+// Ubicación simulada: devuelve un punto fijo o falla con el mensaje indicado
+class FakeLocation extends LocationService {
+  FakeLocation({this.position = const LatLng(-33.4378, -70.6505), this.error});
+
+  final LatLng position;
+  final String? error;
+
+  @override
+  Future<LatLng> current() async {
+    if (error != null) throw LocationException(error!);
+    return position;
+  }
 }

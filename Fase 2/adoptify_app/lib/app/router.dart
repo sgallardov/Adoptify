@@ -19,7 +19,8 @@ GoRouter createAppRouter() => GoRouter(
           GoRoute(path: '/inicio', builder: (context, state) => const HomeScreen()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/mapa', builder: (context, state) => const MapScreen()),
+          // extra: id del reporte recién creado, para que el mapa recargue los datos
+          GoRoute(path: '/mapa', builder: (context, state) => MapScreen(refreshKey: state.extra)),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),

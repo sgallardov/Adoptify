@@ -48,7 +48,8 @@ Fase 2/portal-fundaciones/src/
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router, StatefulShellRoute con 4 pestañas), theme.dart (paleta del portal)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL), api_client.dart, token_storage.dart
-  features/<pantalla>/     # home, map, report, account, auth (AuthController + AuthScope = sesión)
+  features/<pantalla>/     # home, map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
+  shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
 
@@ -90,5 +91,5 @@ Pendiente (en orden aproximado de prioridad):
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
 5. Subida de fotos (hoy solo `photo_url`).
-6. App móvil Flutter: HU-08 base y HU-14 login hechos; falta HU-15 mapa + reportes.
+6. App móvil Flutter: HU-08, HU-14 y HU-15 hechas; la foto en reportes queda para HU-16.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.
