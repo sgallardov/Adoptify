@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from sqlalchemy import String, Integer, DateTime, func, JSON
+from sqlalchemy import String, Integer, DateTime, ForeignKey, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -17,6 +17,11 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     role: Mapped[str] = mapped_column(String(50), default="adopter", nullable=False)  # 'adopter', 'admin', 'foundation'
+
+    # Fundación a la que pertenece una cuenta con rol 'foundation' (HU-12); None para adopter y admin
+    foundation_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("foundations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Preferencias del adoptante para el motor de match (HU-05)
     preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, default=dict)

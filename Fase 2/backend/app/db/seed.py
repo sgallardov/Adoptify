@@ -114,6 +114,9 @@ async def seed_database():
         session.add_all([fundacion1, fundacion2])
         await session.flush()
 
+        # La cuenta de fundación queda ligada a su fundación (HU-12)
+        users[3].foundation_id = fundacion1.id
+
         # 4. Crear Animales de prueba vinculados a las fundaciones
         animals = [
             Animal(
