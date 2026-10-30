@@ -5,7 +5,7 @@ import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, SANTIAGO } from './mapTiles'
 
 const reportIcon = dotIcon('bg-danger-600', 22)
 
-type Props = { value: LatLng | null; onChange: (position: LatLng) => void }
+type Props = { value: LatLng | null; onChange: (position: LatLng) => void; markerLabel?: string }
 
 // Marca el punto donde el usuario hace clic
 function ClickToPlace({ onChange }: Pick<Props, 'onChange'>) {
@@ -24,7 +24,7 @@ function FollowValue({ value }: Pick<Props, 'value'>) {
   return null
 }
 
-export default function ReportLocationPicker({ value, onChange }: Props) {
+export default function ReportLocationPicker({ value, onChange, markerLabel = 'Ubicación del perro' }: Props) {
   return (
     <MapContainer center={value ?? SANTIAGO} zoom={12} scrollWheelZoom
       className="relative z-0 h-80 w-full cursor-crosshair overflow-hidden rounded-2xl border border-base-200 sm:h-96">
@@ -32,7 +32,7 @@ export default function ReportLocationPicker({ value, onChange }: Props) {
       <ClickToPlace onChange={onChange} />
       <FollowValue value={value} />
       {value && (
-        <Marker position={value} icon={reportIcon} title="Ubicación del perro" draggable
+        <Marker position={value} icon={reportIcon} title={markerLabel} draggable
           eventHandlers={{ dragend: event => onChange(event.target.getLatLng()) }} />
       )}
     </MapContainer>

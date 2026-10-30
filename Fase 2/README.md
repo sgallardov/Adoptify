@@ -143,6 +143,17 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * `GET /api/v1/reports/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` (público): reportes no resueltos dentro del radio, del más cercano al más lejano, con `distance_km`. Mismos límites de parámetros que `/animals/nearby`.
 * La respuesta no expone quién hizo el reporte (`reporter_id`) ni la geometría cruda.
 
+### HU-12: Módulo de fundaciones (backend)
+Cada fundación gestiona solo sus propios animales.
+* **Vínculo cuenta–fundación (migración `0004`):** `users.foundation_id` (FK nullable a `foundations.id`, `ON DELETE SET NULL`). Solo se usa en cuentas `foundation`; `admin` y `adopter` lo dejan en `NULL`. Una cuenta `foundation` sin fundación asignada no puede gestionar animales (`403`) ni ve ninguno en el listado.
+* **Asignar la fundación a una cuenta:** `python -m app.db.create_user ... --role foundation --foundation-id 1`. El seed ya liga `fundacion@adoptify.cl` con "Fundación Garras y Patas". En una BD ya sembrada hay que asignarlo a mano: `UPDATE users SET foundation_id = 1 WHERE email = 'fundacion@adoptify.cl';`
+* `POST /api/v1/animals` (requiere token): la fundación del animal sale de la sesión. Una fundación que envíe otro `foundation_id` recibe `403`; un `admin` debe indicarlo (`422` si falta). Devuelve `201`.
+* `PATCH /api/v1/animals/{id}` (requiere token): edición parcial, incluye el cambio de `status` y de ubicación (`latitude` y `longitude` siempre juntas). `404` si no existe y `403` si es de otra fundación.
+* `DELETE /api/v1/animals/{id}` (requiere token): `204`; mismos `403` y `404`.
+* `GET /api/v1/animals` sigue siendo público. Si el token es de una cuenta `foundation`, solo devuelve los animales de su fundación; visitantes, adoptantes y `admin` ven todos. Un token inválido se trata como visitante. `/animals/nearby` no cambia.
+* **Valores válidos:** `species` (`perro`, `gato`), `gender` (`macho`, `hembra`), `size` (`pequeño`, `mediano`, `grande`), `energy_level` (1 a 5), `status` (`available`, `in_process`, `adopted`). Fuera de eso: `422`.
+* **Roles:** `admin` puede crear, editar y borrar en cualquier fundación; `adopter` recibe `403`.
+
 ---
 
 ## 🗄️ Migraciones y Datos de Prueba (Seed)

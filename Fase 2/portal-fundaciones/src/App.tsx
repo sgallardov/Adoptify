@@ -8,6 +8,7 @@ import ReportDog from './pages/ReportDog'
 import Dashboard from './pages/Dashboard'
 import Animals from './pages/Animals'
 import AnimalDetail from './pages/AnimalDetail'
+import AnimalForm from './pages/AnimalForm'
 import Foundation from './pages/Foundation'
 import NotFound from './pages/NotFound'
 
@@ -25,6 +26,8 @@ export default function App() {
             <Route element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="animales" element={<Animals />} />
+              <Route path="animales/nuevo" element={<AnimalForm />} />
+              <Route path="animales/:id/editar" element={<AnimalForm />} />
               <Route path="animales/:id" element={<AnimalDetail />} />
               <Route path="fundacion" element={<Foundation />} />
               <Route path="*" element={<NotFound />} />
