@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import Feedback from '../components/Feedback'
 import { useAnimals } from '../hooks/useAnimals'
@@ -17,6 +18,7 @@ export default function Animals() {
 
   return <>
     <PageHeading eyebrow="Cada historia importa" title="Mis casos" description="Consulta los animales publicados y encuentra cada una de sus historias." />
+    <div className="mb-6 flex justify-end"><Link to="/animales/nuevo" className="button-primary">Publicar animal</Link></div>
     {loading || error ? <AnimalsState loading={loading} retry={retry} /> : <>
     <section aria-label="Filtros de animales" className="mb-7 flex flex-col gap-3 rounded-2xl border border-base-200 bg-surface p-4 md:flex-row">
       <label className="relative flex-1"><Search size={18} className="absolute left-3 top-3 text-base-400" /><span className="sr-only">Buscar animal por nombre</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por nombre…" className="w-full rounded-xl border border-base-200 py-2.5 pl-10 pr-3 text-sm" /></label>

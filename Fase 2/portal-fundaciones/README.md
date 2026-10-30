@@ -146,5 +146,57 @@ falla su carga, aparece una huella. Se conservan los estados de carga, error
 con reintento y lista vacía. El carrusel es de exploración: no registra likes
 ni solicitudes de adopción.
 
-## FALTA POR AGREGAR¡¡¡¡¡
-Una seccion en donde se pueda agregar un nuevo animal en adopcion en portal-fundaciones
+## HU-13: publicar, editar y cambiar estado
+
+Requiere el backend de HU-12 y su migración `0004`. Esta rama incorpora
+`origin/feat/hu12-fundaciones-backend`; no es necesario recrear el CRUD.
+Desde `Fase 2`, ejecutar `docker compose exec backend alembic upgrade head`.
+Las cuentas con rol `foundation` deben tener `users.foundation_id` asignado a
+una fundación existente. La migración no asigna automáticamente las cuentas
+antiguas: esa vinculación corresponde al administrador. Para cuentas nuevas,
+el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
+
+- En **Mis casos → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
+- En la ficha, **Editar animal** (`/animales/:id/editar`) carga los valores guardados.
+- **Estado de adopción → Cambiar estado** permite Disponible, En proceso o Adoptado.
+- `ReportLocationPicker` se reutiliza para marcar o arrastrar el punto; también
+  se pueden introducir coordenadas con teclado. Conserva la atribución de OSM.
+- La ubicación es opcional al crear. Sin ella, el animal no aparece por cercanía.
+  Una ubicación existente se puede mover, pero no borrar: HU-12 rechaza
+  coordenadas nulas en PATCH. Siempre se envían latitud y longitud juntas.
+- Nombre, especie, tamaño y sexo son obligatorios (sexo lo exige HU-12).
+  Se validan además edad (0–360 meses), energía (1–5), largos de texto y URL de foto.
+  La carga de archivos no forma parte de esta HU; se admite un enlace HTTP(S).
+- Los administradores indican el ID de la fundación al crear. HU-12 no incluye
+  un listado de fundaciones para poblar un selector. Las cuentas de fundación
+  no eligen otra fundación: el backend utiliza su asignación y verifica permisos.
+
+Axios consume `GET /animals`, `POST /animals` y `PATCH /animals/:id`, enviando
+el token de sesión. No existe GET individual en HU-12: ficha y edición buscan
+el ID en la lista autorizada. Un ID ausente muestra la página de no encontrado.
+Las respuestas 422 se traducen por campo al español. Los errores de conexión,
+sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
+envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
+`status`, para no sobrescribir un cambio de estado hecho desde otra sesión.
+
+### Verificación
+
+Desde el portal (Node 22.18+ o 24):
+
+```powershell
+npm run build
+npm run lint
+npm test
+```
+
+Desde `Fase 2`:
+
+```powershell
+docker compose exec backend pytest tests/test_animals_crud.py tests/test_animals.py tests/test_animals_nearby.py -q
+```
+
+Validado con 8 pruebas de validación/payload y 28 pruebas del backend. El flujo
+de navegador se comprobó contra FastAPI/PostGIS reales con una fundación de
+prueba: obligatorios vacíos, alta con clic en el mapa, edición de nombre/historia
+y coordenadas, cambios a En proceso y Adoptado, recarga, cancelación y revisión
+en móvil/escritorio. Los registros temporales se retiran después de la prueba.

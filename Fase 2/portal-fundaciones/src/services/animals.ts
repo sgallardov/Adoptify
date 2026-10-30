@@ -1,18 +1,21 @@
 import { api } from './api'
 import type { Animal } from '../data/demo'
 
-type AnimalResponse = {
+export type AnimalStatus = 'available' | 'in_process' | 'adopted'
+
+export type AnimalResponse = {
   id: number
   foundation_id: number
   foundation_name: string | null
   name: string
   species: string
+  breed: string | null
   age_months: number | null
   gender: string
   size: string
   energy_level: number
   description: string | null
-  status: string
+  status: AnimalStatus
   photo_url: string | null
   latitude: number | null
   longitude: number | null
@@ -32,11 +35,11 @@ export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-const statuses: Record<string, string> = {
+export const statuses: Record<AnimalStatus, string> = {
   available: 'Disponible', in_process: 'En proceso', adopted: 'Adoptado',
 }
 
-function toAnimal(animal: AnimalResponse): Animal {
+export function toAnimal(animal: AnimalResponse): Animal {
   return {
     id: animal.id, name: animal.name, species: animal.species,
     age: formatAge(animal.age_months), gender: animal.gender, size: animal.size,
@@ -46,6 +49,29 @@ function toAnimal(animal: AnimalResponse): Animal {
     foundationName: animal.foundation_name,
     latitude: animal.latitude, longitude: animal.longitude,
   }
+}
+
+export type AnimalInput = Omit<AnimalResponse, 'id' | 'foundation_id' | 'foundation_name' | 'latitude' | 'longitude'> & {
+  latitude?: number
+  longitude?: number
+  foundation_id?: number
+}
+
+// HU-12 expone GET /animals, pero no GET /animals/:id. La lista ya está aislada por fundación.
+export async function fetchAnimal(id: number, signal: AbortSignal): Promise<AnimalResponse | null> {
+  const { data } = await api.get<AnimalResponse[]>('/animals', { signal })
+  if (!Array.isArray(data)) throw new Error('Respuesta de animales inválida')
+  return data.find(animal => animal.id === id) ?? null
+}
+
+export async function createAnimal(payload: AnimalInput): Promise<AnimalResponse> {
+  const { data } = await api.post<AnimalResponse>('/animals', payload)
+  return data
+}
+
+export async function updateAnimal(id: number, payload: Partial<Omit<AnimalInput, 'foundation_id'>>): Promise<AnimalResponse> {
+  const { data } = await api.patch<AnimalResponse>(`/animals/${id}`, payload)
+  return data
 }
 
 export async function fetchAnimals(signal: AbortSignal): Promise<Animal[]> {
