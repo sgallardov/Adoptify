@@ -43,7 +43,7 @@ lib/
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
-  shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
+  shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts; map_controls.dart (botón redondo y tarjeta sobre el mapa)
   shared/widgets/ # app_shell.dart (barra inferior), adoptify_logo.dart, content_width.dart, coming_soon.dart, message_box.dart
 test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend, GPS, cámara y galería)
 ```
@@ -98,8 +98,10 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   lleva un momento quieto. Al abrir, el mapa nace sin tamaño y se encuadra en los pines; en ese primer segundo
   flutter_map creaba y descartaba tandas de mosaicos y algunos quedaban cargando hasta mover el mapa. También
   usa un solo proveedor de mosaicos y reintenta si alguno falla por la red.
-- **Reportar** (`/reportar`): requiere sesión. Mismos pasos que la web: **¿Dónde está?** (tocar el mapa o GPS),
-  **¿Cómo es?** (tipo y tamaño con chips, color, peso aproximado, características), **¿Cómo está?** (estado y
+- **Reportar** (`/reportar`): requiere sesión. Primero se abre un **mapa a pantalla completa** con tu ubicación
+  ya marcada (si diste permiso); tocar el mapa mueve el punto y **Confirmar ubicación** pasa al formulario. Ahí el
+  paso 1 muestra una vista previa con **Cambiar ubicación** (el botón atrás también vuelve al mapa, sin perder lo
+  escrito). Luego, igual que la web: **¿Cómo es?** (tipo y tamaño con chips, color, peso aproximado, características), **¿Cómo está?** (estado y
   comportamiento opcional; tocar el chip elegido lo desmarca), **Comentarios** y **Foto**. Cada campo muestra su error.
   Se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin, cuya ficha muestra los datos.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).

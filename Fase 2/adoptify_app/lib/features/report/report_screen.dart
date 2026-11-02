@@ -10,6 +10,7 @@ import '../../app/theme.dart';
 import '../../core/api_client.dart';
 import '../../core/location_service.dart';
 import '../../core/photo_service.dart';
+import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
@@ -22,20 +23,18 @@ const _maxDescription = 1000;
 const _maxFeatures = 300;
 const _maxWeightKg = 150;
 
-// Formulario para reportar una mascota abandonada: equivalente a /reportar del portal
+// Reportar una mascota abandonada: equivalente a /reportar del portal.
+// Primero se elige el punto en un mapa a pantalla completa y después se completan los demás pasos.
 class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    if (!auth.loading && auth.user != null) return const _ReportForm();
     return Scaffold(
       appBar: AppBar(title: const Text('Reportar mascota')),
-      body: auth.loading
-          ? const Center(child: CircularProgressIndicator())
-          : auth.user == null
-          ? const _LoginRequired()
-          : const _ReportForm(),
+      body: auth.loading ? const Center(child: CircularProgressIndicator()) : const _LoginRequired(),
     );
   }
 }
@@ -78,8 +77,12 @@ class _ReportFormState extends State<_ReportForm> {
   final _weight = TextEditingController();
   final _features = TextEditingController();
   final _description = TextEditingController();
-  final _mapController = MapController();
+  // Controla el mapa a pantalla completa; se crea uno nuevo cada vez que se vuelve a elegir el punto
+  MapController _mapController = MapController();
+  bool _mapReady = false;
 
+  // Paso 1 (mapa a pantalla completa) hasta confirmar el punto; después, el formulario
+  bool _pickingLocation = true;
   LatLng? _position;
   String? _species;
   String? _size;
@@ -100,7 +103,9 @@ class _ReportFormState extends State<_ReportForm> {
   @override
   void initState() {
     super.initState();
-    _description.addListener(() => setState(() {}));
+    // Lo habitual es reportar donde uno está: se marca tu ubicación de partida, sin mostrar errores
+    _locating = true;
+    _locate(silent: true);
   }
 
   @override
@@ -114,33 +119,57 @@ class _ReportFormState extends State<_ReportForm> {
   }
 
   void _place(LatLng position, {bool follow = false}) {
-    setState(() {
-      _position = position;
-      _fieldErrors.remove('position');
-    });
-    // Al usar el GPS, el mapa se centra en el punto (igual que FollowValue en la web)
-    if (follow) {
+    setState(() => _position = position);
+    // Al usar el GPS, el mapa se centra en el punto (igual que FollowValue en la web).
+    // Si el mapa aún no está listo, lo centra onMapReady.
+    if (follow && _mapReady) {
       _mapController.move(position, math.max(_mapController.camera.zoom, 16));
     }
   }
 
-  Future<void> _locate() async {
-    setState(() {
-      _locating = true;
-      _error = null;
-    });
+  void _onMapReady() {
+    _mapReady = true;
+    final position = _position;
+    if (position != null) _mapController.move(position, math.max(_mapController.camera.zoom, 16));
+  }
+
+  Future<void> _locate({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _locating = true;
+        _error = null;
+      });
+    }
     try {
       final position = await LocationService.instance.current();
       if (!mounted) return;
       setState(() => _locating = false);
-      _place(position, follow: true);
+      // Si la persona ya marcó un punto a mano mientras esperaba el GPS, no se lo cambiamos
+      if (!silent || _position == null) _place(position, follow: true);
     } on LocationException catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = '${error.message} Marca el punto en el mapa.';
+        if (!silent) _error = '${error.message} Toca el mapa para marcar el punto.';
         _locating = false;
       });
     }
+  }
+
+  void _confirmLocation() => setState(() {
+        _pickingLocation = false;
+        _error = null;
+      });
+
+  // Vuelve al mapa a pantalla completa conservando lo que ya se escribió
+  void _changeLocation() {
+    FocusScope.of(context).unfocus();
+    _mapController.dispose();
+    setState(() {
+      _mapController = MapController();
+      _mapReady = false;
+      _pickingLocation = true;
+      _error = null;
+    });
   }
 
   Future<void> _pickPhoto(PhotoSource source) async {
@@ -199,7 +228,6 @@ class _ReportFormState extends State<_ReportForm> {
   Map<String, String> _validate() {
     final weight = _weightKg;
     return {
-      if (_position == null) 'position': 'Marca en el mapa dónde está la mascota.',
       if (_species == null) 'species': 'Selecciona el tipo de animal.',
       if (_size == null) 'size': 'Selecciona el tamaño.',
       if (_color.text.trim().length < 2) 'color': 'Indica el color (por ejemplo, café o negro con blanco).',
@@ -257,8 +285,91 @@ class _ReportFormState extends State<_ReportForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Desde el formulario, "volver" regresa al mapa para cambiar el punto; desde el mapa, sale del reporte
+    return PopScope(
+      canPop: _pickingLocation,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _changeLocation();
+      },
+      child: _pickingLocation
+          ? _buildPicker(context)
+          : Scaffold(appBar: AppBar(title: const Text('Reportar mascota')), body: _buildForm(context)),
+    );
+  }
+
+  // Paso 1: mapa a pantalla completa para marcar dónde está la mascota
+  Widget _buildPicker(BuildContext context) {
+    final position = _position;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                backgroundColor: context.colors.muted,
+                initialCenter: position ?? santiago,
+                initialZoom: position == null ? 12 : 16,
+                onTap: (_, point) => _place(point),
+                onMapReady: _onMapReady,
+              ),
+              children: [
+                const OsmTileLayer(),
+                if (position != null)
+                  MarkerLayer(markers: [mapMarker(position, MapPins.reportPicker, key: const ValueKey('picker'))]),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      MapButton(
+                        icon: Icons.arrow_back,
+                        tooltip: 'Volver',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                      const SizedBox(width: AdoptifySpacing.sm),
+                      Expanded(child: _PickerHint(marked: position != null)),
+                    ],
+                  ),
+                  const Spacer(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: MapButton(
+                      icon: Icons.my_location,
+                      tooltip: 'Usar mi ubicación',
+                      loading: _locating,
+                      onPressed: _locating ? null : _locate,
+                    ),
+                  ),
+                  const SizedBox(height: AdoptifySpacing.md),
+                  if (_error != null) ...[MessageBox.error(message: _error!), const SizedBox(height: AdoptifySpacing.md)],
+                  FilledButton.icon(
+                    onPressed: position == null ? null : _confirmLocation,
+                    icon: const Icon(Icons.check, size: 22),
+                    label: const Text('Confirmar ubicación'),
+                    style: const ButtonStyle(minimumSize: WidgetStatePropertyAll(Size.fromHeight(56))),
+                  ),
+                  osmAttribution(context, alignment: Alignment.centerRight),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pasos 2 a 5, con el punto ya elegido
+  Widget _buildForm(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final muted = textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
+    final position = _position!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -281,7 +392,7 @@ class _ReportFormState extends State<_ReportForm> {
             Text('Reportar mascota', textAlign: TextAlign.center, style: textTheme.headlineSmall),
             const SizedBox(height: AdoptifySpacing.sm),
             Text(
-              'Marca dónde la viste, cuéntanos cómo es y cómo está. Las fundaciones cercanas podrán verlo. '
+              'Cuéntanos cómo es y cómo está. Las fundaciones cercanas podrán verlo. '
               'Los campos con * son obligatorios.',
               textAlign: TextAlign.center,
               style: muted,
@@ -290,53 +401,40 @@ class _ReportFormState extends State<_ReportForm> {
             _Section(
               title: '1. ¿Dónde está? *',
               children: [
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _locating ? null : _locate,
-                      icon: _locating
-                          ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.my_location, size: 20),
-                      label: const Text('Usar mi ubicación'),
-                    ),
-                    const SizedBox(width: AdoptifySpacing.md),
-                    Expanded(
-                      child: Text(
-                        _position != null
-                            ? 'Punto marcado. Toca otro lugar del mapa para moverlo.'
-                            : 'O toca el mapa para marcar el lugar.',
-                        style: textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AdoptifySpacing.md),
+                // Vista previa del punto elegido; se cambia volviendo al mapa a pantalla completa
                 Container(
-                  height: 320,
+                  height: 140,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     border: Border.all(color: context.colors.border),
                     borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
                   ),
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      backgroundColor: context.colors.muted,
-                      initialCenter: santiago,
-                      initialZoom: 12,
-                      onTap: (_, point) => _place(point),
+                  child: IgnorePointer(
+                    child: FlutterMap(
+                      key: ValueKey(position),
+                      options: MapOptions(
+                        backgroundColor: context.colors.muted,
+                        initialCenter: position,
+                        initialZoom: 16,
+                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      ),
+                      children: [
+                        const OsmTileLayer(),
+                        MarkerLayer(markers: [mapMarker(position, MapPins.reportPicker, key: const ValueKey('picker'))]),
+                        osmAttribution(context),
+                      ],
                     ),
-                    children: [
-                      const OsmTileLayer(),
-                      if (_position != null)
-                        MarkerLayer(
-                          markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
-                        ),
-                      osmAttribution(context),
-                    ],
                   ),
                 ),
-                _FieldError(_fieldErrors['position']),
+                const SizedBox(height: AdoptifySpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _sending ? null : _changeLocation,
+                    icon: const Icon(Icons.edit_location_alt_outlined, size: 20),
+                    label: const Text('Cambiar ubicación'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AdoptifySpacing.lg),
@@ -586,6 +684,33 @@ class _PhotoPreview extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+// Indicación sobre el mapa a pantalla completa
+class _PickerHint extends StatelessWidget {
+  const _PickerHint({required this.marked});
+
+  final bool marked;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg, vertical: AdoptifySpacing.md),
+      decoration: mapSurface(context, radius: AdoptifyRadius.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('¿Dónde está la mascota?', style: textTheme.titleSmall),
+          Text(
+            marked ? 'Punto marcado. Toca otro lugar para moverlo.' : 'Toca el mapa para marcar el punto.',
+            style: textTheme.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

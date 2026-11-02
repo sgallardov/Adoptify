@@ -9,11 +9,17 @@ import 'package:adoptify_app/core/photo_service.dart';
 
 import 'fake_api.dart';
 
-Future<void> openReport(WidgetTester tester, FakeApi api) async {
+// Abre el reporte. Con sesión, primero aparece el mapa a pantalla completa; confirm: true acepta el punto
+// (la ubicación simulada se marca sola) y deja el formulario a la vista.
+Future<void> openReport(WidgetTester tester, FakeApi api, {bool confirm = true}) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Reportar mascota'));
   await tester.pumpAndSettle();
+  if (confirm && api.storage.token != null) {
+    await tester.tap(find.text('Confirmar ubicación'));
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
@@ -22,9 +28,8 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
-// Completa lo obligatorio: ubicación, tipo, tamaño, color, estado y comentarios
+// Completa lo obligatorio del formulario: tipo, tamaño, color, estado y comentarios
 Future<void> fillRequired(WidgetTester tester, {String comments = 'Perrita negra asustada bajo un auto'}) async {
-  await tapVisible(tester, find.text('Usar mi ubicación'));
   await tapVisible(tester, find.text('Perro'));
   await tapVisible(tester, find.text('Mediano'));
   await tester.enterText(find.byKey(const ValueKey('report-color')), ' Negro ');
@@ -53,6 +58,61 @@ void main() {
     expect(find.text('Hola de nuevo'), findsOneWidget);
   });
 
+  testWidgets('abre el mapa a pantalla completa con tu ubicación marcada', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api, confirm: false);
+
+    expect(find.text('¿Dónde está la mascota?'), findsOneWidget);
+    expect(find.text('Punto marcado. Toca otro lugar para moverlo.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('picker')), findsOneWidget);
+    // El formulario aparece recién al confirmar el punto
+    expect(find.text('Enviar reporte'), findsNothing);
+
+    await tester.tap(find.text('Confirmar ubicación'));
+    await tester.pumpAndSettle();
+    expect(find.text('1. ¿Dónde está? *'), findsOneWidget);
+    expect(find.byKey(const ValueKey('picker')), findsOneWidget);
+    expect(find.text('Enviar reporte'), findsOneWidget);
+  });
+
+  testWidgets('sin permiso de ubicación hay que marcar el punto antes de seguir', (tester) async {
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api, confirm: false);
+
+    expect(find.text('Toca el mapa para marcar el punto.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('picker')), findsNothing);
+    final confirm = tester.widget<ButtonStyleButton>(find.widgetWithText(FilledButton, 'Confirmar ubicación'));
+    expect(confirm.onPressed, isNull);
+    // Al abrir no se muestra el error; solo si la persona pide su ubicación
+    expect(find.textContaining('No diste permiso'), findsNothing);
+
+    await tester.tap(find.byTooltip('Usar mi ubicación'));
+    await tester.pumpAndSettle();
+    expect(find.text('No diste permiso para usar tu ubicación. Toca el mapa para marcar el punto.'), findsOneWidget);
+  });
+
+  testWidgets('cambiar la ubicación vuelve al mapa sin perder lo escrito', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await tester.enterText(find.byKey(const ValueKey('report-color')), 'Negro');
+    await tapVisible(tester, find.text('Cambiar ubicación'));
+    expect(find.text('¿Dónde está la mascota?'), findsOneWidget);
+
+    await tester.tap(find.text('Confirmar ubicación'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('report-color'))).controller!.text, 'Negro');
+
+    // El botón "atrás" desde el formulario también vuelve al mapa
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('¿Dónde está la mascota?'), findsOneWidget);
+  });
+
   testWidgets('valida los campos obligatorios antes de enviar', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;
@@ -60,17 +120,11 @@ void main() {
 
     await tapVisible(tester, find.text('Enviar reporte'));
     expect(find.text('Revisa los campos indicados antes de enviar.'), findsWidgets);
-    expect(find.text('Marca en el mapa dónde está la mascota.'), findsOneWidget);
     expect(find.text('Selecciona el tipo de animal.'), findsOneWidget);
     expect(find.text('Selecciona el tamaño.'), findsOneWidget);
     expect(find.text('Indica el color (por ejemplo, café o negro con blanco).'), findsOneWidget);
     expect(find.text('Selecciona cómo se encuentra.'), findsOneWidget);
     expect(find.text('Cuéntanos la situación con al menos 10 caracteres.'), findsOneWidget);
-
-    await tapVisible(tester, find.text('Usar mi ubicación'));
-    expect(find.text('Punto marcado. Toca otro lugar del mapa para moverlo.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('picker')), findsOneWidget);
-    expect(find.text('Marca en el mapa dónde está la mascota.'), findsNothing);
 
     await tapVisible(tester, find.text('Gato'));
     expect(find.text('Selecciona el tipo de animal.'), findsNothing);
