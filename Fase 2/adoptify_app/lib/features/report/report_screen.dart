@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
 import '../../core/location_service.dart';
+import '../../core/photo_service.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
@@ -78,6 +80,12 @@ class _ReportFormState extends State<_ReportForm> {
   bool _sending = false;
   String? _error;
 
+  // Foto opcional: se sube apenas se elige, para avisar enseguida si no sirve
+  PickedPhoto? _photo;
+  String? _photoUrl;
+  bool _uploading = false;
+  String? _photoError;
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +126,49 @@ class _ReportFormState extends State<_ReportForm> {
     }
   }
 
+  Future<void> _pickPhoto(PhotoSource source) async {
+    final api = AuthScope.of(context).api;
+    final PickedPhoto? photo;
+    try {
+      photo = await PhotoService.instance.pick(source);
+    } on PlatformException {
+      if (!mounted) return;
+      setState(() => _photoError = source == PhotoSource.camera
+          ? 'No pudimos abrir la cámara. Revisa el permiso o elige una foto de la galería.'
+          : 'No pudimos abrir la galería. Inténtalo nuevamente.');
+      return;
+    }
+    if (photo == null || !mounted) return;
+    setState(() {
+      _photo = photo;
+      _photoUrl = null;
+      _uploading = true;
+      _photoError = null;
+    });
+    try {
+      final url = await MapService(api).uploadPhoto(photo);
+      if (!mounted || _photo != photo) return;
+      setState(() {
+        _photoUrl = url;
+        _uploading = false;
+      });
+    } catch (error) {
+      if (!mounted || _photo != photo) return;
+      setState(() {
+        _photo = null;
+        _uploading = false;
+        _photoError = errorMessage(error, 'No se pudo subir la foto. Inténtalo nuevamente.');
+      });
+    }
+  }
+
+  void _removePhoto() => setState(() {
+        _photo = null;
+        _photoUrl = null;
+        _uploading = false;
+        _photoError = null;
+      });
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final position = _position;
@@ -135,7 +186,8 @@ class _ReportFormState extends State<_ReportForm> {
       _error = null;
     });
     try {
-      final report = await MapService(AuthScope.of(context).api).createReport(position, description);
+      final report = await MapService(AuthScope.of(context).api)
+          .createReport(position, description, photoUrl: _photoUrl);
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('¡Gracias! Tu reporte quedó publicado en el mapa.')));
@@ -143,6 +195,8 @@ class _ReportFormState extends State<_ReportForm> {
         _sending = false;
         _position = null;
         _description.clear();
+        _photo = null;
+        _photoUrl = null;
       });
       // El id del reporte hace que el mapa vuelva a cargar los datos
       context.go('/mapa', extra: report.id);
@@ -158,7 +212,7 @@ class _ReportFormState extends State<_ReportForm> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final muted = textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
+    final muted = textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -175,7 +229,7 @@ class _ReportFormState extends State<_ReportForm> {
             Text(
               'AYUDA A UN PERRO',
               textAlign: TextAlign.center,
-              style: textTheme.labelSmall?.copyWith(color: AdoptifyColors.primaryDark),
+              style: textTheme.labelSmall?.copyWith(color: context.colors.primaryDark),
             ),
             const SizedBox(height: AdoptifySpacing.xs),
             Text('Reportar perro abandonado', textAlign: TextAlign.center, style: textTheme.headlineSmall),
@@ -214,19 +268,24 @@ class _ReportFormState extends State<_ReportForm> {
                   height: 320,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    border: Border.all(color: AdoptifyColors.border),
+                    border: Border.all(color: context.colors.border),
                     borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
                   ),
                   child: FlutterMap(
                     mapController: _mapController,
-                    options: MapOptions(initialCenter: santiago, initialZoom: 12, onTap: (_, point) => _place(point)),
+                    options: MapOptions(
+                      backgroundColor: context.colors.muted,
+                      initialCenter: santiago,
+                      initialZoom: 12,
+                      onTap: (_, point) => _place(point),
+                    ),
                     children: [
-                      osmTileLayer(),
+                      const OsmTileLayer(),
                       if (_position != null)
                         MarkerLayer(
                           markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
                         ),
-                      osmAttribution,
+                      osmAttribution(context),
                     ],
                   ),
                 ),
@@ -251,17 +310,17 @@ class _ReportFormState extends State<_ReportForm> {
                 Container(
                   padding: const EdgeInsets.all(AdoptifySpacing.md),
                   decoration: BoxDecoration(
-                    color: AdoptifyColors.muted,
+                    color: context.colors.muted,
                     borderRadius: BorderRadius.circular(AdoptifyRadius.md),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.lock_outline, size: 16, color: AdoptifyColors.textMuted),
+                      Icon(Icons.lock_outline, size: 16, color: context.colors.textMuted),
                       const SizedBox(width: AdoptifySpacing.sm),
                       Expanded(
                         child: Text(
-                          'El reporte muestra solo la ubicación del perro y la descripción. Tu nombre y tus datos no se publican.',
+                          'El reporte muestra solo la ubicación del perro, la descripción y la foto. Tu nombre y tus datos no se publican.',
                           style: textTheme.bodySmall,
                         ),
                       ),
@@ -270,10 +329,44 @@ class _ReportFormState extends State<_ReportForm> {
                 ),
               ],
             ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '3. Foto del perro (opcional)',
+              children: [
+                if (_photo == null) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickPhoto(PhotoSource.camera),
+                          icon: const Icon(Icons.photo_camera_outlined, size: 20),
+                          label: const Text('Tomar foto'),
+                        ),
+                      ),
+                      const SizedBox(width: AdoptifySpacing.md),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickPhoto(PhotoSource.gallery),
+                          icon: const Icon(Icons.photo_library_outlined, size: 20),
+                          label: const Text('Galería'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AdoptifySpacing.sm),
+                  Text('Una foto ayuda a reconocerlo. JPG o PNG, hasta 5 MB.', style: textTheme.bodySmall),
+                ] else
+                  _PhotoPreview(photo: _photo!, uploading: _uploading, onRemove: _removePhoto),
+                if (_photoError != null) ...[
+                  const SizedBox(height: AdoptifySpacing.md),
+                  MessageBox.error(message: _photoError!),
+                ],
+              ],
+            ),
             if (_error != null) ...[const SizedBox(height: AdoptifySpacing.lg), MessageBox.error(message: _error!)],
             const SizedBox(height: AdoptifySpacing.xl),
             FilledButton.icon(
-              onPressed: _sending ? null : _submit,
+              onPressed: _sending || _uploading ? null : _submit,
               icon: _sending
                   ? const SizedBox.square(
                       dimension: 17,
@@ -285,6 +378,67 @@ class _ReportFormState extends State<_ReportForm> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Vista previa de la foto elegida, con su estado de subida y el botón para quitarla
+class _PhotoPreview extends StatelessWidget {
+  const _PhotoPreview({required this.photo, required this.uploading, required this.onRemove});
+
+  final PickedPhoto photo;
+  final bool uploading;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AdoptifyRadius.md),
+          child: SizedBox(
+            height: 200,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(
+                  photo.bytes,
+                  fit: BoxFit.cover,
+                  semanticLabel: 'Foto del perro',
+                  errorBuilder: (_, _, _) => ColoredBox(
+                    color: context.colors.muted,
+                    child: Icon(Icons.image_outlined, color: context.colors.placeholder),
+                  ),
+                ),
+                if (uploading)
+                  ColoredBox(
+                    color: context.colors.text.withValues(alpha: 0.45),
+                    child: Center(child: CircularProgressIndicator(color: Colors.white)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AdoptifySpacing.sm),
+        Row(
+          children: [
+            Icon(
+              uploading ? Icons.cloud_upload_outlined : Icons.check_circle,
+              size: 18,
+              color: uploading ? context.colors.textMuted : context.colors.success,
+            ),
+            const SizedBox(width: AdoptifySpacing.xs),
+            Expanded(child: Text(uploading ? 'Subiendo foto…' : 'Foto lista', style: textTheme.bodySmall)),
+            TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: const Text('Quitar foto'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -301,9 +455,9 @@ class _Section extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AdoptifySpacing.lg),
       decoration: BoxDecoration(
-        color: AdoptifyColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-        border: Border.all(color: AdoptifyColors.border),
+        border: Border.all(color: context.colors.border),
         boxShadow: AdoptifyShadows.soft,
       ),
       child: Column(

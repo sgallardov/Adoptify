@@ -1,4 +1,4 @@
-# Adoptify — App móvil (HU-08, HU-14 y HU-15)
+# Adoptify — App móvil (HU-08, HU-14, HU-15 y HU-16)
 
 App Flutter para ciudadanos y adoptantes. Consume la misma API que el portal web (`Fase 2/backend`).
 
@@ -38,24 +38,25 @@ Android permite `http` sin cifrar (`usesCleartextTraffic`) solo para desarrollo;
 lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
-  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS)
+  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS), photo_service.dart (cámara y galería)
   features/       # una carpeta por pantalla: map, report, account, auth
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
   shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
   shared/widgets/ # app_shell.dart (barra inferior), adoptify_logo.dart, content_width.dart, coming_soon.dart, message_box.dart
-test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend y GPS)
+test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend, GPS, cámara y galería)
 ```
 
 ## Navegación
 La app abre en el **Mapa** (también al iniciar sesión). Barra inferior con 3 elementos
 (`StatefulShellRoute`, cada uno conserva su historial), de izquierda a derecha:
-- **Reportar mascota** (`/reportar`): acción principal, botón rojo destacado.
+- **Fundaciones** (`/fundaciones`): fundaciones con sus mascotas en adopción.
 - **Mapa** (`/mapa`).
 - **Perfil** (`/cuenta`).
 
-`/login` se abre a pantalla completa.
+`/login` y `/reportar` se abren a pantalla completa, con flecha para volver. Reportar se abre con el
+botón rojo "Reportar mascota" del mapa.
 
 ## Diseño
 Todo el estilo sale de `lib/app/theme.dart` (misma paleta que el portal):
@@ -82,22 +83,60 @@ cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 ## Mapa y reportes (HU-15)
 Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
 naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
-- **Mapa** (`/mapa`): sin ubicación muestra todas las mascotas disponibles (`GET /animals`) y los reportes
-  a 100 km de Santiago. Con "Usar mi ubicación" busca con `GET /animals/nearby` y `GET /reports/nearby`
-  en el radio elegido (5 a 100 km). Tocar un pin o una tarjeta abre su ficha.
+- **Mapa** (`/mapa`): a pantalla completa. Sin ubicación muestra todas las mascotas disponibles (`GET /animals`)
+  y los reportes a 100 km de Santiago. Encima flotan:
+  - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
+    y al elegir una la muestra en el mapa; debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
+  - la tarjeta **"xN avisos cerca tuyo"**: perros reportados a menos de 5 km de tu ubicación
+    (`GET /reports/nearby?radius_km=5`). La ubicación se pide sola al abrir el mapa; sin permiso, la tarjeta
+    dice "Activa tu ubicación" y al tocarla la pide. Si falla la consulta, permite reintentar;
+  - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas y reportes;
+  - **Usar mi ubicación**: busca con `GET /animals/nearby` y `GET /reports/nearby`;
+  - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
+  - la atribución "© OpenStreetMap" (obligatoria por la licencia de OSM), mínima, bajo el botón de reportar.
+- `OsmTileLayer` (`shared/map/map_style.dart`) crea la capa de mosaicos recién cuando el mapa tiene tamaño y
+  lleva un momento quieto. Al abrir, el mapa nace sin tamaño y se encuadra en los pines; en ese primer segundo
+  flutter_map creaba y descartaba tandas de mosaicos y algunos quedaban cargando hasta mover el mapa. También
+  usa un solo proveedor de mosaicos y reintenta si alguno falla por la red.
 - **Reportar** (`/reportar`): requiere sesión. Se marca el punto tocando el mapa o con el GPS
   y se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
 - La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.
+
+## Modo oscuro
+En **Perfil → Apariencia** se elige **Sistema** (por defecto, sigue al teléfono), **Claro** u **Oscuro**.
+La elección se guarda en el dispositivo (`shared_preferences`) y está disponible con o sin sesión.
+- `app/theme.dart`: `AdoptifyColors` es una extensión del tema con versión `light` y `dark`. Los widgets la leen
+  con `context.colors` (nunca colores fijos), así cambian solos con el modo.
+- `app/theme_controller.dart`: `ThemeController` + `ThemeScope`, mismo patrón que `AuthController` y `AuthScope`.
+- Mapas: en modo oscuro se usan los mismos mosaicos de OSM con los colores invertidos (`darkModeTileBuilder`).
+  Los pines mantienen sus colores.
+
+## Fundaciones
+`/fundaciones` lista las fundaciones (`GET /foundations`) con su comuna, descripción, contacto (teléfono,
+correo y dirección, seleccionables) y una fila con sus mascotas en adopción. Se actualiza deslizando hacia abajo.
+La versión web de esta vista queda pendiente.
+
+## Foto del perro (HU-16)
+En "Reportar mascota", la sección **3. Foto del perro (opcional)** tiene dos botones:
+**Tomar foto** (cámara) y **Galería**. Usa `image_picker`.
+- La foto se achica a 1600 px como máximo, en calidad 85, para no pasar los 5 MB del backend.
+- Se sube apenas se elige (`POST /uploads`, multipart) para avisar enseguida si no sirve.
+  Mientras sube, "Enviar reporte" queda deshabilitado. "Quitar foto" la descarta.
+- El reporte se envía con la URL devuelta en `photo_url`, y la ficha del reporte en el mapa muestra la foto.
+- `mediaUrl()` (`core/config.dart`) pide las fotos de `/uploads/` al mismo servidor que la API. El backend
+  arma la URL con la dirección desde la que se subió, así que una foto subida desde el portal (`localhost`)
+  no abriría en el emulador (`10.0.2.2`).
+- En las pruebas, `PhotoService.instance` se reemplaza por `FakePhotos` (igual que el GPS).
+
+**Cámara en el emulador:** la cámara trasera del emulador muestra una escena virtual; sirve para probar el flujo.
+Para la galería, arrastrar una imagen a la ventana del emulador la guarda en Descargas.
 
 **GPS en el emulador:** por defecto está en California. Para probar la búsqueda por cercanía, en el emulador
 abrir los tres puntos (Extended controls) → Location, buscar Santiago y pulsar **Set location**.
 
 ## Librerías
 `go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `flutter_map` + `latlong2` (mapa),
-`geolocator` (ubicación), `camera` (fotos de reportes, para HU-16).
+`geolocator` (ubicación), `image_picker` (cámara y galería, HU-16), `shared_preferences` (modo oscuro), `camera` (sin uso por ahora).
 Permisos declarados en `android/app/src/main/AndroidManifest.xml` (internet, ubicación, cámara)
-e `ios/Runner/Info.plist` (ubicación y cámara).
-
-## Próximas HU
-- **HU-16:** subir una foto real al reportar (depende del endpoint `POST /uploads`).
+e `ios/Runner/Info.plist` (ubicación, cámara y fotos).

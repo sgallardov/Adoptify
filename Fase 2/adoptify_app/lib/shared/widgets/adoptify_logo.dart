@@ -23,16 +23,16 @@ class AdoptifyLogo extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(compact ? 6 : AdoptifySpacing.sm),
               decoration: BoxDecoration(
-                color: AdoptifyColors.primary,
+                color: context.colors.primary,
                 borderRadius: BorderRadius.circular(compact ? AdoptifyRadius.sm + 2 : AdoptifyRadius.md),
               ),
               child: Icon(Icons.pets, color: Colors.white, size: iconSize),
             ),
             SizedBox(width: compact ? AdoptifySpacing.sm : 10),
             Text.rich(
-              const TextSpan(
+              TextSpan(
                 text: 'adoptify',
-                children: [TextSpan(text: '.', style: TextStyle(color: AdoptifyColors.primary))],
+                children: [TextSpan(text: '.', style: TextStyle(color: context.colors.primary))],
               ),
               style: textStyle,
             ),

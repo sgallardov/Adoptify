@@ -40,7 +40,63 @@
   --color-info-800: #075985;
   --color-forest: #163d35;
   --color-surface: #ffffff;
+  /* Texto e íconos sobre fondos de color (botones, pines, banners): blanco en ambos modos */
+  --color-on-accent: #ffffff;
 }
+
+/* Modo oscuro: mismos nombres de color, valores para fondo oscuro.
+   Las escalas se invierten: los 50-200 pasan a ser fondos oscuros y los 600-900, textos claros. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-brand-50: #2f1a0d;
+  --color-brand-100: #45230f;
+  --color-brand-200: #7c2d12;
+  --color-brand-300: #9a3412;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #fb923c;
+  --color-brand-800: #fdba74;
+  --color-brand-900: #fed7aa;
+  --color-base-50: #141210;
+  --color-base-100: #262220;
+  --color-base-200: #36312d;
+  --color-base-300: #4a4440;
+  --color-base-400: #8f8781;
+  --color-base-500: #a8a29e;
+  --color-base-600: #c4bdb7;
+  --color-base-700: #d9d4cf;
+  --color-base-800: #ece8e4;
+  --color-base-900: #faf9f6;
+  --color-success-50: #052e22;
+  --color-success-100: #064e3b;
+  --color-success-200: #065f46;
+  --color-success-800: #6ee7b7;
+  --color-success-900: #a7f3d0;
+  --color-success-950: #d1fae5;
+  --color-warning-50: #33240a;
+  --color-warning-800: #fcd34d;
+  --color-danger-50: #3a1414;
+  --color-danger-200: #7f1d1d;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #f87171;
+  --color-danger-900: #fecaca;
+  --color-info-50: #082f49;
+  --color-info-600: #0ea5e9;
+  --color-info-800: #7dd3fc;
+  --color-forest: #12322b;
+  --color-surface: #1f1b18;
+}
+
+/* Mapa en modo oscuro: los mismos mosaicos de OpenStreetMap con los colores invertidos */
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
+:root[data-theme="dark"] .leaflet-container { background: var(--color-base-100); }
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip,
+:root[data-theme="dark"] .leaflet-bar a,
+:root[data-theme="dark"] .leaflet-control-attribution { background: var(--color-surface); color: var(--color-base-800); }
+:root[data-theme="dark"] .leaflet-bar a { border-color: var(--color-base-200); }
+:root[data-theme="dark"] .leaflet-control-attribution a { color: var(--color-brand-700); }
+
 
 @layer base {
   body { @apply m-0 bg-base-50 font-sans text-base-800 antialiased; }
@@ -54,7 +110,7 @@
 }
 
 @layer components {
-  .button-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-surface transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60; }
+  .button-primary { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-on-accent transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60; }
   .button-secondary { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-base-200 bg-surface px-4 py-2.5 text-sm font-medium text-base-700 hover:bg-base-50 disabled:cursor-not-allowed disabled:opacity-60; }
 }
 

@@ -35,20 +35,20 @@ Fase 2/backend/app/
   models/                  # user, foundation, animal, report (AbandonedDogReport)
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
-  api/v1/endpoints/        # health, auth, animals, reports
+  api/v1/endpoints/        # health, auth, animals, foundations (GET público), reports, uploads
   alembic/versions/        # 0001..0004, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
-  services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports
+  services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports, uploads (multipart), photo (validación y mediaUrl)
   hooks/                   # useAnimals, useMapAnimals, useNearbyReports, useAuth
-  components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
+  components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
   pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Reportar, Mapa, Perfil), theme.dart (colores, espaciado, radios, sombra y escala tipográfica)
-  core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL), api_client.dart, token_storage.dart
-  features/<pantalla>/     # map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
+  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Fundaciones, Mapa, Perfil; /reportar y /login a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
@@ -73,11 +73,11 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 **Portal**
 - Llamadas HTTP solo en `services/*.ts` usando `api` de `services/api.ts`; mensajes de error con `errorMessage(err, fallback)`.
 - Hooks de datos con `AbortController`, estados `loading` / `error` / `retry` (ver `hooks/useAnimals.ts`).
-- Estilos con clases Tailwind, íconos de `lucide-react`. Mapas con Leaflet/react-leaflet usando lo de `mapTiles.ts` (mantener la atribución de OSM).
+- Estilos con clases Tailwind (colores del tema en `index.css`, con modo oscuro en `:root[data-theme="dark"]`; texto sobre fondos de color con `text-on-accent`), íconos de `lucide-react`. Mapas con Leaflet/react-leaflet usando lo de `mapTiles.ts` (mantener la atribución de OSM).
 - Accesibilidad: etiquetas en formularios, navegación por teclado, estados vacíos y de error visibles.
 
 **App móvil**
-- Una carpeta por pantalla en `features/`. Colores, espaciado, radios, sombras y textos solo desde `app/theme.dart` (`AdoptifyColors`, `AdoptifySpacing`, `AdoptifyRadius`, `AdoptifyShadows`, `Theme.of(context).textTheme`); nada de tamaños o colores sueltos. Títulos centrados.
+- Una carpeta por pantalla en `features/`. Colores, espaciado, radios, sombras y textos solo desde `app/theme.dart` (`context.colors`, `AdoptifySpacing`, `AdoptifyRadius`, `AdoptifyShadows`, `Theme.of(context).textTheme`); nada de tamaños o colores sueltos. `context.colors` cambia con el modo oscuro (Perfil → Apariencia). Títulos centrados.
 - Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
 - Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
 - HTTP solo a través de `ApiClient` (`AuthScope.of(context).api`); errores al usuario con `errorMessage(err, fallback)`, igual que el portal.
@@ -90,6 +90,6 @@ Pendiente (en orden aproximado de prioridad):
 2. (Hecho en backend, HU-12) `users.foundation_id` y `GET /animals` filtrado por fundación; falta consumirlo en "Mis casos" del portal.
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
-5. Subida de fotos (hoy solo `photo_url`).
-6. App móvil Flutter: HU-08, HU-14 y HU-15 hechas; la foto en reportes queda para HU-16.
+5. Fotos (HU-16) hechas: `POST /uploads`, `PhotoPicker` en el portal (animales y reportes) y cámara/galería en la app. Pendiente: borrar archivos huérfanos y almacenamiento externo.
+6. App móvil Flutter: HU-08, HU-14, HU-15 y HU-16 hechas.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.

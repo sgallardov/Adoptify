@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Navigate } from 'react-router'
 import { Building2, UserRound } from 'lucide-react'
 import Brand from '../components/Brand'
+import ThemeToggle from '../components/ThemeToggle'
 import Feedback from '../components/Feedback'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -56,7 +57,8 @@ export default function Login() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10">
+      <div className="absolute right-4 top-4"><ThemeToggle /></div>
       <div className="mb-8"><Brand to="/login" /></div>
 
       <section className="w-full max-w-md rounded-3xl border border-base-200 bg-surface p-6 sm:p-8" aria-labelledby="login-title">

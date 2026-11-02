@@ -1,4 +1,5 @@
 import { api } from './api'
+import { mediaUrl } from './uploads'
 import type { Animal } from '../data/demo'
 
 export type AnimalStatus = 'available' | 'in_process' | 'adopted'
@@ -44,7 +45,7 @@ export function toAnimal(animal: AnimalResponse): Animal {
     id: animal.id, name: animal.name, species: animal.species,
     age: formatAge(animal.age_months), gender: animal.gender, size: animal.size,
     energy: animal.energy_level, status: statuses[animal.status] ?? animal.status,
-    photo: animal.photo_url,
+    photo: mediaUrl(animal.photo_url),
     description: animal.description || 'Sin descripción registrada.',
     foundationName: animal.foundation_name,
     latitude: animal.latitude, longitude: animal.longitude,

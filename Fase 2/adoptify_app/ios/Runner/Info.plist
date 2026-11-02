@@ -6,6 +6,8 @@
 	<string>Adoptify usa tu ubicación para mostrar mascotas y reportes cercanos.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Adoptify usa la cámara para tomar fotos de perros abandonados al reportarlos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Adoptify usa tus fotos para adjuntar una imagen del perro al reportarlo.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

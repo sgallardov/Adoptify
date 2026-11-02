@@ -166,7 +166,7 @@ el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
   coordenadas nulas en PATCH. Siempre se envían latitud y longitud juntas.
 - Nombre, especie, tamaño y sexo son obligatorios (sexo lo exige HU-12).
   Se validan además edad (0–360 meses), energía (1–5), largos de texto y URL de foto.
-  La carga de archivos no forma parte de esta HU; se admite un enlace HTTP(S).
+  La foto se sube desde el computador (ver HU-16).
 - Los administradores indican el ID de la fundación al crear. HU-12 no incluye
   un listado de fundaciones para poblar un selector. Las cuentas de fundación
   no eligen otra fundación: el backend utiliza su asignación y verifica permisos.
@@ -178,6 +178,34 @@ Las respuestas 422 se traducen por campo al español. Los errores de conexión,
 sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
 envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 `status`, para no sobrescribir un cambio de estado hecho desde otra sesión.
+
+## Modo oscuro
+
+El botón de luna/sol (`ThemeToggle`) cambia entre modo claro y oscuro. Está en la cabecera del portal de
+fundaciones, en la de adoptantes (`AppHeader`) y en el login.
+
+- Sin elección guardada se sigue la apariencia del sistema. La elección queda en `localStorage`
+  (`adoptify_theme`) y la aplica `hooks/useTheme.ts` como `data-theme` en `<html>`. Un script en `index.html`
+  hace lo mismo antes de pintar, para que la página no parpadee en blanco.
+- `index.css` redefine las mismas variables de color en `:root[data-theme="dark"]`: las clases de Tailwind
+  no cambian. Para texto sobre fondos de color (botones, pines, banners) se usa `text-on-accent`, que es blanco
+  en ambos modos; `text-surface` ya no sirve para eso porque en oscuro la superficie es oscura.
+- Mapas: los mosaicos de OSM se invierten con un filtro CSS y los popups usan los colores del tema.
+
+## HU-16: subir fotos
+
+`PhotoPicker` (`components/PhotoPicker.tsx`) reemplaza el campo de enlace de la foto en
+**Publicar / Editar animal** y agrega **3. Foto del perro (opcional)** en `/reportar`.
+
+- Botón **Subir foto**: abre el selector de archivos del computador o recibe una imagen arrastrada.
+  En el celular, el selector del navegador ofrece también la cámara y la galería.
+- Revisa antes de subir que sea JPG o PNG de hasta 5 MB (`services/photo.ts`); el backend vuelve a
+  validar por el contenido. Sube apenas se elige (`POST /uploads`, `services/uploads.ts`) y guarda la
+  URL devuelta en `photo_url`. Mientras sube, guardar o enviar queda deshabilitado.
+- Con foto: vista previa, **Cambiar foto** y **Quitar**. Los errores del backend (415, 413) se muestran en español.
+- El popup de un reporte en el mapa muestra su foto.
+- `mediaUrl()` pide las fotos de `/uploads/` al mismo servidor que la API: una foto subida desde el
+  emulador (`10.0.2.2`) se ve igual en el navegador.
 
 ### Verificación
 

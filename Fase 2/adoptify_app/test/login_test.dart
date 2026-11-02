@@ -45,7 +45,7 @@ void main() {
 
     expect(api.storage.token, validToken);
     // Con la sesión iniciada, la app abre en el mapa
-    expect(find.text('Usar mi ubicación'), findsOneWidget);
+    expect(find.byTooltip('Usar mi ubicación'), findsOneWidget);
 
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
@@ -138,8 +138,7 @@ void main() {
 
     expect(find.text('Matías Adoptante'), findsOneWidget);
 
-    await tester.tap(find.text('Cerrar sesión'));
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.text('Cerrar sesión'));
     expect(api.storage.token, isNull);
     expect(find.widgetWithText(FilledButton, 'Iniciar sesión'), findsOneWidget);
   });

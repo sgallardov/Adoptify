@@ -1,6 +1,8 @@
 import 'package:latlong2/latlong.dart';
 
 import '../../core/api_client.dart';
+import '../../core/config.dart';
+import '../../core/photo_service.dart';
 
 // Modelos y llamadas de mascotas y reportes: equivalente a services/animals.ts y services/reports.ts del portal
 
@@ -25,7 +27,7 @@ class Animal {
         ageMonths: json['age_months'] as int?,
         size: json['size'] as String,
         status: json['status'] as String,
-        photoUrl: json['photo_url'] as String?,
+        photoUrl: mediaUrl(json['photo_url'] as String?),
         foundationName: json['foundation_name'] as String?,
         position: _position(json),
         distanceKm: (json['distance_km'] as num?)?.toDouble(),
@@ -54,6 +56,7 @@ class DogReport {
     required this.status,
     required this.position,
     required this.createdAt,
+    this.photoUrl,
     this.distanceKm,
   });
 
@@ -63,6 +66,7 @@ class DogReport {
         status: json['status'] as String,
         position: _position(json)!,
         createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+        photoUrl: mediaUrl(json['photo_url'] as String?),
         distanceKm: (json['distance_km'] as num?)?.toDouble(),
       );
 
@@ -71,6 +75,7 @@ class DogReport {
   final String status;
   final LatLng position;
   final DateTime createdAt;
+  final String? photoUrl;
   final double? distanceKm;
 
   String get statusLabel => reportStatuses[status] ?? status;
@@ -134,13 +139,20 @@ class MapService {
     return data.map((item) => DogReport.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<DogReport> createReport(LatLng position, String description) async {
+  Future<DogReport> createReport(LatLng position, String description, {String? photoUrl}) async {
     final data = await _api.post('/reports', {
       'latitude': position.latitude,
       'longitude': position.longitude,
       'description': description,
+      'photo_url': ?photoUrl,
     });
     return DogReport.fromJson(data as Map<String, dynamic>);
+  }
+
+  // Sube la foto (POST /uploads) y devuelve su URL para guardarla en photo_url
+  Future<String> uploadPhoto(PickedPhoto photo) async {
+    final data = await _api.upload('/uploads', photo.bytes, photo.filename);
+    return (data as Map<String, dynamic>)['url'] as String;
   }
 
   Map<String, Object> _near(LatLng origin, int radiusKm) =>

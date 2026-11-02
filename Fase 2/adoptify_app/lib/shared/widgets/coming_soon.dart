@@ -29,15 +29,15 @@ class ComingSoon extends StatelessWidget {
               Container(
                 width: 72,
                 height: 72,
-                decoration: const BoxDecoration(color: AdoptifyColors.primarySoft, shape: BoxShape.circle),
-                child: Icon(icon, size: 32, color: AdoptifyColors.primaryDark),
+                decoration: BoxDecoration(color: context.colors.primarySoft, shape: BoxShape.circle),
+                child: Icon(icon, size: 32, color: context.colors.primaryDark),
               ),
               const SizedBox(height: AdoptifySpacing.xl),
               Text(title, style: textTheme.titleLarge, textAlign: TextAlign.center),
               const SizedBox(height: AdoptifySpacing.sm),
               Text(
                 message,
-                style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted),
+                style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted),
                 textAlign: TextAlign.center,
               ),
             ],

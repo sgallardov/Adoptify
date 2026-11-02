@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adoptify_app/app/app.dart';
 import 'package:adoptify_app/core/location_service.dart';
+import 'package:adoptify_app/core/photo_service.dart';
 
 import 'fake_api.dart';
 
@@ -22,8 +23,16 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
-  setUp(() => LocationService.instance = FakeLocation());
-  tearDown(() => LocationService.instance = LocationService());
+  late FakePhotos photos;
+
+  setUp(() {
+    LocationService.instance = FakeLocation();
+    PhotoService.instance = photos = FakePhotos();
+  });
+  tearDown(() {
+    LocationService.instance = LocationService();
+    PhotoService.instance = PhotoService();
+  });
 
   testWidgets('sin sesión pide iniciar sesión para reportar', (tester) async {
     await openReport(tester, FakeApi());
@@ -69,8 +78,8 @@ void main() {
       'description': 'Perrita negra asustada bajo un auto',
     });
     expect(find.text('¡Gracias! Tu reporte quedó publicado en el mapa.'), findsOneWidget);
-    // Quedó en la pestaña Mapa y el nuevo reporte aparece en el mapa
-    expect(find.text('Perros reportados (2)'), findsOneWidget);
+    // Volvió al mapa y el nuevo reporte aparece en el mapa
+    expect(find.byTooltip('Capas'), findsOneWidget);
     expect(find.byKey(const ValueKey('report-2')), findsOneWidget);
   });
 
@@ -85,5 +94,70 @@ void main() {
     await tapVisible(tester, find.text('Enviar reporte'));
 
     expect(find.text('No pudimos conectar con el servidor. Inténtalo nuevamente.'), findsOneWidget);
+  });
+
+  testWidgets('sube una foto de la galería y la envía con el reporte', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await tapVisible(tester, find.text('Galería'));
+    expect(photos.sources, [PhotoSource.gallery]);
+    final upload = api.requests.singleWhere((r) => r.url.path == '/uploads');
+    expect(upload.headers['Authorization'], 'Bearer $validToken');
+    expect(upload.headers['content-type'], startsWith('multipart/form-data'));
+    expect(find.text('Foto lista'), findsOneWidget);
+    expect(find.bySemanticsLabel('Foto del perro'), findsOneWidget);
+
+    await tapVisible(tester, find.text('Usar mi ubicación'));
+    await tester.enterText(find.byType(TextField), 'Perrita negra asustada bajo un auto');
+    await tapVisible(tester, find.text('Enviar reporte'));
+
+    final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
+    expect(jsonDecode(post.body)['photo_url'], 'http://api/uploads/foto.png');
+    expect(find.text('¡Gracias! Tu reporte quedó publicado en el mapa.'), findsOneWidget);
+  });
+
+  testWidgets('la cámara toma la foto y se puede quitar antes de enviar', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await tapVisible(tester, find.text('Tomar foto'));
+    expect(photos.sources, [PhotoSource.camera]);
+    expect(find.text('Foto lista'), findsOneWidget);
+
+    await tapVisible(tester, find.text('Quitar foto'));
+    expect(find.text('Foto lista'), findsNothing);
+    expect(find.text('Tomar foto'), findsOneWidget);
+
+    await tapVisible(tester, find.text('Usar mi ubicación'));
+    await tester.enterText(find.byType(TextField), 'Perro grande herido en la plaza');
+    await tapVisible(tester, find.text('Enviar reporte'));
+
+    final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
+    expect(jsonDecode(post.body).containsKey('photo_url'), isFalse);
+  });
+
+  testWidgets('si se cancela la cámara no sube nada', (tester) async {
+    PhotoService.instance = photos = FakePhotos(cancel: true);
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await tapVisible(tester, find.text('Tomar foto'));
+    expect(api.requests.where((r) => r.url.path == '/uploads'), isEmpty);
+    expect(find.text('Foto lista'), findsNothing);
+  });
+
+  testWidgets('muestra el mensaje del backend si la foto no es válida', (tester) async {
+    final api = FakeApi()..uploadStatus = 415;
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await tapVisible(tester, find.text('Galería'));
+    expect(find.text('El archivo no es una imagen válida. Usa JPG o PNG.'), findsOneWidget);
+    expect(find.text('Foto lista'), findsNothing);
+    expect(find.text('Galería'), findsOneWidget);
   });
 }

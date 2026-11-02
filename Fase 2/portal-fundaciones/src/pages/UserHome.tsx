@@ -68,7 +68,7 @@ export default function UserHome() {
     <div className="min-h-screen">
       <AppHeader>
           <span className="hidden text-sm text-base-600 lg:inline">{user?.email}</span>
-          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-danger-600 px-4 py-2 text-sm font-semibold text-surface hover:bg-danger-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
+          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-danger-600 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-danger-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
           <button onClick={signOut} className="button-secondary" aria-label="Cerrar sesión"><LogOut size={16} /><span className="hidden sm:inline">Cerrar sesión</span></button>
       </AppHeader>
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10">
@@ -84,7 +84,7 @@ export default function UserHome() {
             </label>
             <button onClick={clearLocation} className="inline-flex items-center gap-2 rounded-xl border border-base-200 bg-surface px-4 py-2 text-sm font-medium text-base-700 hover:bg-base-50"><X size={16} />Ver todas</button>
           </> : (
-            <button onClick={locate} disabled={locating} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-surface hover:bg-brand-700 disabled:opacity-60">
+            <button onClick={locate} disabled={locating} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-on-accent hover:bg-brand-700 disabled:opacity-60">
               {locating ? <LoaderCircle className="animate-spin" size={17} /> : <LocateFixed size={17} />}Usar mi ubicación
             </button>
           )}

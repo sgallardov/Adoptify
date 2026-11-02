@@ -6,21 +6,21 @@ import '../../app/theme.dart';
 class MessageBox extends StatelessWidget {
   const MessageBox.error({super.key, required this.message})
       : icon = Icons.warning_amber_rounded,
-        background = AdoptifyColors.primarySoft,
-        foreground = AdoptifyColors.primaryTextDark;
+        success = false;
 
   const MessageBox.success({super.key, required this.message})
       : icon = Icons.check_circle_outline,
-        background = AdoptifyColors.successSoft,
-        foreground = AdoptifyColors.success;
+        success = true;
 
   final String message;
   final IconData icon;
-  final Color background;
-  final Color foreground;
+  final bool success;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final background = success ? colors.successSoft : colors.primarySoft;
+    final foreground = success ? colors.success : colors.primaryTextDark;
     return Semantics(
       liveRegion: true,
       child: Container(

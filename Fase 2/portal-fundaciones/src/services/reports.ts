@@ -12,8 +12,10 @@ export type DogReport = {
   distance_km?: number
 }
 
-export async function createReport(position: LatLng, description: string): Promise<DogReport> {
-  const { data } = await api.post<DogReport>('/reports', { latitude: position.lat, longitude: position.lng, description })
+export async function createReport(position: LatLng, description: string, photoUrl?: string | null): Promise<DogReport> {
+  const { data } = await api.post<DogReport>('/reports', {
+    latitude: position.lat, longitude: position.lng, description, ...(photoUrl ? { photo_url: photoUrl } : {}),
+  })
   return data
 }
 

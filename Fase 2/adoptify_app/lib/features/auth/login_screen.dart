@@ -112,9 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(AdoptifySpacing.xl),
                     decoration: BoxDecoration(
-                      color: AdoptifyColors.surface,
+                      color: context.colors.surface,
                       borderRadius: BorderRadius.circular(AdoptifyRadius.xl),
-                      border: Border.all(color: AdoptifyColors.border),
+                      border: Border.all(color: context.colors.border),
                       boxShadow: AdoptifyShadows.soft,
                     ),
                     child: Form(
@@ -128,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: AdoptifySpacing.sm),
                           Text(
                             description,
-                            style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted),
+                            style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: AdoptifySpacing.xl),
@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: AdoptifySpacing.xl),
-                          const Divider(color: AdoptifyColors.muted),
+                          Divider(color: context.colors.muted),
                           const SizedBox(height: AdoptifySpacing.lg),
                           _Footer(isUser: isUser, isRegister: _isRegister, onToggle: _toggleRegister),
                         ],
@@ -232,20 +232,20 @@ class _AccountTabs extends StatelessWidget {
     final labelStyle = Theme.of(context).textTheme.labelLarge;
     return Container(
       padding: const EdgeInsets.all(AdoptifySpacing.xs),
-      decoration: BoxDecoration(color: AdoptifyColors.muted, borderRadius: BorderRadius.circular(AdoptifyRadius.md)),
+      decoration: BoxDecoration(color: context.colors.muted, borderRadius: BorderRadius.circular(AdoptifyRadius.md)),
       child: Row(
         children: [
-          _tab(AccountType.user, 'Usuario', Icons.person_outline, labelStyle),
+          _tab(context, AccountType.user, 'Usuario', Icons.person_outline, labelStyle),
           const SizedBox(width: AdoptifySpacing.xs),
-          _tab(AccountType.foundation, 'Fundación', Icons.business_outlined, labelStyle),
+          _tab(context, AccountType.foundation, 'Fundación', Icons.business_outlined, labelStyle),
         ],
       ),
     );
   }
 
-  Widget _tab(AccountType type, String label, IconData icon, TextStyle? labelStyle) {
+  Widget _tab(BuildContext context, AccountType type, String label, IconData icon, TextStyle? labelStyle) {
     final active = selected == type;
-    final color = active ? AdoptifyColors.primaryText : AdoptifyColors.textMuted;
+    final color = active ? context.colors.primaryText : context.colors.textMuted;
     return Expanded(
       child: Semantics(
         selected: active,
@@ -253,7 +253,7 @@ class _AccountTabs extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            color: active ? AdoptifyColors.surface : Colors.transparent,
+            color: active ? context.colors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
             boxShadow: active ? AdoptifyShadows.soft : null,
           ),
@@ -336,7 +336,7 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
     if (!isUser) {
       return Text(
         'Las cuentas de fundación las crea el equipo de Adoptify.',
