@@ -51,11 +51,12 @@ test/             # widget tests de navegación, login, mapa y reporte (fake_api
 ## Navegación
 La app abre en el **Mapa** (también al iniciar sesión). Barra inferior con 3 elementos
 (`StatefulShellRoute`, cada uno conserva su historial), de izquierda a derecha:
-- **Reportar mascota** (`/reportar`): acción principal, botón rojo destacado.
+- **Fundaciones** (`/fundaciones`): fundaciones con sus mascotas en adopción.
 - **Mapa** (`/mapa`).
 - **Perfil** (`/cuenta`).
 
-`/login` se abre a pantalla completa.
+`/login` y `/reportar` se abren a pantalla completa, con flecha para volver. Reportar se abre con el
+botón rojo "Reportar mascota" del mapa.
 
 ## Diseño
 Todo el estilo sale de `lib/app/theme.dart` (misma paleta que el portal):
@@ -82,9 +83,17 @@ cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 ## Mapa y reportes (HU-15)
 Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
 naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
-- **Mapa** (`/mapa`): sin ubicación muestra todas las mascotas disponibles (`GET /animals`) y los reportes
-  a 100 km de Santiago. Con "Usar mi ubicación" busca con `GET /animals/nearby` y `GET /reports/nearby`
-  en el radio elegido (5 a 100 km). Tocar un pin o una tarjeta abre su ficha.
+- **Mapa** (`/mapa`): a pantalla completa. Sin ubicación muestra todas las mascotas disponibles (`GET /animals`)
+  y los reportes a 100 km de Santiago. Encima flotan:
+  - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
+    y al elegir una la muestra en el mapa; debajo, el conteo y, con ubicación, el radio (5 a 100 km) y "Ver todas";
+  - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas y reportes;
+  - **Usar mi ubicación**: busca con `GET /animals/nearby` y `GET /reports/nearby`;
+  - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
+- `OsmTileLayer` (`shared/map/map_style.dart`) crea la capa de mosaicos recién cuando el mapa tiene tamaño y
+  lleva un momento quieto. Al abrir, el mapa nace sin tamaño y se encuadra en los pines; en ese primer segundo
+  flutter_map creaba y descartaba tandas de mosaicos y algunos quedaban cargando hasta mover el mapa. También
+  usa un solo proveedor de mosaicos y reintenta si alguno falla por la red.
 - **Reportar** (`/reportar`): requiere sesión. Se marca el punto tocando el mapa o con el GPS
   y se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
@@ -98,6 +107,11 @@ La elección se guarda en el dispositivo (`shared_preferences`) y está disponib
 - `app/theme_controller.dart`: `ThemeController` + `ThemeScope`, mismo patrón que `AuthController` y `AuthScope`.
 - Mapas: en modo oscuro se usan los mismos mosaicos de OSM con los colores invertidos (`darkModeTileBuilder`).
   Los pines mantienen sus colores.
+
+## Fundaciones
+`/fundaciones` lista las fundaciones (`GET /foundations`) con su comuna, descripción, contacto (teléfono,
+correo y dirección, seleccionables) y una fila con sus mascotas en adopción. Se actualiza deslizando hacia abajo.
+La versión web de esta vista queda pendiente.
 
 ## Foto del perro (HU-16)
 En "Reportar mascota", la sección **3. Foto del perro (opcional)** tiene dos botones:

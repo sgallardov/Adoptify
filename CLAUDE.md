@@ -35,7 +35,7 @@ Fase 2/backend/app/
   models/                  # user, foundation, animal, report (AbandonedDogReport)
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
-  api/v1/endpoints/        # health, auth, animals, reports, uploads
+  api/v1/endpoints/        # health, auth, animals, foundations (GET público), reports, uploads
   alembic/versions/        # 0001..0004, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
@@ -46,9 +46,9 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Reportar, Mapa, Perfil), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Fundaciones, Mapa, Perfil; /reportar y /login a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
-  features/<pantalla>/     # map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```

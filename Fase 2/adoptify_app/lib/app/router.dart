@@ -2,13 +2,14 @@ import 'package:go_router/go_router.dart';
 
 import '../features/account/account_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/foundations/foundations_screen.dart';
 import '../features/map/map_screen.dart';
 import '../features/report/report_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
 // Rutas de la app. Las pestañas comparten la barra inferior (AppShell) y
 // cada una conserva su propio historial al cambiar de pestaña.
-// El orden de las ramas es el de la barra: Reportar, Mapa, Perfil.
+// El orden de las ramas es el de la barra: Fundaciones, Mapa, Perfil.
 GoRouter createAppRouter() => GoRouter(
   initialLocation: '/mapa',
   routes: [
@@ -16,7 +17,7 @@ GoRouter createAppRouter() => GoRouter(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
         StatefulShellBranch(routes: [
-          GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),
+          GoRoute(path: '/fundaciones', builder: (context, state) => const FoundationsScreen()),
         ]),
         StatefulShellBranch(routes: [
           // extra: id del reporte recién creado, para que el mapa recargue los datos
@@ -27,7 +28,9 @@ GoRouter createAppRouter() => GoRouter(
         ]),
       ],
     ),
-    // Fuera de la barra inferior: pantalla completa (HU-14)
+    // Fuera de la barra inferior: pantallas completas con botón para volver
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    // Se abre con el botón "Reportar mascota" del mapa
+    GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),
   ],
 );

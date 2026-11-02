@@ -51,6 +51,7 @@ class FakeApi {
   final storage = MemoryTokenStorage();
   bool offline = false;
   bool animalsFail = false;
+  bool foundationsFail = false;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
   int? uploadStatus;
   final reports = <Map<String, dynamic>>[
@@ -105,6 +106,38 @@ class FakeApi {
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [
           {...luna, 'distance_km': 1.25},
+        ]);
+      case '/foundations':
+        if (foundationsFail) return _json(503, {'detail': 'No se pudo consultar las fundaciones.'});
+        return _json(200, [
+          {
+            'id': 1,
+            'name': 'Fundación Patitas',
+            'description': 'Rescatamos perros y gatos de la calle.',
+            'address': 'Av. Siempre Viva 123',
+            'commune': 'Providencia',
+            'city': 'Santiago',
+            'phone': '+56 9 1111 2222',
+            'email': 'hola@patitas.cl',
+            'is_verified': true,
+            'latitude': -33.43,
+            'longitude': -70.61,
+            'animals': [luna],
+          },
+          {
+            'id': 2,
+            'name': 'Refugio Sin Casos',
+            'description': null,
+            'address': null,
+            'commune': null,
+            'city': 'Valparaíso',
+            'phone': null,
+            'email': 'refugio@ejemplo.cl',
+            'is_verified': false,
+            'latitude': null,
+            'longitude': null,
+            'animals': [],
+          },
         ]);
       case '/reports/nearby':
         return _json(200, reports);

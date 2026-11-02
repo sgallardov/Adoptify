@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 
 // Índices de las pestañas, en el mismo orden que las ramas de app/router.dart
-const _reportTab = 0;
+const _foundationsTab = 0;
 const _mapTab = 1;
 const _profileTab = 2;
 
@@ -44,11 +44,15 @@ class AppShell extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Los tres elementos tienen el mismo ancho; Reportar destaca solo por su fondo rojo
                     Expanded(
-                      child: _ReportTab(active: current == _reportTab, onTap: () => _go(_reportTab)),
+                      child: _NavTab(
+                        label: 'Fundaciones',
+                        icon: Icons.volunteer_activism_outlined,
+                        activeIcon: Icons.volunteer_activism,
+                        active: current == _foundationsTab,
+                        onTap: () => _go(_foundationsTab),
+                      ),
                     ),
-                    const SizedBox(width: AdoptifySpacing.sm),
                     Expanded(
                       child: _NavTab(
                         label: 'Mapa',
@@ -79,67 +83,6 @@ class AppShell extends StatelessWidget {
 }
 
 const _iconSize = 24.0;
-
-// Acción principal: botón rojo destacado, el mismo rojo del botón "Reportar perro" de la web
-class _ReportTab extends StatelessWidget {
-  const _ReportTab({required this.active, required this.onTap});
-
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(AdoptifyRadius.md);
-    return Semantics(
-      button: true,
-      selected: active,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 52,
-        decoration: BoxDecoration(
-          color: active ? context.colors.reportStrong : context.colors.report,
-          borderRadius: radius,
-          // Activo: anillo suave alrededor para distinguirlo del estado normal
-          boxShadow: [
-            if (active) BoxShadow(color: context.colors.report.withValues(alpha: 0.25), spreadRadius: 3),
-            const BoxShadow(color: Color(0x26DC2626), blurRadius: 6, offset: Offset(0, 2)),
-          ],
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: radius,
-            hoverColor: const Color(0x1AFFFFFF),
-            focusColor: const Color(0x33FFFFFF),
-            splashColor: const Color(0x26FFFFFF),
-            // Misma estructura que Mapa y Perfil: ícono de 24 px arriba y etiqueta abajo
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xs),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    active ? Icons.add_location_alt : Icons.add_location_alt_outlined,
-                    color: Colors.white,
-                    size: _iconSize,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Reportar mascota',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _NavTab extends StatelessWidget {
   const _NavTab({

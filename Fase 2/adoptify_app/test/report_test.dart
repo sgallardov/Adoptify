@@ -78,8 +78,8 @@ void main() {
       'description': 'Perrita negra asustada bajo un auto',
     });
     expect(find.text('¡Gracias! Tu reporte quedó publicado en el mapa.'), findsOneWidget);
-    // Quedó en la pestaña Mapa y el nuevo reporte aparece en el mapa
-    expect(find.text('Perros reportados (2)'), findsOneWidget);
+    // Volvió al mapa y el nuevo reporte aparece en el mapa
+    expect(find.byTooltip('Capas'), findsOneWidget);
     expect(find.byKey(const ValueKey('report-2')), findsOneWidget);
   });
 

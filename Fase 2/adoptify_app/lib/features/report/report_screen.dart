@@ -280,7 +280,7 @@ class _ReportFormState extends State<_ReportForm> {
                       onTap: (_, point) => _place(point),
                     ),
                     children: [
-                      osmTileLayer(context),
+                      const OsmTileLayer(),
                       if (_position != null)
                         MarkerLayer(
                           markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
