@@ -62,13 +62,15 @@ void main() {
     await openMap(tester, api);
 
     await tapAndSettle(tester, find.byKey(const ValueKey('report-1')));
-    expect(find.text('Perro reportado'), findsOneWidget);
-    expect(find.text('Perro café con collar rojo cerca del paradero'), findsOneWidget);
+    expect(find.text('Mascota reportada'), findsOneWidget);
+    expect(find.text('Perro · Mediano · Café · ~12,5 kg'), findsOneWidget);
+    expect(find.text('Estado: Herido'), findsOneWidget);
+    expect(find.text('“Perro café con collar rojo cerca del paradero”'), findsOneWidget);
     expect(find.text('Reportado · 28-10-2026'), findsOneWidget);
     expect(find.text('A 2,5 km'), findsOneWidget);
 
     await tapAndSettle(tester, find.byTooltip('Cerrar'));
-    expect(find.text('Perro reportado'), findsNothing);
+    expect(find.text('Mascota reportada'), findsNothing);
 
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
     expect(find.text('Luna'), findsOneWidget);
@@ -103,9 +105,9 @@ void main() {
 
     await tapAndSettle(tester, find.byTooltip('Capas'));
     expect(find.text('Mascotas en adopción (1)'), findsOneWidget);
-    expect(find.text('Perros reportados (1)'), findsOneWidget);
+    expect(find.text('Mascotas reportadas (1)'), findsOneWidget);
 
-    await tapAndSettle(tester, find.text('Perros reportados (1)'));
+    await tapAndSettle(tester, find.text('Mascotas reportadas (1)'));
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('report-1')), findsNothing);

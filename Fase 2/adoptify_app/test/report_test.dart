@@ -22,6 +22,16 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+// Completa lo obligatorio: ubicación, tipo, tamaño, color, estado y comentarios
+Future<void> fillRequired(WidgetTester tester, {String comments = 'Perrita negra asustada bajo un auto'}) async {
+  await tapVisible(tester, find.text('Usar mi ubicación'));
+  await tapVisible(tester, find.text('Perro'));
+  await tapVisible(tester, find.text('Mediano'));
+  await tester.enterText(find.byKey(const ValueKey('report-color')), ' Negro ');
+  await tapVisible(tester, find.text('Herido'));
+  await tester.enterText(find.byKey(const ValueKey('report-comments')), comments);
+}
+
 void main() {
   late FakePhotos photos;
 
@@ -43,21 +53,33 @@ void main() {
     expect(find.text('Hola de nuevo'), findsOneWidget);
   });
 
-  testWidgets('valida el punto y la descripción antes de enviar', (tester) async {
+  testWidgets('valida los campos obligatorios antes de enviar', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;
     await openReport(tester, api);
 
     await tapVisible(tester, find.text('Enviar reporte'));
-    expect(find.text('Marca en el mapa dónde está el perro.'), findsOneWidget);
+    expect(find.text('Revisa los campos indicados antes de enviar.'), findsWidgets);
+    expect(find.text('Marca en el mapa dónde está la mascota.'), findsOneWidget);
+    expect(find.text('Selecciona el tipo de animal.'), findsOneWidget);
+    expect(find.text('Selecciona el tamaño.'), findsOneWidget);
+    expect(find.text('Indica el color (por ejemplo, café o negro con blanco).'), findsOneWidget);
+    expect(find.text('Selecciona cómo se encuentra.'), findsOneWidget);
+    expect(find.text('Cuéntanos la situación con al menos 10 caracteres.'), findsOneWidget);
 
     await tapVisible(tester, find.text('Usar mi ubicación'));
     expect(find.text('Punto marcado. Toca otro lugar del mapa para moverlo.'), findsOneWidget);
     expect(find.byKey(const ValueKey('picker')), findsOneWidget);
+    expect(find.text('Marca en el mapa dónde está la mascota.'), findsNothing);
 
-    await tester.enterText(find.byType(TextField), 'corto');
+    await tapVisible(tester, find.text('Gato'));
+    expect(find.text('Selecciona el tipo de animal.'), findsNothing);
+
+    await tester.enterText(find.byKey(const ValueKey('report-weight')), '500');
+    await tester.enterText(find.byKey(const ValueKey('report-comments')), 'corto');
     await tapVisible(tester, find.text('Enviar reporte'));
-    expect(find.text('Describe al perro con al menos 10 caracteres.'), findsOneWidget);
+    expect(find.text('Indica un peso aproximado entre 0 y 150 kg.'), findsOneWidget);
+    expect(find.text('Cuéntanos la situación con al menos 10 caracteres.'), findsOneWidget);
     expect(api.requests.where((r) => r.url.path == '/reports'), isEmpty);
   });
 
@@ -66,15 +88,19 @@ void main() {
     api.storage.token = validToken;
     await openReport(tester, api);
 
-    await tapVisible(tester, find.text('Usar mi ubicación'));
-    await tester.enterText(find.byType(TextField), 'Perrita negra asustada bajo un auto');
+    await fillRequired(tester);
     await tapVisible(tester, find.text('Enviar reporte'));
 
     final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
     expect(post.headers['Authorization'], 'Bearer $validToken');
+    // Lo opcional vacío no se envía
     expect(jsonDecode(post.body), {
       'latitude': -33.4378,
       'longitude': -70.6505,
+      'species': 'perro',
+      'size': 'mediano',
+      'color': 'Negro',
+      'condition': 'herido',
       'description': 'Perrita negra asustada bajo un auto',
     });
     expect(find.text('¡Gracias! Tu reporte quedó publicado en el mapa.'), findsOneWidget);
@@ -83,13 +109,32 @@ void main() {
     expect(find.byKey(const ValueKey('report-2')), findsOneWidget);
   });
 
+  testWidgets('envía también el peso, las características y el comportamiento', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await fillRequired(tester);
+    await tester.enterText(find.byKey(const ValueKey('report-weight')), '3,5');
+    await tester.enterText(find.byKey(const ValueKey('report-features')), ' Collar azul sin placa ');
+    await tapVisible(tester, find.text('Agresivo'));
+    // Tocar de nuevo la opción la desmarca; se elige otra
+    await tapVisible(tester, find.text('Agresivo'));
+    await tapVisible(tester, find.text('Asustado'));
+    await tapVisible(tester, find.text('Enviar reporte'));
+
+    final body = jsonDecode(api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports').body);
+    expect(body['weight_kg'], 3.5);
+    expect(body['features'], 'Collar azul sin placa');
+    expect(body['behavior'], 'asustado');
+  });
+
   testWidgets('muestra el mensaje si no hay conexión al enviar', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;
     await openReport(tester, api);
 
-    await tapVisible(tester, find.text('Usar mi ubicación'));
-    await tester.enterText(find.byType(TextField), 'Perro grande herido en la plaza');
+    await fillRequired(tester, comments: 'Perro grande herido en la plaza');
     api.offline = true;
     await tapVisible(tester, find.text('Enviar reporte'));
 
@@ -107,10 +152,9 @@ void main() {
     expect(upload.headers['Authorization'], 'Bearer $validToken');
     expect(upload.headers['content-type'], startsWith('multipart/form-data'));
     expect(find.text('Foto lista'), findsOneWidget);
-    expect(find.bySemanticsLabel('Foto del perro'), findsOneWidget);
+    expect(find.bySemanticsLabel('Foto de la mascota'), findsOneWidget);
 
-    await tapVisible(tester, find.text('Usar mi ubicación'));
-    await tester.enterText(find.byType(TextField), 'Perrita negra asustada bajo un auto');
+    await fillRequired(tester);
     await tapVisible(tester, find.text('Enviar reporte'));
 
     final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
@@ -131,8 +175,7 @@ void main() {
     expect(find.text('Foto lista'), findsNothing);
     expect(find.text('Tomar foto'), findsOneWidget);
 
-    await tapVisible(tester, find.text('Usar mi ubicación'));
-    await tester.enterText(find.byType(TextField), 'Perro grande herido en la plaza');
+    await fillRequired(tester, comments: 'Perro grande herido en la plaza');
     await tapVisible(tester, find.text('Enviar reporte'));
 
     final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');

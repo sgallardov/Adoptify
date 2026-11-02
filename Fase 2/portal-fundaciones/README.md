@@ -36,11 +36,19 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 
 - `/login`: inicio de sesión único con pestañas **Usuario** y **Fundación**; la pestaña Usuario permite registrarse.
 - `/usuario`: inicio del adoptante (requiere cuenta `adopter`). Mapa de OpenStreetMap con las mascotas disponibles
-  (pines naranjos) y los perros abandonados reportados (pines rojos), con la lista de mascotas al costado;
+  (pines naranjos) y las mascotas abandonadas reportadas (pines rojos), con la lista de mascotas al costado. El popup de un
+  reporte muestra su ficha ("Perro · Mediano · Café · ~12 kg"), el estado, las características y los comentarios;
   "Usar mi ubicación" filtra por radio (5 a 100 km) y ordena por distancia con `GET /animals/nearby` y `GET /reports/nearby`.
   Sin ubicación, los reportes se buscan a 100 km de Santiago.
-- `/reportar`: formulario para reportar un perro abandonado (requiere cuenta `adopter`). Se marca el lugar haciendo clic
-  en el mapa, arrastrando el pin o con "Usar mi ubicación", y se envía con `POST /reports`. No se publican los datos de quien reporta.
+- `/reportar` (botón "Reportar mascota"): formulario para reportar una mascota abandonada (requiere cuenta `adopter`), en cinco pasos:
+  1. **¿Dónde está?**: clic en el mapa, arrastrar el pin o "Usar mi ubicación".
+  2. **¿Cómo es?**: tipo de animal y tamaño (botones), color, peso aproximado y características.
+  3. **¿Cómo está?**: estado (Bien, Desnutrido, Herido, Enfermo, Deplorable) y comportamiento al acercarse (opcional).
+  4. **Comentarios**: la situación, en texto libre.
+  5. **Foto** (opcional).
+
+  La validación vive en `services/reportForm.ts` (probada en `tests/reportForm.test.mjs`), con un error por campo.
+  Se envía con `POST /reports`. No se publican los datos de quien reporta.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL, búsqueda por nombre y filtros por especie y estado.
@@ -195,7 +203,7 @@ fundaciones, en la de adoptantes (`AppHeader`) y en el login.
 ## HU-16: subir fotos
 
 `PhotoPicker` (`components/PhotoPicker.tsx`) reemplaza el campo de enlace de la foto en
-**Publicar / Editar animal** y agrega **3. Foto del perro (opcional)** en `/reportar`.
+**Publicar / Editar animal** y agrega **Foto (opcional)** en `/reportar`.
 
 - Botón **Subir foto**: abre el selector de archivos del computador o recibe una imagen arrastrada.
   En el celular, el selector del navegador ofrece también la cámara y la galería.

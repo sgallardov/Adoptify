@@ -1,8 +1,16 @@
 import { api } from './api'
 import type { LatLng } from '../hooks/useMapAnimals'
 
+// Reporte de una mascota abandonada. Los datos de la ficha pueden faltar en reportes antiguos.
 export type DogReport = {
   id: number
+  species: string | null
+  size: string | null
+  weight_kg: number | null
+  color: string | null
+  features: string | null
+  condition: string | null
+  behavior: string | null
   description: string
   photo_url: string | null
   status: string
@@ -12,10 +20,13 @@ export type DogReport = {
   distance_km?: number
 }
 
-export async function createReport(position: LatLng, description: string, photoUrl?: string | null): Promise<DogReport> {
-  const { data } = await api.post<DogReport>('/reports', {
-    latitude: position.lat, longitude: position.lng, description, ...(photoUrl ? { photo_url: photoUrl } : {}),
-  })
+export type ReportInput = {
+  latitude: number; longitude: number; species: string; size: string; color: string; condition: string
+  weight_kg: number | null; features: string | null; behavior: string | null; description: string; photo_url?: string
+}
+
+export async function createReport(input: ReportInput): Promise<DogReport> {
+  const { data } = await api.post<DogReport>('/reports', input)
   return data
 }
 

@@ -57,6 +57,13 @@ class FakeApi {
   final reports = <Map<String, dynamic>>[
     {
       'id': 1,
+      'species': 'perro',
+      'size': 'mediano',
+      'weight_kg': 12.5,
+      'color': 'Café',
+      'features': 'Collar rojo',
+      'condition': 'herido',
+      'behavior': null,
       'description': 'Perro café con collar rojo cerca del paradero',
       'photo_url': null,
       'status': 'reported',
@@ -147,6 +154,8 @@ class FakeApi {
         }
         final report = {
           'id': reports.length + 1,
+          for (final field in ['species', 'size', 'weight_kg', 'color', 'features', 'condition', 'behavior'])
+            field: body[field],
           'description': body['description'],
           'photo_url': body['photo_url'],
           'status': 'reported',

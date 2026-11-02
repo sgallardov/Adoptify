@@ -32,11 +32,11 @@ Fase 2/backend/app/
   main.py                  # FastAPI, CORS, /health en raíz, api_router en /api/v1
   core/                    # config.py (Settings), security.py (bcrypt + JWT HS256), rut.py (normalize_rut)
   db/                      # database.py (engine async, get_db), seed.py, create_user.py
-  models/                  # user, foundation, animal, report (AbandonedDogReport)
+  models/                  # user, foundation, animal, report (AbandonedDogReport: cualquier mascota, con ficha)
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
   api/v1/endpoints/        # health, auth, animals, foundations (GET público), reports, uploads
-  alembic/versions/        # 0001..0004, nombrados NNNN_descripcion.py
+  alembic/versions/        # 0001..0005, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
@@ -57,6 +57,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - **Roles:** `adopter` (pestaña Usuario del login), `foundation` y `admin` (pestaña Fundación). Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
 - **Rutas portal:** adopter → `/usuario` (mapa + lista), `/reportar`; foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
+- **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `condition` (`bien`|`desnutrido`|`herido`|`enfermo`|`deplorable`) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behavior` (`tranquilo`|`asustado`|`agresivo`). Opciones y textos en `reportForm.ts` (portal) y `map_service.dart` (app): mantenerlos iguales. En la interfaz se dice "mascota", no "perro".
 - **RUT:** obligatorio y único, no autentica. Solo se valida formato; se guarda sin puntos y con K mayúscula (`normalize_rut`).
 - **Contraseñas:** 8 caracteres mínimo, 72 bytes máximo (bcrypt). Correos en minúsculas.
 - **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.

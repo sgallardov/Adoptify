@@ -68,7 +68,7 @@ export default function UserHome() {
     <div className="min-h-screen">
       <AppHeader>
           <span className="hidden text-sm text-base-600 lg:inline">{user?.email}</span>
-          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-danger-600 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-danger-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar perro</span><span className="sm:hidden">Reportar</span></Link>
+          <Link to="/reportar" className="inline-flex items-center gap-2 rounded-xl bg-danger-600 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-danger-700"><Megaphone size={16} /><span className="hidden sm:inline">Reportar mascota</span><span className="sm:hidden">Reportar</span></Link>
           <button onClick={signOut} className="button-secondary" aria-label="Cerrar sesión"><LogOut size={16} /><span className="hidden sm:inline">Cerrar sesión</span></button>
       </AppHeader>
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10">
@@ -93,13 +93,13 @@ export default function UserHome() {
         {geoError && <div className="mb-5"><Feedback kind="error" title={geoError} compact /></div>}
 
         <div className="space-y-8">
-          <section ref={mapSection} aria-label="Mapa de mascotas y perros reportados" className="flex h-[380px] scroll-mt-5 flex-col gap-2 sm:h-[460px]">
+          <section ref={mapSection} aria-label="Mapa de mascotas en adopción y reportadas" className="flex h-[380px] scroll-mt-5 flex-col gap-2 sm:h-[460px]">
             <div className="min-h-0 flex-1">
               <AnimalsMap animals={animals} reports={reports} origin={origin} selectedId={selectedId} onSelect={setSelectedId} />
             </div>
             <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-500">
               <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-brand-600" />Mascotas en adopción</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-danger-600" />Perros reportados ({reports.length})</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-danger-600" />Mascotas reportadas ({reports.length})</span>
               {origin && <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-info-600" />Tu ubicación</span>}
             </p>
           </section>

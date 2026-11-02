@@ -19,8 +19,10 @@ import '../map/map_service.dart';
 
 const _minDescription = 10;
 const _maxDescription = 1000;
+const _maxFeatures = 300;
+const _maxWeightKg = 150;
 
-// Formulario para reportar un perro abandonado: equivalente a /reportar del portal
+// Formulario para reportar una mascota abandonada: equivalente a /reportar del portal
 class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key});
 
@@ -50,7 +52,7 @@ class _LoginRequired extends StatelessWidget {
           const Expanded(
             child: ComingSoon(
               icon: Icons.add_location_alt,
-              title: 'Reportar un perro abandonado',
+              title: 'Reportar una mascota',
               message: 'Inicia sesión para reportar. Tu nombre y tus datos no se publican.',
             ),
           ),
@@ -72,13 +74,22 @@ class _ReportForm extends StatefulWidget {
 }
 
 class _ReportFormState extends State<_ReportForm> {
+  final _color = TextEditingController();
+  final _weight = TextEditingController();
+  final _features = TextEditingController();
   final _description = TextEditingController();
   final _mapController = MapController();
 
   LatLng? _position;
+  String? _species;
+  String? _size;
+  String? _condition;
+  String? _behavior;
   bool _locating = false;
   bool _sending = false;
   String? _error;
+  // Errores por campo (mismas claves que la API), como en el formulario web
+  Map<String, String> _fieldErrors = {};
 
   // Foto opcional: se sube apenas se elige, para avisar enseguida si no sirve
   PickedPhoto? _photo;
@@ -94,13 +105,19 @@ class _ReportFormState extends State<_ReportForm> {
 
   @override
   void dispose() {
+    _color.dispose();
+    _weight.dispose();
+    _features.dispose();
     _description.dispose();
     _mapController.dispose();
     super.dispose();
   }
 
   void _place(LatLng position, {bool follow = false}) {
-    setState(() => _position = position);
+    setState(() {
+      _position = position;
+      _fieldErrors.remove('position');
+    });
     // Al usar el GPS, el mapa se centra en el punto (igual que FollowValue en la web)
     if (follow) {
       _mapController.move(position, math.max(_mapController.camera.zoom, 16));
@@ -169,16 +186,39 @@ class _ReportFormState extends State<_ReportForm> {
         _photoError = null;
       });
 
+  void _clearError(String field) {
+    if (_fieldErrors.containsKey(field)) setState(() => _fieldErrors.remove(field));
+  }
+
+  // Peso con coma o punto decimal; null si viene vacío
+  double? get _weightKg {
+    final text = _weight.text.trim().replaceAll(',', '.');
+    return text.isEmpty ? null : double.tryParse(text);
+  }
+
+  Map<String, String> _validate() {
+    final weight = _weightKg;
+    return {
+      if (_position == null) 'position': 'Marca en el mapa dónde está la mascota.',
+      if (_species == null) 'species': 'Selecciona el tipo de animal.',
+      if (_size == null) 'size': 'Selecciona el tamaño.',
+      if (_color.text.trim().length < 2) 'color': 'Indica el color (por ejemplo, café o negro con blanco).',
+      if (_weight.text.trim().isNotEmpty && (weight == null || weight <= 0 || weight > _maxWeightKg))
+        'weight_kg': 'Indica un peso aproximado entre 0 y $_maxWeightKg kg.',
+      if (_condition == null) 'condition': 'Selecciona cómo se encuentra.',
+      if (_description.text.trim().length < _minDescription)
+        'description': 'Cuéntanos la situación con al menos $_minDescription caracteres.',
+    };
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    final position = _position;
-    final description = _description.text.trim();
-    if (position == null) {
-      setState(() => _error = 'Marca en el mapa dónde está el perro.');
-      return;
-    }
-    if (description.length < _minDescription) {
-      setState(() => _error = 'Describe al perro con al menos $_minDescription caracteres.');
+    final errors = _validate();
+    if (errors.isNotEmpty) {
+      setState(() {
+        _fieldErrors = errors;
+        _error = 'Revisa los campos indicados antes de enviar.';
+      });
       return;
     }
     setState(() {
@@ -186,18 +226,24 @@ class _ReportFormState extends State<_ReportForm> {
       _error = null;
     });
     try {
-      final report = await MapService(AuthScope.of(context).api)
-          .createReport(position, description, photoUrl: _photoUrl);
+      final features = _features.text.trim();
+      final report = await MapService(AuthScope.of(context).api).createReport(
+        NewReport(
+          position: _position!,
+          species: _species!,
+          size: _size!,
+          color: _color.text.trim(),
+          condition: _condition!,
+          description: _description.text.trim(),
+          weightKg: _weightKg,
+          features: features.isEmpty ? null : features,
+          behavior: _behavior,
+          photoUrl: _photoUrl,
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('¡Gracias! Tu reporte quedó publicado en el mapa.')));
-      setState(() {
-        _sending = false;
-        _position = null;
-        _description.clear();
-        _photo = null;
-        _photoUrl = null;
-      });
       // El id del reporte hace que el mapa vuelva a cargar los datos
       context.go('/mapa', extra: report.id);
     } catch (error) {
@@ -227,21 +273,22 @@ class _ReportFormState extends State<_ReportForm> {
           children: [
             // Encabezado centrado
             Text(
-              'AYUDA A UN PERRO',
+              'AYUDA A UNA MASCOTA',
               textAlign: TextAlign.center,
               style: textTheme.labelSmall?.copyWith(color: context.colors.primaryDark),
             ),
             const SizedBox(height: AdoptifySpacing.xs),
-            Text('Reportar perro abandonado', textAlign: TextAlign.center, style: textTheme.headlineSmall),
+            Text('Reportar mascota', textAlign: TextAlign.center, style: textTheme.headlineSmall),
             const SizedBox(height: AdoptifySpacing.sm),
             Text(
-              'Marca en el mapa dónde viste al perro y cuéntanos cómo está. Las fundaciones cercanas podrán verlo.',
+              'Marca dónde la viste, cuéntanos cómo es y cómo está. Las fundaciones cercanas podrán verlo. '
+              'Los campos con * son obligatorios.',
               textAlign: TextAlign.center,
               style: muted,
             ),
             const SizedBox(height: AdoptifySpacing.xl),
             _Section(
-              title: '1. ¿Dónde está el perro?',
+              title: '1. ¿Dónde está? *',
               children: [
                 Row(
                   children: [
@@ -289,21 +336,120 @@ class _ReportFormState extends State<_ReportForm> {
                     ],
                   ),
                 ),
+                _FieldError(_fieldErrors['position']),
               ],
             ),
             const SizedBox(height: AdoptifySpacing.lg),
             _Section(
-              title: '2. Describe al perro y su estado',
+              title: '2. ¿Cómo es?',
+              children: [
+                _Choices(
+                  label: 'Tipo de animal *',
+                  options: reportSpecies,
+                  value: _species,
+                  error: _fieldErrors['species'],
+                  onSelected: (value) => setState(() {
+                    _species = value;
+                    _fieldErrors.remove('species');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                _Choices(
+                  label: 'Tamaño *',
+                  options: reportSizes,
+                  value: _size,
+                  error: _fieldErrors['size'],
+                  onSelected: (value) => setState(() {
+                    _size = value;
+                    _fieldErrors.remove('size');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                TextField(
+                  key: const ValueKey('report-color'),
+                  controller: _color,
+                  maxLength: 60,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => _clearError('color'),
+                  decoration: InputDecoration(
+                    labelText: 'Color *',
+                    hintText: 'Ej.: café con blanco',
+                    errorText: _fieldErrors['color'],
+                    errorMaxLines: 2,
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+                TextField(
+                  key: const ValueKey('report-weight'),
+                  controller: _weight,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                  onChanged: (_) => _clearError('weight_kg'),
+                  decoration: InputDecoration(
+                    labelText: 'Peso aproximado (opcional)',
+                    hintText: 'Ej.: 12',
+                    suffixText: 'kg',
+                    errorText: _fieldErrors['weight_kg'],
+                    errorMaxLines: 2,
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+                TextField(
+                  key: const ValueKey('report-features'),
+                  controller: _features,
+                  maxLength: _maxFeatures,
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Características (opcional)',
+                    hintText: 'Ej.: collar rojo sin placa, mancha en un ojo',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '3. ¿Cómo está?',
+              children: [
+                _Choices(
+                  label: 'Estado *',
+                  options: reportConditions,
+                  value: _condition,
+                  error: _fieldErrors['condition'],
+                  onSelected: (value) => setState(() {
+                    _condition = value;
+                    _fieldErrors.remove('condition');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                // Opcional: tocar de nuevo la opción elegida la desmarca
+                _Choices(
+                  label: 'Comportamiento al acercarse (opcional)',
+                  options: reportBehaviors,
+                  value: _behavior,
+                  optional: true,
+                  onSelected: (value) => setState(() => _behavior = value),
+                ),
+              ],
+            ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '4. Comentarios *',
               children: [
                 TextField(
+                  key: const ValueKey('report-comments'),
                   controller: _description,
                   maxLines: 4,
                   maxLength: _maxDescription,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
+                  onChanged: (_) => _clearError('description'),
+                  decoration: InputDecoration(
                     hintText:
-                        'Ej.: perro mediano café, con collar rojo, parece herido de una pata. Está cerca del paradero.',
+                        'Cuéntanos la situación: desde cuándo lo ves, si alguien lo cuida, si está en un lugar peligroso…',
                     hintMaxLines: 3,
+                    errorText: _fieldErrors['description'],
+                    errorMaxLines: 2,
                   ),
                 ),
                 const SizedBox(height: AdoptifySpacing.sm),
@@ -320,7 +466,8 @@ class _ReportFormState extends State<_ReportForm> {
                       const SizedBox(width: AdoptifySpacing.sm),
                       Expanded(
                         child: Text(
-                          'El reporte muestra solo la ubicación del perro, la descripción y la foto. Tu nombre y tus datos no se publican.',
+                          'El reporte muestra la ubicación, los datos de la mascota, tus comentarios y la foto. '
+                          'Tu nombre y tus datos no se publican.',
                           style: textTheme.bodySmall,
                         ),
                       ),
@@ -331,7 +478,7 @@ class _ReportFormState extends State<_ReportForm> {
             ),
             const SizedBox(height: AdoptifySpacing.lg),
             _Section(
-              title: '3. Foto del perro (opcional)',
+              title: '5. Foto (opcional)',
               children: [
                 if (_photo == null) ...[
                   Row(
@@ -406,7 +553,7 @@ class _PhotoPreview extends StatelessWidget {
                 Image.memory(
                   photo.bytes,
                   fit: BoxFit.cover,
-                  semanticLabel: 'Foto del perro',
+                  semanticLabel: 'Foto de la mascota',
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: context.colors.muted,
                     child: Icon(Icons.image_outlined, color: context.colors.placeholder),
@@ -439,6 +586,70 @@ class _PhotoPreview extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+// Opciones como chips: se eligen de un toque. Si es opcional, tocar la elegida la desmarca.
+class _Choices extends StatelessWidget {
+  const _Choices({
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onSelected,
+    this.error,
+    this.optional = false,
+  });
+
+  final String label;
+  final Map<String, String> options;
+  final String? value;
+  final ValueChanged<String?> onSelected;
+  final String? error;
+  final bool optional;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AdoptifySpacing.sm),
+        Wrap(
+          spacing: AdoptifySpacing.sm,
+          runSpacing: AdoptifySpacing.sm,
+          children: [
+            for (final MapEntry(key: option, value: text) in options.entries)
+              ChoiceChip(
+                label: Text(text),
+                selected: value == option,
+                onSelected: (selected) {
+                  if (selected) {
+                    onSelected(option);
+                  } else if (optional) {
+                    onSelected(null);
+                  }
+                },
+              ),
+          ],
+        ),
+        _FieldError(error),
+      ],
+    );
+  }
+}
+
+class _FieldError extends StatelessWidget {
+  const _FieldError(this.error);
+
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AdoptifySpacing.sm),
+      child: Text(error!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.reportText)),
     );
   }
 }

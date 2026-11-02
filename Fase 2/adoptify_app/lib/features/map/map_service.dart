@@ -49,6 +49,7 @@ class Animal {
   String get summary => '${capitalize(species)} · $age · $size';
 }
 
+// Reporte de una mascota abandonada. Los datos de la ficha pueden faltar en reportes antiguos.
 class DogReport {
   const DogReport({
     required this.id,
@@ -56,12 +57,26 @@ class DogReport {
     required this.status,
     required this.position,
     required this.createdAt,
+    this.species,
+    this.size,
+    this.weightKg,
+    this.color,
+    this.features,
+    this.condition,
+    this.behavior,
     this.photoUrl,
     this.distanceKm,
   });
 
   factory DogReport.fromJson(Map<String, dynamic> json) => DogReport(
         id: json['id'] as int,
+        species: json['species'] as String?,
+        size: json['size'] as String?,
+        weightKg: (json['weight_kg'] as num?)?.toDouble(),
+        color: json['color'] as String?,
+        features: json['features'] as String?,
+        condition: json['condition'] as String?,
+        behavior: json['behavior'] as String?,
         description: json['description'] as String,
         status: json['status'] as String,
         position: _position(json)!,
@@ -71,6 +86,13 @@ class DogReport {
       );
 
   final int id;
+  final String? species;
+  final String? size;
+  final double? weightKg;
+  final String? color;
+  final String? features;
+  final String? condition;
+  final String? behavior;
   final String description;
   final String status;
   final LatLng position;
@@ -79,6 +101,60 @@ class DogReport {
   final double? distanceKm;
 
   String get statusLabel => reportStatuses[status] ?? status;
+
+  // "Perro · Mediano · Café · ~12 kg", igual que reportSummary del portal. Vacío en reportes antiguos.
+  String get summary => [
+        ?_label(reportSpecies, species),
+        ?_label(reportSizes, size),
+        ?color,
+        if (weightKg != null) '~${formatKm(weightKg!)} kg',
+      ].join(' · ');
+
+  // "Herido · Asustado"
+  String get conditionLabel => [?_label(reportConditions, condition), ?_label(reportBehaviors, behavior)].join(' · ');
+}
+
+String? _label(Map<String, String> options, String? value) => value == null ? null : options[value] ?? value;
+
+// Datos que se envían al reportar (POST /reports)
+class NewReport {
+  const NewReport({
+    required this.position,
+    required this.species,
+    required this.size,
+    required this.color,
+    required this.condition,
+    required this.description,
+    this.weightKg,
+    this.features,
+    this.behavior,
+    this.photoUrl,
+  });
+
+  final LatLng position;
+  final String species;
+  final String size;
+  final String color;
+  final String condition;
+  final String description;
+  final double? weightKg;
+  final String? features;
+  final String? behavior;
+  final String? photoUrl;
+
+  Map<String, dynamic> toJson() => {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'species': species,
+        'size': size,
+        'color': color,
+        'condition': condition,
+        'description': description,
+        'weight_kg': ?weightKg,
+        'features': ?features,
+        'behavior': ?behavior,
+        'photo_url': ?photoUrl,
+      };
 }
 
 LatLng? _position(Map<String, dynamic> json) {
@@ -89,6 +165,18 @@ LatLng? _position(Map<String, dynamic> json) {
 
 const animalStatuses = {'available': 'Disponible', 'in_process': 'En proceso', 'adopted': 'Adoptado'};
 const reportStatuses = {'reported': 'Reportado', 'in_rescue': 'En rescate', 'resolved': 'Resuelto'};
+
+// Opciones del formulario de reporte: valor que guarda la API → texto (igual que reportOptions del portal)
+const reportSpecies = {'perro': 'Perro', 'gato': 'Gato', 'otro': 'Otro'};
+const reportSizes = {'pequeño': 'Pequeño', 'mediano': 'Mediano', 'grande': 'Grande'};
+const reportConditions = {
+  'bien': 'Bien',
+  'desnutrido': 'Desnutrido',
+  'herido': 'Herido',
+  'enfermo': 'Enfermo',
+  'deplorable': 'Deplorable',
+};
+const reportBehaviors = {'tranquilo': 'Tranquilo', 'asustado': 'Asustado', 'agresivo': 'Agresivo'};
 
 String formatAge(int? months) {
   if (months == null) return 'Edad no registrada';
@@ -139,13 +227,8 @@ class MapService {
     return data.map((item) => DogReport.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<DogReport> createReport(LatLng position, String description, {String? photoUrl}) async {
-    final data = await _api.post('/reports', {
-      'latitude': position.latitude,
-      'longitude': position.longitude,
-      'description': description,
-      'photo_url': ?photoUrl,
-    });
+  Future<DogReport> createReport(NewReport report) async {
+    final data = await _api.post('/reports', report.toJson());
     return DogReport.fromJson(data as Map<String, dynamic>);
   }
 
