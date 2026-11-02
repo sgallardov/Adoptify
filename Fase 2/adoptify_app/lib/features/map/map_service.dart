@@ -62,8 +62,8 @@ class DogReport {
     this.weightKg,
     this.color,
     this.features,
-    this.condition,
-    this.behavior,
+    this.conditions = const [],
+    this.behaviors = const [],
     this.photoUrl,
     this.distanceKm,
   });
@@ -75,8 +75,8 @@ class DogReport {
         weightKg: (json['weight_kg'] as num?)?.toDouble(),
         color: json['color'] as String?,
         features: json['features'] as String?,
-        condition: json['condition'] as String?,
-        behavior: json['behavior'] as String?,
+        conditions: _strings(json['conditions']),
+        behaviors: _strings(json['behaviors']),
         description: json['description'] as String,
         status: json['status'] as String,
         position: _position(json)!,
@@ -91,8 +91,8 @@ class DogReport {
   final double? weightKg;
   final String? color;
   final String? features;
-  final String? condition;
-  final String? behavior;
+  final List<String> conditions;
+  final List<String> behaviors;
   final String description;
   final String status;
   final LatLng position;
@@ -110,11 +110,16 @@ class DogReport {
         if (weightKg != null) '~${formatKm(weightKg!)} kg',
       ].join(' · ');
 
-  // "Herido · Asustado"
-  String get conditionLabel => [?_label(reportConditions, condition), ?_label(reportBehaviors, behavior)].join(' · ');
+  // "Herido, Desnutrido · Asustado", igual que reportCondition del portal
+  String get conditionLabel => [
+        conditions.map((value) => _label(reportConditions, value)).join(', '),
+        behaviors.map((value) => _label(reportBehaviors, value)).join(', '),
+      ].where((text) => text.isNotEmpty).join(' · ');
 }
 
 String? _label(Map<String, String> options, String? value) => value == null ? null : options[value] ?? value;
+
+List<String> _strings(Object? value) => value is List ? value.cast<String>() : const [];
 
 // Datos que se envían al reportar (POST /reports)
 class NewReport {
@@ -123,11 +128,11 @@ class NewReport {
     required this.species,
     required this.size,
     required this.color,
-    required this.condition,
+    required this.conditions,
     required this.description,
     this.weightKg,
     this.features,
-    this.behavior,
+    this.behaviors = const [],
     this.photoUrl,
   });
 
@@ -135,11 +140,11 @@ class NewReport {
   final String species;
   final String size;
   final String color;
-  final String condition;
+  final List<String> conditions;
   final String description;
   final double? weightKg;
   final String? features;
-  final String? behavior;
+  final List<String> behaviors;
   final String? photoUrl;
 
   Map<String, dynamic> toJson() => {
@@ -148,11 +153,11 @@ class NewReport {
         'species': species,
         'size': size,
         'color': color,
-        'condition': condition,
+        'conditions': conditions,
         'description': description,
         'weight_kg': ?weightKg,
         'features': ?features,
-        'behavior': ?behavior,
+        if (behaviors.isNotEmpty) 'behaviors': behaviors,
         'photo_url': ?photoUrl,
       };
 }

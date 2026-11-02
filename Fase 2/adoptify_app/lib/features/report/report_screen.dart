@@ -86,8 +86,9 @@ class _ReportFormState extends State<_ReportForm> {
   LatLng? _position;
   String? _species;
   String? _size;
-  String? _condition;
-  String? _behavior;
+  // Se puede marcar más de un estado y más de un comportamiento
+  final _conditions = <String>[];
+  final _behaviors = <String>[];
   bool _locating = false;
   bool _sending = false;
   String? _error;
@@ -215,6 +216,17 @@ class _ReportFormState extends State<_ReportForm> {
         _photoError = null;
       });
 
+  // "Bien" no se combina con los demás: elegirlo deja solo "Bien" y elegir otro lo quita (igual que la web)
+  void _toggleCondition(String value) {
+    if (_conditions.remove(value)) return;
+    if (value == 'bien') {
+      _conditions.clear();
+    } else {
+      _conditions.remove('bien');
+    }
+    _conditions.add(value);
+  }
+
   void _clearError(String field) {
     if (_fieldErrors.containsKey(field)) setState(() => _fieldErrors.remove(field));
   }
@@ -233,7 +245,7 @@ class _ReportFormState extends State<_ReportForm> {
       if (_color.text.trim().length < 2) 'color': 'Indica el color (por ejemplo, café o negro con blanco).',
       if (_weight.text.trim().isNotEmpty && (weight == null || weight <= 0 || weight > _maxWeightKg))
         'weight_kg': 'Indica un peso aproximado entre 0 y $_maxWeightKg kg.',
-      if (_condition == null) 'condition': 'Selecciona cómo se encuentra.',
+      if (_conditions.isEmpty) 'conditions': 'Selecciona cómo se encuentra (una o más opciones).',
       if (_description.text.trim().length < _minDescription)
         'description': 'Cuéntanos la situación con al menos $_minDescription caracteres.',
     };
@@ -261,11 +273,11 @@ class _ReportFormState extends State<_ReportForm> {
           species: _species!,
           size: _size!,
           color: _color.text.trim(),
-          condition: _condition!,
+          conditions: List.of(_conditions),
           description: _description.text.trim(),
           weightKg: _weightKg,
           features: features.isEmpty ? null : features,
-          behavior: _behavior,
+          behaviors: List.of(_behaviors),
           photoUrl: _photoUrl,
         ),
       );
@@ -510,24 +522,26 @@ class _ReportFormState extends State<_ReportForm> {
             _Section(
               title: '3. ¿Cómo está?',
               children: [
-                _Choices(
+                Text('Puedes marcar más de una opción.', style: textTheme.bodySmall),
+                const SizedBox(height: AdoptifySpacing.md),
+                _MultiChoices(
                   label: 'Estado *',
                   options: reportConditions,
-                  value: _condition,
-                  error: _fieldErrors['condition'],
-                  onSelected: (value) => setState(() {
-                    _condition = value;
-                    _fieldErrors.remove('condition');
+                  selected: _conditions,
+                  error: _fieldErrors['conditions'],
+                  onToggle: (value) => setState(() {
+                    _toggleCondition(value);
+                    _fieldErrors.remove('conditions');
                   }),
                 ),
                 const SizedBox(height: AdoptifySpacing.lg),
-                // Opcional: tocar de nuevo la opción elegida la desmarca
-                _Choices(
+                _MultiChoices(
                   label: 'Comportamiento al acercarse (opcional)',
                   options: reportBehaviors,
-                  value: _behavior,
-                  optional: true,
-                  onSelected: (value) => setState(() => _behavior = value),
+                  selected: _behaviors,
+                  onToggle: (value) => setState(() {
+                    if (!_behaviors.remove(value)) _behaviors.add(value);
+                  }),
                 ),
               ],
             ),
@@ -715,7 +729,7 @@ class _PickerHint extends StatelessWidget {
   }
 }
 
-// Opciones como chips: se eligen de un toque. Si es opcional, tocar la elegida la desmarca.
+// Opciones como chips de una sola elección (tipo de animal, tamaño)
 class _Choices extends StatelessWidget {
   const _Choices({
     required this.label,
@@ -723,15 +737,13 @@ class _Choices extends StatelessWidget {
     required this.value,
     required this.onSelected,
     this.error,
-    this.optional = false,
   });
 
   final String label;
   final Map<String, String> options;
   final String? value;
-  final ValueChanged<String?> onSelected;
+  final ValueChanged<String> onSelected;
   final String? error;
-  final bool optional;
 
   @override
   Widget build(BuildContext context) {
@@ -749,12 +761,49 @@ class _Choices extends StatelessWidget {
                 label: Text(text),
                 selected: value == option,
                 onSelected: (selected) {
-                  if (selected) {
-                    onSelected(option);
-                  } else if (optional) {
-                    onSelected(null);
-                  }
+                  if (selected) onSelected(option);
                 },
+              ),
+          ],
+        ),
+        _FieldError(error),
+      ],
+    );
+  }
+}
+
+// Chips donde se marcan varias opciones; tocar una marcada la desmarca
+class _MultiChoices extends StatelessWidget {
+  const _MultiChoices({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onToggle,
+    this.error,
+  });
+
+  final String label;
+  final Map<String, String> options;
+  final List<String> selected;
+  final ValueChanged<String> onToggle;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AdoptifySpacing.sm),
+        Wrap(
+          spacing: AdoptifySpacing.sm,
+          runSpacing: AdoptifySpacing.sm,
+          children: [
+            for (final MapEntry(key: option, value: text) in options.entries)
+              FilterChip(
+                label: Text(text),
+                selected: selected.contains(option),
+                onSelected: (_) => onToggle(option),
               ),
           ],
         ),

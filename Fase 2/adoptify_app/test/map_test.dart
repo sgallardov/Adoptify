@@ -64,7 +64,7 @@ void main() {
     await tapAndSettle(tester, find.byKey(const ValueKey('report-1')));
     expect(find.text('Mascota reportada'), findsOneWidget);
     expect(find.text('Perro · Mediano · Café · ~12,5 kg'), findsOneWidget);
-    expect(find.text('Estado: Herido'), findsOneWidget);
+    expect(find.text('Estado: Herido, Desnutrido · Asustado'), findsOneWidget);
     expect(find.text('“Perro café con collar rojo cerca del paradero”'), findsOneWidget);
     expect(find.text('Reportado · 28-10-2026'), findsOneWidget);
     expect(find.text('A 2,5 km'), findsOneWidget);

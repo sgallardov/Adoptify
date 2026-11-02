@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, Integer, Float, Text, ForeignKey, DateTime, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape
@@ -30,8 +31,10 @@ class AbandonedDogReport(Base):
     weight_kg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Peso aproximado
     color: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     features: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # Collar, manchas, raza aparente...
-    condition: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'bien', 'desnutrido', 'herido', 'enfermo', 'deplorable'
-    behavior: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'tranquilo', 'asustado', 'agresivo'
+    # Puede tener varios: 'bien' (solo), 'desnutrido', 'herido', 'enfermo', 'deplorable'
+    conditions: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
+    # Puede tener varios: 'tranquilo', 'asustado', 'agresivo'
+    behaviors: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
 
     # Comentarios de quien reporta sobre la situación
     description: Mapped[str] = mapped_column(Text, nullable=False)

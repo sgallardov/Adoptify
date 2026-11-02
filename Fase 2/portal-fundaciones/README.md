@@ -44,6 +44,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
   1. **¿Dónde está?**: clic en el mapa, arrastrar el pin o "Usar mi ubicación".
   2. **¿Cómo es?**: tipo de animal y tamaño (botones), color, peso aproximado y características.
   3. **¿Cómo está?**: estado (Bien, Desnutrido, Herido, Enfermo, Deplorable) y comportamiento al acercarse (opcional).
+     En ambos se marcan varias opciones; "Bien" no se combina con los demás estados.
   4. **Comentarios**: la situación, en texto libre.
   5. **Foto** (opcional).
 

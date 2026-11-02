@@ -123,7 +123,7 @@ void main() {
     expect(find.text('Selecciona el tipo de animal.'), findsOneWidget);
     expect(find.text('Selecciona el tamaño.'), findsOneWidget);
     expect(find.text('Indica el color (por ejemplo, café o negro con blanco).'), findsOneWidget);
-    expect(find.text('Selecciona cómo se encuentra.'), findsOneWidget);
+    expect(find.text('Selecciona cómo se encuentra (una o más opciones).'), findsOneWidget);
     expect(find.text('Cuéntanos la situación con al menos 10 caracteres.'), findsOneWidget);
 
     await tapVisible(tester, find.text('Gato'));
@@ -154,7 +154,7 @@ void main() {
       'species': 'perro',
       'size': 'mediano',
       'color': 'Negro',
-      'condition': 'herido',
+      'conditions': ['herido'],
       'description': 'Perrita negra asustada bajo un auto',
     });
     expect(find.text('¡Gracias! Tu reporte quedó publicado en el mapa.'), findsOneWidget);
@@ -171,16 +171,32 @@ void main() {
     await fillRequired(tester);
     await tester.enterText(find.byKey(const ValueKey('report-weight')), '3,5');
     await tester.enterText(find.byKey(const ValueKey('report-features')), ' Collar azul sin placa ');
-    await tapVisible(tester, find.text('Agresivo'));
-    // Tocar de nuevo la opción la desmarca; se elige otra
-    await tapVisible(tester, find.text('Agresivo'));
+    // Varios estados y comportamientos; tocar uno marcado lo desmarca
+    await tapVisible(tester, find.text('Desnutrido'));
+    await tapVisible(tester, find.text('Tranquilo'));
+    await tapVisible(tester, find.text('Tranquilo'));
     await tapVisible(tester, find.text('Asustado'));
+    await tapVisible(tester, find.text('Agresivo'));
     await tapVisible(tester, find.text('Enviar reporte'));
 
     final body = jsonDecode(api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports').body);
     expect(body['weight_kg'], 3.5);
     expect(body['features'], 'Collar azul sin placa');
-    expect(body['behavior'], 'asustado');
+    expect(body['conditions'], ['herido', 'desnutrido']);
+    expect(body['behaviors'], ['asustado', 'agresivo']);
+  });
+
+  testWidgets('"Bien" no se combina con otros estados', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await fillRequired(tester); // marca "Herido"
+    await tapVisible(tester, find.text('Enfermo'));
+    await tapVisible(tester, find.text('Bien'));
+    await tapVisible(tester, find.text('Enviar reporte'));
+    final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
+    expect(jsonDecode(post.body)['conditions'], ['bien']);
   });
 
   testWidgets('muestra el mensaje si no hay conexión al enviar', (tester) async {

@@ -9,8 +9,8 @@ export type DogReport = {
   weight_kg: number | null
   color: string | null
   features: string | null
-  condition: string | null
-  behavior: string | null
+  conditions: string[]
+  behaviors: string[]
   description: string
   photo_url: string | null
   status: string
@@ -21,8 +21,8 @@ export type DogReport = {
 }
 
 export type ReportInput = {
-  latitude: number; longitude: number; species: string; size: string; color: string; condition: string
-  weight_kg: number | null; features: string | null; behavior: string | null; description: string; photo_url?: string
+  latitude: number; longitude: number; species: string; size: string; color: string; conditions: string[]
+  weight_kg: number | null; features: string | null; behaviors: string[]; description: string; photo_url?: string
 }
 
 export async function createReport(input: ReportInput): Promise<DogReport> {

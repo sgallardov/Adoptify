@@ -62,8 +62,8 @@ class FakeApi {
       'weight_kg': 12.5,
       'color': 'Café',
       'features': 'Collar rojo',
-      'condition': 'herido',
-      'behavior': null,
+      'conditions': ['herido', 'desnutrido'],
+      'behaviors': ['asustado'],
       'description': 'Perro café con collar rojo cerca del paradero',
       'photo_url': null,
       'status': 'reported',
@@ -154,7 +154,7 @@ class FakeApi {
         }
         final report = {
           'id': reports.length + 1,
-          for (final field in ['species', 'size', 'weight_kg', 'color', 'features', 'condition', 'behavior'])
+          for (final field in ['species', 'size', 'weight_kg', 'color', 'features', 'conditions', 'behaviors'])
             field: body[field],
           'description': body['description'],
           'photo_url': body['photo_url'],

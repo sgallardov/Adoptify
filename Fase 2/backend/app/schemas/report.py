@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ReportSpecies = Literal["perro", "gato", "otro"]
 ReportSize = Literal["pequeño", "mediano", "grande"]
@@ -18,8 +18,10 @@ class ReportCreate(BaseModel):
     weight_kg: float | None = Field(None, gt=0, le=150, description="Peso aproximado en kilos")
     color: str = Field(..., min_length=2, max_length=60)
     features: str | None = Field(None, max_length=300, description="Características: collar, manchas, raza aparente, etc.")
-    condition: ReportCondition = Field(..., description="Estado en que se encuentra")
-    behavior: ReportBehavior | None = Field(None, description="Cómo reacciona al acercarse")
+    conditions: list[ReportCondition] = Field(
+        ..., min_length=1, description="Estado en que se encuentra: uno o varios; 'bien' no se combina con otros"
+    )
+    behaviors: list[ReportBehavior] = Field(default_factory=list, description="Cómo reacciona al acercarse: ninguno, uno o varios")
     description: str = Field(..., min_length=10, max_length=1000, description="Comentarios sobre la situación")
     photo_url: str | None = Field(None, max_length=500)
 
@@ -27,6 +29,17 @@ class ReportCreate(BaseModel):
     @classmethod
     def strip_required(cls, value):
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("conditions", "behaviors")
+    @classmethod
+    def without_duplicates(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(values))
+
+    @model_validator(mode="after")
+    def good_is_exclusive(self):
+        if "bien" in self.conditions and len(self.conditions) > 1:
+            raise ValueError("El estado 'bien' no se puede combinar con otros estados.")
+        return self
 
     @field_validator("features", mode="before")
     @classmethod
@@ -48,14 +61,21 @@ class ReportResponse(BaseModel):
     weight_kg: float | None
     color: str | None
     features: str | None
-    condition: str | None
-    behavior: str | None
+    conditions: list[str]
+    behaviors: list[str]
     description: str
     photo_url: str | None
     status: str
     latitude: float
     longitude: float
     created_at: datetime
+
+
+    # Los reportes anteriores a la ficha guardan NULL: se entregan como lista vacía
+    @field_validator("conditions", "behaviors", mode="before")
+    @classmethod
+    def none_as_empty(cls, value):
+        return value or []
 
 
 class NearbyReportResponse(ReportResponse):

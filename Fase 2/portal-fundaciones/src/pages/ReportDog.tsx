@@ -7,8 +7,8 @@ import Feedback from '../components/Feedback'
 import type { LatLng } from '../hooks/useMapAnimals'
 import { errorMessage } from '../services/api'
 import { createReport } from '../services/reports'
-import { MAX_COMMENT, reportFields, reportOptions, reportPayload, validateReport } from '../services/reportForm'
-import type { ReportErrors, ReportFields } from '../services/reportForm'
+import { MAX_COMMENT, reportFields, reportOptions, reportPayload, toggleCondition, toggleOption, validateReport } from '../services/reportForm'
+import type { MultiField, ReportErrors, TextField } from '../services/reportForm'
 import PageHeading from '../components/PageHeading'
 import ReportLocationPicker from '../components/ReportLocationPicker'
 import PhotoPicker from '../components/PhotoPicker'
@@ -28,20 +28,22 @@ function FieldError({ id, error }: { id: string; error?: string }) {
   return error ? <p id={`${id}-error`} className="mt-2 text-sm text-danger-700">{error}</p> : null
 }
 
-// Opciones como botones (radio): se eligen de un toque, también en el celular
-function Choices({ name, label, options, value, onChange, error, optional }: {
-  name: string; label: string; options: readonly (readonly [string, string])[]; value: string
-  onChange: (value: string) => void; error?: string; optional?: boolean
+const chipClass = 'inline-flex rounded-full border border-base-300 bg-surface px-4 py-2 text-sm font-medium text-base-700 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-on-accent peer-focus-visible:ring-2 peer-focus-visible:ring-brand-300 hover:bg-base-50 peer-checked:hover:bg-brand-700'
+
+// Opciones como botones: se eligen de un toque, también en el celular.
+// Con multiple son casillas (se marcan varias); si no, radio (una sola).
+function Choices({ name, label, options, selected, onToggle, error, multiple }: {
+  name: string; label: string; options: readonly (readonly [string, string])[]; selected: string[]
+  onToggle: (value: string) => void; error?: string; multiple?: boolean
 }) {
-  const all = optional ? [...options, ['', 'No sé'] as const] : options
   return (
     <fieldset aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined}>
       <legend className="text-sm font-semibold">{label}</legend>
       <div className="mt-2 flex flex-wrap gap-2">
-        {all.map(([option, text]) => (
-          <label key={option || 'none'} className="cursor-pointer">
-            <input type="radio" name={name} value={option} checked={value === option} onChange={() => onChange(option)} className="peer sr-only" />
-            <span className="inline-flex rounded-full border border-base-300 bg-surface px-4 py-2 text-sm font-medium text-base-700 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-on-accent peer-focus-visible:ring-2 peer-focus-visible:ring-brand-300 hover:bg-base-50 peer-checked:hover:bg-brand-700">{text}</span>
+        {options.map(([option, text]) => (
+          <label key={option} className="cursor-pointer">
+            <input type={multiple ? 'checkbox' : 'radio'} name={name} value={option} checked={selected.includes(option)} onChange={() => onToggle(option)} className="peer sr-only" />
+            <span className={chipClass}>{text}</span>
           </label>
         ))}
       </div>
@@ -63,8 +65,14 @@ export default function ReportDog() {
   const [error, setError] = useState<string | null>(null)
   const errorSummary = useRef<HTMLDivElement>(null)
 
-  function change(field: keyof ReportFields, value: string) {
+  function change(field: TextField, value: string) {
     setFields(previous => ({ ...previous, [field]: value }))
+    setErrors(previous => ({ ...previous, [field]: undefined }))
+  }
+
+  function toggle(field: MultiField, value: string) {
+    const next = field === 'conditions' ? toggleCondition : toggleOption
+    setFields(previous => ({ ...previous, [field]: next(previous[field], value) }))
     setErrors(previous => ({ ...previous, [field]: undefined }))
   }
 
@@ -115,7 +123,7 @@ export default function ReportDog() {
     }
   }
 
-  function textProps(field: keyof ReportFields) {
+  function textProps(field: TextField) {
     return {
       id: field, name: field, className: inputClass, value: fields[field],
       'aria-invalid': Boolean(errors[field]), 'aria-describedby': errors[field] ? `${field}-error` : undefined,
@@ -149,8 +157,8 @@ export default function ReportDog() {
 
           <Section title="2. ¿Cómo es?">
             <div className="space-y-5">
-              <Choices name="species" label="Tipo de animal *" options={reportOptions.species} value={fields.species} onChange={value => change('species', value)} error={errors.species} />
-              <Choices name="size" label="Tamaño *" options={reportOptions.size} value={fields.size} onChange={value => change('size', value)} error={errors.size} />
+              <Choices name="species" label="Tipo de animal *" options={reportOptions.species} selected={[fields.species]} onToggle={value => change('species', value)} error={errors.species} />
+              <Choices name="size" label="Tamaño *" options={reportOptions.size} selected={[fields.size]} onToggle={value => change('size', value)} error={errors.size} />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label htmlFor="color" className="text-sm font-semibold">Color *</label>
@@ -173,8 +181,9 @@ export default function ReportDog() {
 
           <Section title="3. ¿Cómo está?">
             <div className="space-y-5">
-              <Choices name="condition" label="Estado *" options={reportOptions.condition} value={fields.condition} onChange={value => change('condition', value)} error={errors.condition} />
-              <Choices name="behavior" label="Comportamiento al acercarse (opcional)" options={reportOptions.behavior} value={fields.behavior} onChange={value => change('behavior', value)} error={errors.behavior} optional />
+              <p className="-mb-2 text-sm text-base-500">Puedes marcar más de una opción.</p>
+              <Choices name="conditions" label="Estado *" options={reportOptions.condition} selected={fields.conditions} onToggle={value => toggle('conditions', value)} error={errors.conditions} multiple />
+              <Choices name="behaviors" label="Comportamiento al acercarse (opcional)" options={reportOptions.behavior} selected={fields.behaviors} onToggle={value => toggle('behaviors', value)} error={errors.behaviors} multiple />
             </div>
           </Section>
 

@@ -19,12 +19,25 @@ export function reportLabel(field: keyof typeof reportOptions, value: string | n
 
 export type ReportFields = {
   species: string; size: string; weight_kg: string; color: string
-  features: string; condition: string; behavior: string; description: string
+  features: string; conditions: string[]; behaviors: string[]; description: string
 }
+// Campos que admiten varias opciones
+export type MultiField = 'conditions' | 'behaviors'
+export type TextField = Exclude<keyof ReportFields, MultiField>
 export type ReportErrors = Partial<Record<keyof ReportFields | 'position', string>>
 
 export function reportFields(): ReportFields {
-  return { species: '', size: '', weight_kg: '', color: '', features: '', condition: '', behavior: '', description: '' }
+  return { species: '', size: '', weight_kg: '', color: '', features: '', conditions: [], behaviors: [], description: '' }
+}
+
+// Marca o desmarca un estado. "Bien" no se combina con los demás: elegirlo deja solo "Bien" y elegir otro lo quita.
+export function toggleCondition(current: string[], value: string): string[] {
+  if (current.includes(value)) return current.filter(item => item !== value)
+  return value === 'bien' ? ['bien'] : [...current.filter(item => item !== 'bien'), value]
+}
+
+export function toggleOption(current: string[], value: string): string[] {
+  return current.includes(value) ? current.filter(item => item !== value) : [...current, value]
 }
 
 const allowed = (field: keyof typeof reportOptions, value: string) => reportOptions[field].some(([option]) => option === value)
@@ -38,8 +51,9 @@ export function validateReport(fields: ReportFields, position: LatLng | null): R
   if (weight && (!Number.isFinite(Number(weight)) || Number(weight) <= 0 || Number(weight) > 150)) errors.weight_kg = 'Indica un peso aproximado entre 0 y 150 kg.'
   if (fields.color.trim().length < 2) errors.color = 'Indica el color (por ejemplo, café o negro con blanco).'
   if (fields.features.length > 300) errors.features = 'Las características admiten hasta 300 caracteres.'
-  if (!allowed('condition', fields.condition)) errors.condition = 'Selecciona cómo se encuentra.'
-  if (fields.behavior && !allowed('behavior', fields.behavior)) errors.behavior = 'Selecciona un comportamiento de la lista.'
+  if (!fields.conditions.length || !fields.conditions.every(value => allowed('condition', value))) errors.conditions = 'Selecciona cómo se encuentra (una o más opciones).'
+  else if (fields.conditions.includes('bien') && fields.conditions.length > 1) errors.conditions = '"Bien" no se puede combinar con otros estados.'
+  if (!fields.behaviors.every(value => allowed('behavior', value))) errors.behaviors = 'Selecciona comportamientos de la lista.'
   if (fields.description.trim().length < MIN_COMMENT) errors.description = `Cuéntanos la situación con al menos ${MIN_COMMENT} caracteres.`
   return errors
 }
@@ -48,14 +62,14 @@ export function reportPayload(fields: ReportFields, position: LatLng, photoUrl: 
   const weight = fields.weight_kg.trim().replace(',', '.')
   return {
     latitude: position.lat, longitude: position.lng,
-    species: fields.species, size: fields.size, color: fields.color.trim(), condition: fields.condition,
+    species: fields.species, size: fields.size, color: fields.color.trim(), conditions: fields.conditions,
     weight_kg: weight ? Number(weight) : null, features: fields.features.trim() || null,
-    behavior: fields.behavior || null, description: fields.description.trim(),
+    behaviors: fields.behaviors, description: fields.description.trim(),
     ...(photoUrl ? { photo_url: photoUrl } : {}),
   }
 }
 
-type ReportDetails = Pick<DogReport, 'species' | 'size' | 'weight_kg' | 'color' | 'condition' | 'behavior'>
+type ReportDetails = Pick<DogReport, 'species' | 'size' | 'weight_kg' | 'color' | 'conditions' | 'behaviors'>
 
 // Resumen legible de la ficha para el mapa: "Perro · Mediano · Café · ~12 kg". Vacío en reportes antiguos.
 export function reportSummary(report: ReportDetails): string {
@@ -65,7 +79,9 @@ export function reportSummary(report: ReportDetails): string {
   ].filter(Boolean).join(' · ')
 }
 
-// Estado y comportamiento: "Herido · Asustado"
+// Estados y comportamientos: "Herido, Desnutrido · Asustado"
 export function reportCondition(report: ReportDetails): string {
-  return [reportLabel('condition', report.condition), reportLabel('behavior', report.behavior)].filter(Boolean).join(' · ')
+  const conditions = report.conditions.map(value => reportLabel('condition', value)).join(', ')
+  const behaviors = report.behaviors.map(value => reportLabel('behavior', value)).join(', ')
+  return [conditions, behaviors].filter(Boolean).join(' · ')
 }

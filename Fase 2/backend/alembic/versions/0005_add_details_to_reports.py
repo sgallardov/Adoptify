@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -23,8 +24,9 @@ COLUMNS = (
     ('weight_kg', sa.Float()),
     ('color', sa.String(length=60)),
     ('features', sa.String(length=300)),
-    ('condition', sa.String(length=20)),
-    ('behavior', sa.String(length=20)),
+    # Se puede marcar más de un estado y más de un comportamiento
+    ('conditions', postgresql.ARRAY(sa.String(length=20))),
+    ('behaviors', postgresql.ARRAY(sa.String(length=20))),
 )
 
 
