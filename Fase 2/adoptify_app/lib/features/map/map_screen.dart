@@ -396,8 +396,16 @@ class _MapScreenState extends State<MapScreen> {
                   children: [
                     if (selectedAnimal != null || selectedReport != null) ...[
                       selectedAnimal != null
-                          ? _AnimalDetailCard(animal: selectedAnimal, onClose: _clearSelection)
-                          : _ReportDetailCard(report: selectedReport!, onClose: _clearSelection),
+                          ? _AnimalDetailCard(
+                              animal: selectedAnimal,
+                              onClose: _clearSelection,
+                              onOpen: () => context.push('/animales/${selectedAnimal.id}', extra: selectedAnimal),
+                            )
+                          : _ReportDetailCard(
+                              report: selectedReport!,
+                              onClose: _clearSelection,
+                              onOpen: () => context.push('/reportes/${selectedReport.id}', extra: selectedReport),
+                            ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
                     _ReportButton(onPressed: () => context.push('/reportar')),
@@ -811,12 +819,14 @@ class _RadiusSelector extends StatelessWidget {
   }
 }
 
-// Ficha que aparece al tocar un pin: reemplaza los popups del mapa web
+// Ficha que aparece al tocar un pin: reemplaza los popups del mapa web.
+// Tocar la ficha (menos el botón de cerrar) abre la pantalla completa con la foto grande y todo el detalle.
 class _DetailCard extends StatelessWidget {
-  const _DetailCard({required this.children, required this.onClose, this.leading});
+  const _DetailCard({required this.children, required this.onClose, required this.onOpen, this.leading});
 
   final List<Widget> children;
   final VoidCallback onClose;
+  final VoidCallback onOpen;
   final Widget? leading;
 
   @override
@@ -827,9 +837,20 @@ class _DetailCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: AdoptifySpacing.md)],
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+            child: InkWell(
+              onTap: onOpen,
+              borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: AdoptifySpacing.md)],
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+                  ),
+                ],
+              ),
+            ),
           ),
           IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
         ],
@@ -839,16 +860,18 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _AnimalDetailCard extends StatelessWidget {
-  const _AnimalDetailCard({required this.animal, required this.onClose});
+  const _AnimalDetailCard({required this.animal, required this.onClose, required this.onOpen});
 
   final Animal animal;
   final VoidCallback onClose;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return _DetailCard(
       onClose: onClose,
+      onOpen: onOpen,
       leading: AnimalPhoto(url: animal.photoUrl, size: 72),
       children: [
         Text(animal.name, style: textTheme.titleMedium),
@@ -869,16 +892,18 @@ class _AnimalDetailCard extends StatelessWidget {
 }
 
 class _ReportDetailCard extends StatelessWidget {
-  const _ReportDetailCard({required this.report, required this.onClose});
+  const _ReportDetailCard({required this.report, required this.onClose, required this.onOpen});
 
   final DogReport report;
   final VoidCallback onClose;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return _DetailCard(
       onClose: onClose,
+      onOpen: onOpen,
       leading: report.photoUrl == null ? null : AnimalPhoto(url: report.photoUrl, size: 72),
       children: [
         Text('Mascota reportada', style: textTheme.titleMedium?.copyWith(color: context.colors.reportText)),

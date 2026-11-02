@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adoptify_app/app/app.dart';
 import 'package:adoptify_app/core/location_service.dart';
+import 'package:adoptify_app/shared/map/map_controls.dart';
 
 import 'fake_api.dart';
 
@@ -75,6 +76,55 @@ void main() {
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
     expect(find.text('Luna'), findsOneWidget);
     expect(find.text('Fundación Patitas'), findsOneWidget);
+  });
+
+  testWidgets('tocar la ficha de un reporte abre el detalle a pantalla completa', (tester) async {
+    final api = FakeApi();
+    await openMap(tester, api);
+
+    await tapAndSettle(tester, find.byKey(const ValueKey('report-1')));
+    await tapAndSettle(tester, find.text('“Perro café con collar rojo cerca del paradero”').first);
+
+    // Solo están en el detalle, no en la ficha sobre el mapa
+    expect(find.text('Comentarios'), findsOneWidget);
+    expect(find.text('Ubicación'), findsOneWidget);
+    expect(find.text('Reportado · 28-10-2026'), findsWidgets);
+
+    await tapAndSettle(tester, find.byTooltip('Volver'));
+    expect(find.text('Comentarios'), findsNothing);
+    expect(find.text('Mascota reportada'), findsOneWidget);
+  });
+
+  testWidgets('tocar la ficha de una mascota abre el detalle a pantalla completa', (tester) async {
+    final api = FakeApi();
+    await openMap(tester, api);
+
+    await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
+    await tapAndSettle(tester, find.text('Luna').first);
+
+    expect(find.text('Ubicación'), findsOneWidget);
+    expect(find.text('Fundación Patitas'), findsWidgets);
+
+    await tapAndSettle(tester, find.byTooltip('Volver'));
+    expect(find.text('Ubicación'), findsNothing);
+  });
+
+  testWidgets('tocar la foto del detalle la abre completa y con zoom', (tester) async {
+    final api = FakeApi();
+    api.reports[0]['photo_url'] = 'http://api/uploads/foto.png';
+    await openMap(tester, api);
+
+    await tapAndSettle(tester, find.byKey(const ValueKey('report-1')));
+    await tapAndSettle(tester, find.text('“Perro café con collar rojo cerca del paradero”').first);
+    expect(find.text('Comentarios'), findsOneWidget);
+
+    await tapAndSettle(tester, find.byKey(const ValueKey('hero-photo')));
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+
+    await tapAndSettle(tester, find.widgetWithIcon(MapButton, Icons.close));
+    expect(find.byType(InteractiveViewer), findsNothing);
+    // Sigue en el detalle, no volvió hasta el mapa
+    expect(find.text('Comentarios'), findsOneWidget);
   });
 
   testWidgets('el buscador encuentra mascotas por nombre o fundación y las muestra en el mapa', (tester) async {
