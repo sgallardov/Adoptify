@@ -154,6 +154,9 @@ Cada fundación gestiona solo sus propios animales.
 * **Valores válidos:** `species` (`perro`, `gato`), `gender` (`macho`, `hembra`), `size` (`pequeño`, `mediano`, `grande`), `energy_level` (1 a 5), `status` (`available`, `in_process`, `adopted`). Fuera de eso: `422`.
 * **Roles:** `admin` puede crear, editar y borrar en cualquier fundación; `adopter` recibe `403`.
 
+### Fundaciones
+* `GET /api/v1/foundations` (público): fundaciones ordenadas por nombre con `description`, `address`, `commune`, `city`, `phone`, `email`, `is_verified`, `latitude`/`longitude` y `animals` (solo los disponibles, con el mismo formato de `GET /animals`). No expone el RUT ni la geometría cruda. La usa la pestaña Fundaciones de la app.
+
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
 * **Validación:** solo JPG y PNG, reconocidos por el contenido del archivo (no por el nombre ni el `Content-Type`). Otro formato: `415`. Más de 5 MB (`MAX_UPLOAD_MB`): `413`. Sin sesión: `401`. Sin archivo: `422`.
