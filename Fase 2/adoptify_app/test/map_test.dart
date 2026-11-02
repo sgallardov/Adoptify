@@ -26,13 +26,35 @@ void main() {
     final api = FakeApi();
     await openMap(tester, api);
 
-    expect(find.text('1 mascota disponible'), findsOneWidget);
     expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
     expect(find.byKey(const ValueKey('animal-8')), findsNothing);
     expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
     // Sin ubicación, los reportes se buscan alrededor de Santiago a 100 km
     final reportsRequest = api.requests.firstWhere((r) => r.url.path == '/reports/nearby');
     expect(reportsRequest.url.queryParameters['radius_km'], '100');
+  });
+
+  testWidgets('la tarjeta muestra los avisos a menos de 5 km de tu ubicación', (tester) async {
+    final api = FakeApi();
+    await openMap(tester, api);
+
+    expect(find.text('x1 aviso'), findsOneWidget);
+    expect(find.text('cerca tuyo'), findsOneWidget);
+    final alerts = api.requests.lastWhere((r) => r.url.path == '/reports/nearby');
+    expect(alerts.url.queryParameters, {'lat': '-33.4378', 'lng': '-70.6505', 'radius_km': '5'});
+  });
+
+  testWidgets('sin permiso de ubicación la tarjeta invita a activarla', (tester) async {
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
+    await openMap(tester, FakeApi());
+
+    expect(find.text('Activa tu'), findsOneWidget);
+    expect(find.text('ubicación'), findsOneWidget);
+    // Al abrir no se muestra el error: solo si la persona toca la tarjeta o el botón
+    expect(find.text('No diste permiso para usar tu ubicación.'), findsNothing);
+
+    await tapAndSettle(tester, find.text('Activa tu'));
+    expect(find.text('No diste permiso para usar tu ubicación.'), findsOneWidget);
   });
 
   testWidgets('tocar una mascota o un reporte muestra su ficha', (tester) async {
@@ -98,13 +120,14 @@ void main() {
 
     final nearby = api.requests.lastWhere((r) => r.url.path == '/animals/nearby');
     expect(nearby.url.queryParameters, {'lat': '-33.4378', 'lng': '-70.6505', 'radius_km': '10'});
-    expect(find.text('1 mascota disponible a menos de 10 km'), findsOneWidget);
+    expect(find.text('Radio 10 km'), findsOneWidget);
 
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
     expect(find.text('A 1,25 km de ti'), findsOneWidget);
 
     await tapAndSettle(tester, find.text('Ver todas'));
-    expect(find.text('1 mascota disponible'), findsOneWidget);
+    expect(find.text('Ver todas'), findsNothing);
+    expect(api.requests.last.url.path, isNot('/animals/nearby'));
   });
 
   testWidgets('muestra el error de ubicación sin romper el mapa', (tester) async {

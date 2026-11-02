@@ -94,12 +94,25 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
   }
 }
 
-// OpenStreetMap exige mostrar la atribución en el mapa
-Widget osmAttribution(BuildContext context, {Alignment alignment = Alignment.bottomRight}) =>
-    SimpleAttributionWidget(
-      source: const Text('OpenStreetMap'),
-      backgroundColor: context.colors.surface.withValues(alpha: 0.8),
+// La licencia de OpenStreetMap exige mostrar "© OpenStreetMap" sobre el mapa: se deja lo más discreta posible
+Widget osmAttribution(BuildContext context, {Alignment alignment = Alignment.bottomRight}) => Align(
       alignment: alignment,
+      child: Container(
+        margin: const EdgeInsets.all(AdoptifySpacing.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xs),
+        decoration: BoxDecoration(
+          color: context.colors.surface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
+        ),
+        child: Text(
+          '© OpenStreetMap',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: context.colors.textMuted,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0,
+              ),
+        ),
+      ),
     );
 
 // Pin redondo con borde blanco, igual a dotIcon() del portal

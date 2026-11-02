@@ -14,6 +14,8 @@ import 'map_service.dart';
 const _radiusOptions = [5, 10, 25, 50, 100];
 // Sin tu ubicación, los reportes se buscan alrededor de Santiago con el radio máximo (igual que la web)
 const _defaultReportsRadiusKm = 100;
+// Radio de la tarjeta "avisos cerca tuyo"
+const _alertsRadiusKm = 5;
 // Espacio que ocupan el buscador (arriba) y el botón de reportar (abajo), para encuadrar los pines entre ellos
 const _fitPadding = EdgeInsets.fromLTRB(48, 150, 72, 120);
 
@@ -46,6 +48,13 @@ class _MapScreenState extends State<MapScreen> {
   bool _error = false;
   int _request = 0;
 
+  // Tarjeta de avisos: perros reportados a menos de 5 km de tu ubicación.
+  // La ubicación se pide sola al abrir el mapa; si no se obtiene, la tarjeta invita a activarla.
+  LatLng? _userPosition;
+  int? _alertsNearby;
+  bool _detecting = true;
+  bool _alertsLoading = false;
+
   // Capas visibles (botón de capas)
   bool _showAnimals = true;
   bool _showReports = true;
@@ -64,7 +73,49 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_request == 0) _load();
+    if (_request == 0) {
+      _load();
+      _detectUser();
+    }
+  }
+
+  // Ubicación para la tarjeta de avisos, sin mostrar errores: si falla, la tarjeta ofrece activarla
+  Future<void> _detectUser() async {
+    try {
+      final position = await LocationService.instance.current();
+      if (!mounted) return;
+      _setUserPosition(position);
+    } catch (_) {
+      if (mounted) setState(() => _detecting = false);
+    }
+  }
+
+  void _setUserPosition(LatLng position) {
+    setState(() {
+      _userPosition = position;
+      _detecting = false;
+    });
+    _loadAlerts();
+  }
+
+  Future<void> _loadAlerts() async {
+    final position = _userPosition;
+    if (position == null) return;
+    setState(() => _alertsLoading = true);
+    try {
+      final reports = await _service.fetchNearbyReports(position, _alertsRadiusKm);
+      if (!mounted || position != _userPosition) return;
+      setState(() {
+        _alertsNearby = reports.length;
+        _alertsLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _alertsNearby = null;
+        _alertsLoading = false;
+      });
+    }
   }
 
   @override
@@ -150,6 +201,7 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final position = await LocationService.instance.current();
       if (!mounted) return;
+      _setUserPosition(position);
       setState(() {
         _origin = position;
         _selectedAnimalId = null;
@@ -212,12 +264,6 @@ class _MapScreenState extends State<MapScreen> {
       _selectedAnimalId = null;
       _selectedReportId = null;
     });
-  }
-
-  String get _summary {
-    final count = _animals.length;
-    final noun = count == 1 ? 'mascota disponible' : 'mascotas disponibles';
-    return _origin != null ? '$count $noun a menos de $_radiusKm km' : '$count $noun';
   }
 
   List<Animal> get _results {
@@ -289,7 +335,20 @@ class _MapScreenState extends State<MapScreen> {
                         _SearchResults(results: _results, onPick: _pickResult)
                       else ...[
                         const SizedBox(height: AdoptifySpacing.sm),
-                        _buildStatus(),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildStatus()),
+                            const SizedBox(width: AdoptifySpacing.sm),
+                            _AlertsCard(
+                              count: _alertsNearby,
+                              loading: _detecting || _alertsLoading,
+                              hasLocation: _userPosition != null,
+                              onActivate: _locating ? null : _locate,
+                              onRetry: _loadAlerts,
+                            ),
+                          ],
+                        ),
                         if (_geoError != null) ...[
                           const SizedBox(height: AdoptifySpacing.sm),
                           MessageBox.error(message: _geoError!),
@@ -301,6 +360,8 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+          // Atribución de OSM, mínima, en la franja bajo el botón de reportar (las fichas quedan sobre el botón)
+          Positioned(right: AdoptifySpacing.md, bottom: 0, child: osmAttribution(context)),
           // Derecha: capas y ubicación. Suben cuando hay una ficha abierta, para no quedar debajo de ella.
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
@@ -371,6 +432,9 @@ class _MapScreenState extends State<MapScreen> {
           TextButton(onPressed: _load, child: const Text('Reintentar')),
         ],
       );
+    } else if (_origin == null && _animals.isNotEmpty) {
+      // El conteo de mascotas se reemplazó por la tarjeta de avisos
+      return const SizedBox.shrink();
     } else {
       final empty = _origin != null
           ? 'No hay mascotas disponibles a menos de $_radiusKm km. Prueba con un radio mayor.'
@@ -380,7 +444,7 @@ class _MapScreenState extends State<MapScreen> {
         runSpacing: AdoptifySpacing.xs,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Text(_animals.isEmpty ? empty : _summary, style: muted),
+          if (_animals.isEmpty) Text(empty, style: muted),
           if (_origin != null) ...[
             _RadiusSelector(value: _radiusKm, onChanged: _changeRadius),
             TextButton.icon(
@@ -450,11 +514,6 @@ class _MapScreenState extends State<MapScreen> {
             ],
           ],
         ),
-        // La atribución de OSM va arriba a la derecha, bajo el buscador: abajo la taparían el botón y las fichas
-        Padding(
-          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 112, right: AdoptifySpacing.lg),
-          child: osmAttribution(context, alignment: Alignment.topRight),
-        ),
       ],
     );
   }
@@ -480,6 +539,88 @@ BoxDecoration _surface(BuildContext context, {double radius = AdoptifyRadius.lg}
   border: Border.all(color: context.colors.border),
   boxShadow: AdoptifyShadows.soft,
 );
+
+// Cuadrado con una huella y cuántos perros reportados hay a menos de 5 km de ti
+class _AlertsCard extends StatelessWidget {
+  const _AlertsCard({
+    required this.count,
+    required this.loading,
+    required this.hasLocation,
+    required this.onActivate,
+    required this.onRetry,
+  });
+
+  final int? count;
+  final bool loading;
+  final bool hasLocation;
+  final VoidCallback? onActivate;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = Theme.of(context).textTheme;
+    final List<Widget> lines;
+    VoidCallback? onTap;
+    if (loading) {
+      lines = [const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))];
+    } else if (hasLocation && count != null) {
+      lines = [
+        Text('x$count ${count == 1 ? 'aviso' : 'avisos'}', style: textTheme.titleSmall),
+        Text('cerca tuyo', style: textTheme.bodySmall),
+      ];
+    } else if (hasLocation) {
+      // No se pudieron consultar los avisos: tocar la tarjeta reintenta
+      lines = [
+        Text('Sin conexión', style: textTheme.labelMedium),
+        Text('Reintentar', style: textTheme.bodySmall?.copyWith(color: colors.primaryDark)),
+      ];
+      onTap = onRetry;
+    } else {
+      lines = [
+        Text('Activa tu', style: textTheme.labelMedium),
+        Text('ubicación', style: textTheme.labelMedium),
+      ];
+      onTap = onActivate;
+    }
+
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: hasLocation && count != null ? '$count avisos a menos de $_alertsRadiusKm km' : null,
+      child: Material(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+          child: Container(
+            width: 104,
+            padding: const EdgeInsets.all(AdoptifySpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+              border: Border.all(color: colors.border),
+              boxShadow: AdoptifyShadows.soft,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: colors.primarySoft, shape: BoxShape.circle),
+                  child: Icon(Icons.pets, size: 20, color: colors.primaryDark),
+                ),
+                const SizedBox(height: AdoptifySpacing.xs),
+                ...lines,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.controller, required this.focusNode});
