@@ -7,7 +7,7 @@ export default function Foundation() {
     <PageHeading eyebrow="Quienes hacen la diferencia" title="Mi fundación" description="La identidad de tu organización dentro de la comunidad Adoptify." />
     <section className="overflow-hidden rounded-3xl border border-base-200 bg-surface">
       <div className="flex flex-wrap items-center gap-5 bg-success-50 p-7 sm:p-9">
-        <span className="flex size-20 items-center justify-center rounded-2xl bg-forest text-surface"><PawPrint size={40} /></span>
+        <span className="flex size-20 items-center justify-center rounded-2xl bg-forest text-on-accent"><PawPrint size={40} /></span>
         <div><h2 className="text-2xl font-bold">{foundation.name}</h2><p className="mt-2 flex items-center gap-2 text-sm text-success-800"><ShieldCheck size={17} />Organización de ejemplo</p></div>
       </div>
       <div className="p-7 sm:p-9">

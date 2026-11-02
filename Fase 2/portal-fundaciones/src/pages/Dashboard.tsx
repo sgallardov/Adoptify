@@ -17,12 +17,12 @@ export default function Dashboard() {
   const { user } = useAuth()
   return <>
     <PageHeading eyebrow="Un nuevo día, nuevas oportunidades" title={`Hola, ${user?.full_name ?? 'fundación'} 👋`} description="Este es el espacio de quienes hacen posible una segunda oportunidad." />
-    <section className="relative mb-7 overflow-hidden rounded-3xl bg-forest p-7 text-surface sm:p-9" aria-label="Bienvenida">
-      <PawPrint className="pointer-events-none absolute -right-6 -top-5 size-60 -rotate-12 text-surface/5" strokeWidth={1} />
+    <section className="relative mb-7 overflow-hidden rounded-3xl bg-forest p-7 text-on-accent sm:p-9" aria-label="Bienvenida">
+      <PawPrint className="pointer-events-none absolute -right-6 -top-5 size-60 -rotate-12 text-on-accent/5" strokeWidth={1} />
       <div className="relative max-w-xl">
-        <span className="inline-flex items-center gap-2 text-xs font-medium text-success-200"><Sparkles size={15} /> PEQUEÑOS PASOS, GRANDES CAMBIOS</span>
+        <span className="inline-flex items-center gap-2 text-xs font-medium text-on-accent/75"><Sparkles size={15} /> PEQUEÑOS PASOS, GRANDES CAMBIOS</span>
         <h2 className="mb-3 mt-4 text-2xl font-semibold leading-tight sm:text-3xl">Su próximo capítulo<br />empieza contigo.</h2>
-        <p className="max-w-md text-sm leading-6 text-success-50/80">Organiza a tus rescatados y conoce sus historias. Cada perfil es una oportunidad de encontrar una familia.</p>
+        <p className="max-w-md text-sm leading-6 text-on-accent/80">Organiza a tus rescatados y conoce sus historias. Cada perfil es una oportunidad de encontrar una familia.</p>
         <Link className="mt-6 inline-flex items-center gap-3 rounded-xl bg-surface px-5 py-3 text-sm font-semibold text-success-950 hover:bg-brand-50" to="/animales">Ver mis animales <ArrowRight size={16} /></Link>
       </div>
     </section>

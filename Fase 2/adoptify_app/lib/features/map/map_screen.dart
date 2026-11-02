@@ -233,7 +233,7 @@ class _MapScreenState extends State<MapScreen> {
                     style: FilledButton.styleFrom(minimumSize: const Size(0, 44)),
                   ),
                 if (!_loading && !_error)
-                  Text(_summary, style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted)),
+                  Text(_summary, style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted)),
               ],
             ),
           ),
@@ -278,6 +278,7 @@ class _MapScreenState extends State<MapScreen> {
     return FlutterMap(
       mapController: _mapController,
       options: MapOptions(
+        backgroundColor: context.colors.muted,
         initialCenter: santiago,
         initialZoom: 11,
         onTap: (_, _) => _clearSelection(),
@@ -287,7 +288,7 @@ class _MapScreenState extends State<MapScreen> {
         },
       ),
       children: [
-        osmTileLayer(),
+        osmTileLayer(context),
         MarkerLayer(
           markers: [
             if (_origin != null) mapMarker(_origin!, MapPins.origin),
@@ -317,13 +318,13 @@ class _MapScreenState extends State<MapScreen> {
                 ),
           ],
         ),
-        osmAttribution,
+        osmAttribution(context),
       ],
     );
   }
 
   Widget _buildList() {
-    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
+    final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -371,10 +372,10 @@ class _MapScreenState extends State<MapScreen> {
 }
 
 // Superficie blanca común: mismo radio, borde y sombra sutil en todo el mapa
-BoxDecoration _surface({Color border = AdoptifyColors.border, double width = 1}) => BoxDecoration(
-  color: AdoptifyColors.surface,
+BoxDecoration _surface(BuildContext context, {Color? border, double width = 1}) => BoxDecoration(
+  color: context.colors.surface,
   borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-  border: Border.all(color: border, width: width),
+  border: Border.all(color: border ?? context.colors.border, width: width),
   boxShadow: AdoptifyShadows.soft,
 );
 
@@ -396,9 +397,9 @@ class _RadiusSelector extends StatelessWidget {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md),
           decoration: BoxDecoration(
-            color: AdoptifyColors.surface,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(AdoptifyRadius.md),
-            border: Border.all(color: AdoptifyColors.border),
+            border: Border.all(color: context.colors.border),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
@@ -427,17 +428,17 @@ class _Legend extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.sm),
       decoration: BoxDecoration(
-        color: const Color(0xF2FFFFFF),
+        color: context.colors.surface.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(AdoptifyRadius.md),
-        border: Border.all(color: AdoptifyColors.border),
+        border: Border.all(color: context.colors.border),
         boxShadow: AdoptifyShadows.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _LegendItem(color: AdoptifyColors.primary, label: 'Mascotas en adopción'),
-          _LegendItem(color: AdoptifyColors.report, label: 'Perros reportados ($reportsCount)'),
-          if (showOrigin) const _LegendItem(color: AdoptifyColors.origin, label: 'Tu ubicación'),
+          _LegendItem(color: context.colors.primary, label: 'Mascotas en adopción'),
+          _LegendItem(color: context.colors.report, label: 'Perros reportados ($reportsCount)'),
+          if (showOrigin) _LegendItem(color: context.colors.origin, label: 'Tu ubicación'),
         ],
       ),
     );
@@ -478,13 +479,13 @@ class _AnimalPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const fallback = Icon(Icons.pets, color: AdoptifyColors.placeholder);
+    final fallback = Icon(Icons.pets, color: context.colors.placeholder);
     return ClipRRect(
       borderRadius: BorderRadius.circular(AdoptifyRadius.md),
       child: Container(
         width: size,
         height: size,
-        color: AdoptifyColors.muted,
+        color: context.colors.muted,
         child: url == null ? fallback : Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
       ),
     );
@@ -509,7 +510,8 @@ class _AnimalCard extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         width: 264,
         decoration: _surface(
-          border: selected ? AdoptifyColors.primary : AdoptifyColors.border,
+          context,
+          border: selected ? context.colors.primary : context.colors.border,
           width: selected ? 2 : 1,
         ),
         child: Material(
@@ -546,7 +548,7 @@ class _AnimalCard extends StatelessWidget {
                           Text(
                             animal.foundationName!,
                             overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall?.copyWith(color: AdoptifyColors.placeholder),
+                            style: textTheme.bodySmall?.copyWith(color: context.colors.placeholder),
                           ),
                       ],
                     ),
@@ -570,10 +572,10 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.sm, vertical: 3),
-      decoration: BoxDecoration(color: AdoptifyColors.primarySoft, borderRadius: BorderRadius.circular(99)),
+      decoration: BoxDecoration(color: context.colors.primarySoft, borderRadius: BorderRadius.circular(99)),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AdoptifyColors.primaryText, letterSpacing: 0),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: context.colors.primaryText, letterSpacing: 0),
       ),
     );
   }
@@ -591,7 +593,7 @@ class _DetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.md, AdoptifySpacing.xs, AdoptifySpacing.lg),
-      decoration: _surface(),
+      decoration: _surface(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -623,12 +625,12 @@ class _AnimalDetailCard extends StatelessWidget {
         const SizedBox(height: AdoptifySpacing.xs),
         Text(animal.summary, style: textTheme.bodyMedium),
         if (animal.foundationName != null)
-          Text(animal.foundationName!, style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted)),
+          Text(animal.foundationName!, style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted)),
         if (animal.distanceKm != null) ...[
           const SizedBox(height: AdoptifySpacing.xs),
           Text(
             'A ${formatKm(animal.distanceKm!)} km de ti',
-            style: textTheme.labelLarge?.copyWith(color: AdoptifyColors.primaryDark),
+            style: textTheme.labelLarge?.copyWith(color: context.colors.primaryDark),
           ),
         ],
       ],
@@ -649,18 +651,18 @@ class _ReportDetailCard extends StatelessWidget {
       onClose: onClose,
       leading: report.photoUrl == null ? null : _AnimalPhoto(url: report.photoUrl, size: 72),
       children: [
-        Text('Perro reportado', style: textTheme.titleMedium?.copyWith(color: AdoptifyColors.reportText)),
+        Text('Perro reportado', style: textTheme.titleMedium?.copyWith(color: context.colors.reportText)),
         const SizedBox(height: AdoptifySpacing.xs),
         Text(report.description, style: textTheme.bodyMedium),
         const SizedBox(height: AdoptifySpacing.xs),
         Text(
           '${report.statusLabel} · ${formatDate(report.createdAt)}',
-          style: textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted),
+          style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted),
         ),
         if (report.distanceKm != null)
           Text(
             'A ${formatKm(report.distanceKm!)} km',
-            style: textTheme.labelLarge?.copyWith(color: AdoptifyColors.reportText),
+            style: textTheme.labelLarge?.copyWith(color: context.colors.reportText),
           ),
       ],
     );

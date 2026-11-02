@@ -23,10 +23,10 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       body: shell,
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AdoptifyColors.surface,
-          border: Border(top: BorderSide(color: AdoptifyColors.border)),
-          boxShadow: [BoxShadow(color: Color(0x0A1C1917), blurRadius: 12, offset: Offset(0, -2))],
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          border: Border(top: BorderSide(color: context.colors.border)),
+          boxShadow: const [BoxShadow(color: Color(0x0A1C1917), blurRadius: 12, offset: Offset(0, -2))],
         ),
         child: SafeArea(
           top: false,
@@ -97,11 +97,11 @@ class _ReportTab extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         height: 52,
         decoration: BoxDecoration(
-          color: active ? AdoptifyColors.reportText : AdoptifyColors.report,
+          color: active ? context.colors.reportStrong : context.colors.report,
           borderRadius: radius,
           // Activo: anillo suave alrededor para distinguirlo del estado normal
           boxShadow: [
-            if (active) BoxShadow(color: AdoptifyColors.report.withValues(alpha: 0.25), spreadRadius: 3),
+            if (active) BoxShadow(color: context.colors.report.withValues(alpha: 0.25), spreadRadius: 3),
             const BoxShadow(color: Color(0x26DC2626), blurRadius: 6, offset: Offset(0, 2)),
           ],
         ),
@@ -158,9 +158,9 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AdoptifyColors.primaryDark : AdoptifyColors.textMuted;
+    final color = active ? context.colors.primaryDark : context.colors.textMuted;
     final labelStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: active ? AdoptifyColors.text : AdoptifyColors.textMuted,
+          color: active ? context.colors.text : context.colors.textMuted,
           fontWeight: active ? FontWeight.w700 : FontWeight.w500,
         );
 
@@ -183,7 +183,7 @@ class _NavTab extends StatelessWidget {
                   width: 56,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: active ? AdoptifyColors.primarySoft : Colors.transparent,
+                    color: active ? context.colors.primarySoft : Colors.transparent,
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Icon(active ? activeIcon : icon, color: color, size: _iconSize),

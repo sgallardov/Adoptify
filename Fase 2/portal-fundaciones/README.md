@@ -179,6 +179,19 @@ sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
 envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 `status`, para no sobrescribir un cambio de estado hecho desde otra sesión.
 
+## Modo oscuro
+
+El botón de luna/sol (`ThemeToggle`) cambia entre modo claro y oscuro. Está en la cabecera del portal de
+fundaciones, en la de adoptantes (`AppHeader`) y en el login.
+
+- Sin elección guardada se sigue la apariencia del sistema. La elección queda en `localStorage`
+  (`adoptify_theme`) y la aplica `hooks/useTheme.ts` como `data-theme` en `<html>`. Un script en `index.html`
+  hace lo mismo antes de pintar, para que la página no parpadee en blanco.
+- `index.css` redefine las mismas variables de color en `:root[data-theme="dark"]`: las clases de Tailwind
+  no cambian. Para texto sobre fondos de color (botones, pines, banners) se usa `text-on-accent`, que es blanco
+  en ambos modos; `text-surface` ya no sirve para eso porque en oscuro la superficie es oscura.
+- Mapas: los mosaicos de OSM se invierten con un filtro CSS y los popups usan los colores del tema.
+
 ## HU-16: subir fotos
 
 `PhotoPicker` (`components/PhotoPicker.tsx`) reemplaza el campo de enlace de la foto en

@@ -138,8 +138,7 @@ void main() {
 
     expect(find.text('Matías Adoptante'), findsOneWidget);
 
-    await tester.tap(find.text('Cerrar sesión'));
-    await tester.pumpAndSettle();
+    await tapVisible(tester, find.text('Cerrar sesión'));
     expect(api.storage.token, isNull);
     expect(find.widgetWithText(FilledButton, 'Iniciar sesión'), findsOneWidget);
   });

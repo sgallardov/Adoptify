@@ -212,7 +212,7 @@ class _ReportFormState extends State<_ReportForm> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final muted = textTheme.bodyMedium?.copyWith(color: AdoptifyColors.textMuted);
+    final muted = textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -229,7 +229,7 @@ class _ReportFormState extends State<_ReportForm> {
             Text(
               'AYUDA A UN PERRO',
               textAlign: TextAlign.center,
-              style: textTheme.labelSmall?.copyWith(color: AdoptifyColors.primaryDark),
+              style: textTheme.labelSmall?.copyWith(color: context.colors.primaryDark),
             ),
             const SizedBox(height: AdoptifySpacing.xs),
             Text('Reportar perro abandonado', textAlign: TextAlign.center, style: textTheme.headlineSmall),
@@ -268,19 +268,24 @@ class _ReportFormState extends State<_ReportForm> {
                   height: 320,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    border: Border.all(color: AdoptifyColors.border),
+                    border: Border.all(color: context.colors.border),
                     borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
                   ),
                   child: FlutterMap(
                     mapController: _mapController,
-                    options: MapOptions(initialCenter: santiago, initialZoom: 12, onTap: (_, point) => _place(point)),
+                    options: MapOptions(
+                      backgroundColor: context.colors.muted,
+                      initialCenter: santiago,
+                      initialZoom: 12,
+                      onTap: (_, point) => _place(point),
+                    ),
                     children: [
-                      osmTileLayer(),
+                      osmTileLayer(context),
                       if (_position != null)
                         MarkerLayer(
                           markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
                         ),
-                      osmAttribution,
+                      osmAttribution(context),
                     ],
                   ),
                 ),
@@ -305,13 +310,13 @@ class _ReportFormState extends State<_ReportForm> {
                 Container(
                   padding: const EdgeInsets.all(AdoptifySpacing.md),
                   decoration: BoxDecoration(
-                    color: AdoptifyColors.muted,
+                    color: context.colors.muted,
                     borderRadius: BorderRadius.circular(AdoptifyRadius.md),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.lock_outline, size: 16, color: AdoptifyColors.textMuted),
+                      Icon(Icons.lock_outline, size: 16, color: context.colors.textMuted),
                       const SizedBox(width: AdoptifySpacing.sm),
                       Expanded(
                         child: Text(
@@ -402,14 +407,14 @@ class _PhotoPreview extends StatelessWidget {
                   photo.bytes,
                   fit: BoxFit.cover,
                   semanticLabel: 'Foto del perro',
-                  errorBuilder: (_, _, _) => const ColoredBox(
-                    color: AdoptifyColors.muted,
-                    child: Icon(Icons.image_outlined, color: AdoptifyColors.placeholder),
+                  errorBuilder: (_, _, _) => ColoredBox(
+                    color: context.colors.muted,
+                    child: Icon(Icons.image_outlined, color: context.colors.placeholder),
                   ),
                 ),
                 if (uploading)
                   ColoredBox(
-                    color: AdoptifyColors.text.withValues(alpha: 0.45),
+                    color: context.colors.text.withValues(alpha: 0.45),
                     child: Center(child: CircularProgressIndicator(color: Colors.white)),
                   ),
               ],
@@ -422,7 +427,7 @@ class _PhotoPreview extends StatelessWidget {
             Icon(
               uploading ? Icons.cloud_upload_outlined : Icons.check_circle,
               size: 18,
-              color: uploading ? AdoptifyColors.textMuted : AdoptifyColors.success,
+              color: uploading ? context.colors.textMuted : context.colors.success,
             ),
             const SizedBox(width: AdoptifySpacing.xs),
             Expanded(child: Text(uploading ? 'Subiendo foto…' : 'Foto lista', style: textTheme.bodySmall)),
@@ -450,9 +455,9 @@ class _Section extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AdoptifySpacing.lg),
       decoration: BoxDecoration(
-        color: AdoptifyColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-        border: Border.all(color: AdoptifyColors.border),
+        border: Border.all(color: context.colors.border),
         boxShadow: AdoptifyShadows.soft,
       ),
       child: Column(

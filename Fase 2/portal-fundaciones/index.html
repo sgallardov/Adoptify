@@ -9,6 +9,15 @@
     <title>Adoptify | Un nuevo hogar</title>
   </head>
   <body>
+    <script>
+      // Aplica el modo oscuro antes de pintar (misma lógica que hooks/useTheme.ts)
+      (function () {
+        var theme = null
+        try { theme = localStorage.getItem('adoptify_theme') } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

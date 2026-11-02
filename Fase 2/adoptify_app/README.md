@@ -90,6 +90,15 @@ naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
 - La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.
 
+## Modo oscuro
+En **Perfil → Apariencia** se elige **Sistema** (por defecto, sigue al teléfono), **Claro** u **Oscuro**.
+La elección se guarda en el dispositivo (`shared_preferences`) y está disponible con o sin sesión.
+- `app/theme.dart`: `AdoptifyColors` es una extensión del tema con versión `light` y `dark`. Los widgets la leen
+  con `context.colors` (nunca colores fijos), así cambian solos con el modo.
+- `app/theme_controller.dart`: `ThemeController` + `ThemeScope`, mismo patrón que `AuthController` y `AuthScope`.
+- Mapas: en modo oscuro se usan los mismos mosaicos de OSM con los colores invertidos (`darkModeTileBuilder`).
+  Los pines mantienen sus colores.
+
 ## Foto del perro (HU-16)
 En "Reportar mascota", la sección **3. Foto del perro (opcional)** tiene dos botones:
 **Tomar foto** (cámara) y **Galería**. Usa `image_picker`.
@@ -110,6 +119,6 @@ abrir los tres puntos (Extended controls) → Location, buscar Santiago y pulsar
 
 ## Librerías
 `go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `flutter_map` + `latlong2` (mapa),
-`geolocator` (ubicación), `image_picker` (cámara y galería, HU-16), `camera` (sin uso por ahora).
+`geolocator` (ubicación), `image_picker` (cámara y galería, HU-16), `shared_preferences` (modo oscuro), `camera` (sin uso por ahora).
 Permisos declarados en `android/app/src/main/AndroidManifest.xml` (internet, ubicación, cámara)
 e `ios/Runner/Info.plist` (ubicación, cámara y fotos).

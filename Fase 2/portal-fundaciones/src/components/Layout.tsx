@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import Brand from './Brand'
+import ThemeToggle from './ThemeToggle'
 import { ChevronRight, Heart, House, LogOut, Menu, PawPrint, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -57,7 +58,10 @@ export default function Layout() {
           </button>
           <p className="text-sm text-base-500"><span className="hidden sm:inline">Portal de fundaciones <ChevronRight className="mx-2 inline" size={13} /></span><span className="font-medium text-base-800">{title}</span></p>
         </div>
-        <span className="hidden shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 sm:inline">{isAnimalsPage || location.pathname === '/' ? 'Datos del backend' : 'Vista de ejemplo'}</span>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 sm:inline">{isAnimalsPage || location.pathname === '/' ? 'Datos del backend' : 'Vista de ejemplo'}</span>
+          <ThemeToggle />
+        </div>
       </header>
       {menuOpen && <div id="mobile-navigation" className="border-b border-base-200 bg-surface p-4 lg:hidden"><Navigation onNavigate={() => setMenuOpen(false)} /><button onClick={signOut} className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-base-500 hover:bg-base-50 hover:text-base-900"><LogOut size={19} />Cerrar sesión</button></div>}
       <main id="contenido" className="mx-auto max-w-7xl px-5 py-8 sm:px-9 sm:py-10"><Outlet /></main>
