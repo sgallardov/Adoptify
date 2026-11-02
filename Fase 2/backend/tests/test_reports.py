@@ -55,45 +55,77 @@ async def nearby_reports(db_session: AsyncSession):
     await db_session.commit()
 
 
+# Ficha mínima válida de un reporte; cada prueba agrega o cambia lo que necesita
+REPORT = {
+    "latitude": -45.58, "longitude": -72.07, "species": "perro", "size": "mediano", "color": "Café",
+    "conditions": ["herido"], "description": "Está cerca del paradero y cojea de una pata",
+}
+
+
 def descriptions(data: list[dict]) -> list[str]:
     return [r["description"] for r in data if r["description"].startswith("Test ")]
 
 
 class TestCreateReport:
     """
-    Creación de reportes de perros abandonados (POST /api/v1/reports).
+    Creación de reportes de mascotas abandonadas (POST /api/v1/reports).
     """
 
     async def test_logged_in_user_creates_report(self, async_client: AsyncClient, auth_headers: dict):
-        response = await async_client.post(
-            "/api/v1/reports",
-            json={"latitude": -45.58, "longitude": -72.07, "description": "Perro café con collar rojo, parece herido"},
-            headers=auth_headers,
-        )
+        response = await async_client.post("/api/v1/reports", json=REPORT, headers=auth_headers)
 
         assert response.status_code == 201
         data = response.json()
         assert data["status"] == "reported"
+        assert data["species"] == "perro"
+        assert data["size"] == "mediano"
+        assert data["conditions"] == ["herido"]
+        assert data["weight_kg"] is None
+        assert data["behaviors"] == []
         assert data["latitude"] == pytest.approx(-45.58)
         assert data["longitude"] == pytest.approx(-72.07)
         assert "reporter_id" not in data
         assert "location" not in data
 
+    async def test_report_with_full_details(self, async_client: AsyncClient, auth_headers: dict):
+        payload = {
+            **REPORT, "species": "gato", "size": "pequeño", "weight_kg": 3.5, "color": "  Negro  ",
+            "features": "  Collar azul sin placa  ", "conditions": ["desnutrido", "herido", "herido"],
+            "behaviors": ["asustado", "agresivo"],
+        }
+        response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["weight_kg"] == pytest.approx(3.5)
+        assert data["color"] == "Negro"
+        assert data["features"] == "Collar azul sin placa"
+        assert data["conditions"] == ["desnutrido", "herido"]  # sin repetidos
+        assert data["behaviors"] == ["asustado", "agresivo"]
+
     async def test_report_without_session_returns_401_or_403(self, async_client: AsyncClient):
-        response = await async_client.post(
-            "/api/v1/reports",
-            json={"latitude": -45.58, "longitude": -72.07, "description": "Perro café con collar rojo"},
-        )
+        response = await async_client.post("/api/v1/reports", json=REPORT)
 
         assert response.status_code in (401, 403)
 
-    @pytest.mark.parametrize("payload", [
-        {"latitude": 100, "longitude": -72.07, "description": "Latitud fuera de rango"},
-        {"latitude": -45.58, "longitude": -200, "description": "Longitud fuera de rango"},
-        {"latitude": -45.58, "longitude": -72.07, "description": "Corta"},
-        {"longitude": -72.07, "description": "Falta la latitud del perro"},
+    @pytest.mark.parametrize("changes", [
+        {"latitude": 100},                    # latitud fuera de rango
+        {"longitude": -200},                  # longitud fuera de rango
+        {"description": "Corta"},             # comentario de menos de 10 caracteres
+        {"latitude": None},                   # falta la latitud
+        {"species": "conejo"},                # tipo de animal no permitido
+        {"species": None},                    # falta el tipo de animal
+        {"size": "enorme"},                   # tamaño no permitido
+        {"conditions": None},                 # falta el estado
+        {"conditions": []},                   # hay que marcar al menos un estado
+        {"conditions": ["regular"]},          # estado no permitido
+        {"color": " "},                       # color vacío
+        {"weight_kg": 0},                     # peso debe ser mayor que 0
+        {"weight_kg": 500},                   # peso máximo 150 kg
+        {"behaviors": ["volando"]},           # comportamiento no permitido
     ])
-    async def test_invalid_report_returns_422(self, async_client: AsyncClient, auth_headers: dict, payload: dict):
+    async def test_invalid_report_returns_422(self, async_client: AsyncClient, auth_headers: dict, changes: dict):
+        payload = {key: value for key, value in {**REPORT, **changes}.items() if value is not None}
         response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
 
         assert response.status_code == 422
@@ -135,3 +167,27 @@ class TestNearbyReports:
         response = await async_client.get("/api/v1/reports/nearby", params=params)
 
         assert response.status_code == 422
+
+
+class TestReportOptions:
+    """
+    Estados y comportamientos: se pueden combinar libremente, también "bien" con otros.
+    """
+
+    async def test_good_can_be_combined_with_other_conditions(self, async_client: AsyncClient, auth_headers: dict):
+        payload = {**REPORT, "conditions": ["bien", "prenada", "parasitos"], "behaviors": ["amistoso", "sigue_personas"]}
+        response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
+
+        assert response.status_code == 201
+        assert response.json()["conditions"] == ["bien", "prenada", "parasitos"]
+        assert response.json()["behaviors"] == ["amistoso", "sigue_personas"]
+
+    async def test_new_options_are_accepted(self, async_client: AsyncClient, auth_headers: dict):
+        payload = {
+            **REPORT,
+            "conditions": ["atropellado", "sangrando", "no_se_mueve", "problemas_ojos", "problemas_piel"],
+            "behaviors": ["decaido", "se_esconde", "huye", "ruidoso", "protector"],
+        }
+        response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
+
+        assert response.status_code == 201

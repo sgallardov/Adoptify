@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, Text, ForeignKey, DateTime, func
+from sqlalchemy import String, Integer, Float, Text, ForeignKey, DateTime, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape
@@ -9,8 +10,8 @@ from app.db.base import Base
 
 class AbandonedDogReport(Base):
     """
-    Reporte de un perro abandonado hecho por un usuario.
-    La ubicación es la del perro (no la de quien reporta) y se guarda como Geometry('POINT', srid=4326).
+    Reporte de una mascota abandonada hecho por un usuario (la tabla conserva su nombre original).
+    La ubicación es la del animal (no la de quien reporta) y se guarda como Geometry('POINT', srid=4326).
     """
     __tablename__ = "abandoned_dog_reports"
 
@@ -23,6 +24,19 @@ class AbandonedDogReport(Base):
         index=True
     )
 
+    # Ficha del animal. Son opcionales en la BD porque los reportes anteriores no los tenían;
+    # la API los exige al crear (ver ReportCreate)
+    species: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'perro', 'gato', 'otro'
+    size: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'pequeño', 'mediano', 'grande'
+    weight_kg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Peso aproximado
+    color: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    features: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # Collar, manchas, raza aparente...
+    # Puede tener varios: 'bien', 'herido', 'desnutrido', 'cojea'... (ver ReportCondition en schemas/report.py)
+    conditions: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
+    # Puede tener varios: 'tranquilo', 'asustado', 'agresivo'... (ver ReportBehavior)
+    behaviors: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
+
+    # Comentarios de quien reporta sobre la situación
     description: Mapped[str] = mapped_column(Text, nullable=False)
     photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="reported", nullable=False)  # 'reported', 'in_rescue', 'resolved'

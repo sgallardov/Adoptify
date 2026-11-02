@@ -43,7 +43,7 @@ lib/
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
-  shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
+  shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts; map_controls.dart (botón redondo y tarjeta sobre el mapa)
   shared/widgets/ # app_shell.dart (barra inferior), adoptify_logo.dart, content_width.dart, coming_soon.dart, message_box.dart
 test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend, GPS, cámara y galería)
 ```
@@ -82,12 +82,12 @@ cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 
 ## Mapa y reportes (HU-15)
 Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
-naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
+naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
 - **Mapa** (`/mapa`): a pantalla completa. Sin ubicación muestra todas las mascotas disponibles (`GET /animals`)
   y los reportes a 100 km de Santiago. Encima flotan:
   - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
     y al elegir una la muestra en el mapa; debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
-  - la tarjeta **"xN avisos cerca tuyo"**: perros reportados a menos de 5 km de tu ubicación
+  - la tarjeta **"xN avisos cerca tuyo"**: mascotas reportadas a menos de 5 km de tu ubicación
     (`GET /reports/nearby?radius_km=5`). La ubicación se pide sola al abrir el mapa; sin permiso, la tarjeta
     dice "Activa tu ubicación" y al tocarla la pide. Si falla la consulta, permite reintentar;
   - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas y reportes;
@@ -98,8 +98,12 @@ naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
   lleva un momento quieto. Al abrir, el mapa nace sin tamaño y se encuadra en los pines; en ese primer segundo
   flutter_map creaba y descartaba tandas de mosaicos y algunos quedaban cargando hasta mover el mapa. También
   usa un solo proveedor de mosaicos y reintenta si alguno falla por la red.
-- **Reportar** (`/reportar`): requiere sesión. Se marca el punto tocando el mapa o con el GPS
-  y se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin.
+- **Reportar** (`/reportar`): requiere sesión. Primero se abre un **mapa a pantalla completa** con tu ubicación
+  ya marcada (si diste permiso); tocar el mapa mueve el punto y **Confirmar ubicación** pasa al formulario. Ahí el
+  paso 1 muestra una vista previa con **Cambiar ubicación** (el botón atrás también vuelve al mapa, sin perder lo
+  escrito). Luego, igual que la web: **¿Cómo es?** (tipo y tamaño con chips, color, peso aproximado, características), **¿Cómo está?** (estado y
+  comportamiento opcional; en ambos se marcan varias opciones), **Comentarios** y **Foto**. Cada campo muestra su error; el mensaje dice qué campos revisar y la pantalla baja al primero.
+  Se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin, cuya ficha muestra los datos.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
 - La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.
 
@@ -117,8 +121,8 @@ La elección se guarda en el dispositivo (`shared_preferences`) y está disponib
 correo y dirección, seleccionables) y una fila con sus mascotas en adopción. Se actualiza deslizando hacia abajo.
 La versión web de esta vista queda pendiente.
 
-## Foto del perro (HU-16)
-En "Reportar mascota", la sección **3. Foto del perro (opcional)** tiene dos botones:
+## Foto de la mascota (HU-16)
+En "Reportar mascota", la sección **5. Foto (opcional)** tiene dos botones:
 **Tomar foto** (cámara) y **Galería**. Usa `image_picker`.
 - La foto se achica a 1600 px como máximo, en calidad 85, para no pasar los 5 MB del backend.
 - Se sube apenas se elige (`POST /uploads`, multipart) para avisar enseguida si no sirve.

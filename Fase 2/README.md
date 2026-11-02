@@ -137,9 +137,13 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
   * Parámetros: `lat` (-90 a 90), `lng` (-180 a 180) y `radius_km` (mayor que 0, máximo 100; por defecto 10). Fuera de rango: `422`.
   * La distancia se calcula con `ST_Distance` sobre `geography` (metros reales sobre la Tierra) y el filtro usa `ST_DWithin`, que aprovecha el índice GiST de `location`.
 
-### Reportes de perros abandonados
-* Tabla `abandoned_dog_reports` (migración `0003`): descripción, foto opcional, estado (`reported`, `in_rescue`, `resolved`), autor y `location` como `Geometry('POINT', srid=4326)` con índice GiST.
-* `POST /api/v1/reports` (requiere token Bearer): crea un reporte con `latitude`, `longitude` y `description` (10 a 1000 caracteres). Devuelve `201`.
+### Reportes de mascotas abandonadas
+* Tabla `abandoned_dog_reports` (migración `0003`; conserva su nombre aunque ahora admite cualquier animal): comentarios (`description`), foto opcional, estado (`reported`, `in_rescue`, `resolved`), autor y `location` como `Geometry('POINT', srid=4326)` con índice GiST.
+* Ficha del animal (migración `0005`): `species`, `size`, `weight_kg`, `color`, `features`, `conditions` y `behaviors` (estas dos son listas, `ARRAY` de PostgreSQL). Son columnas opcionales en la BD porque los reportes anteriores no las tienen; en la respuesta llegan `null` (las listas, vacías).
+* `POST /api/v1/reports` (requiere token Bearer): crea un reporte. Devuelve `201`.
+  * Obligatorios: `latitude`, `longitude`, `species` (`perro`, `gato`, `otro`), `size` (`pequeño`, `mediano`, `grande`), `color` (2 a 60 caracteres), `conditions` (uno o más, combinables: `bien`, `desnutrido`, `deshidratado`, `herido`, `sangrando`, `cojea`, `atropellado`, `no_se_mueve`, `enfermo`, `problemas_piel`, `parasitos`, `problemas_ojos`, `prenada`, `con_crias`, `deplorable`) y `description` (comentarios sobre la situación, 10 a 1000 caracteres).
+  * Opcionales: `weight_kg` (peso aproximado, mayor que 0 y hasta 150), `features` (características como collar o manchas, hasta 300 caracteres), `behaviors` (ninguno, uno o más de `tranquilo`, `amistoso`, `jugueton`, `sigue_personas`, `decaido`, `asustado`, `se_esconde`, `huye`, `nervioso`, `desconfiado`, `ruidoso`, `protector`, `agresivo`) y `photo_url`. Los repetidos se descartan.
+  * Fuera de esos valores: `422`.
 * `GET /api/v1/reports/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` (público): reportes no resueltos dentro del radio, del más cercano al más lejano, con `distance_km`. Mismos límites de parámetros que `/animals/nearby`.
 * La respuesta no expone quién hizo el reporte (`reporter_id`) ni la geometría cruda.
 

@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/location_service.dart';
+import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/message_box.dart';
@@ -19,7 +20,7 @@ const _alertsRadiusKm = 5;
 // Espacio que ocupan el buscador (arriba) y el botón de reportar (abajo), para encuadrar los pines entre ellos
 const _fitPadding = EdgeInsets.fromLTRB(48, 150, 72, 120);
 
-// Mapa de mascotas disponibles y perros reportados a pantalla completa: equivalente a la vista /usuario del portal.
+// Mapa de mascotas disponibles y reportadas a pantalla completa: equivalente a la vista /usuario del portal.
 // Encima flotan el buscador, los botones de capas y ubicación, y el botón para reportar.
 class MapScreen extends StatefulWidget {
   // Cambia cuando se crea un reporte desde la app, para volver a cargar los datos
@@ -48,7 +49,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _error = false;
   int _request = 0;
 
-  // Tarjeta de avisos: perros reportados a menos de 5 km de tu ubicación.
+  // Tarjeta de avisos: mascotas reportadas a menos de 5 km de tu ubicación.
   // La ubicación se pide sola al abrir el mapa; si no se obtiene, la tarjeta invita a activarla.
   LatLng? _userPosition;
   int? _alertsNearby;
@@ -369,9 +370,9 @@ class _MapScreenState extends State<MapScreen> {
             bottom: selectedAnimal != null || selectedReport != null ? 260 : 96,
             child: Column(
               children: [
-                _MapButton(icon: Icons.layers_outlined, tooltip: 'Capas', onPressed: _openLayers),
+                MapButton(icon: Icons.layers_outlined, tooltip: 'Capas', onPressed: _openLayers),
                 const SizedBox(height: AdoptifySpacing.md),
-                _MapButton(
+                MapButton(
                   icon: _origin != null ? Icons.my_location : Icons.near_me_outlined,
                   tooltip: 'Usar mi ubicación',
                   active: _origin != null,
@@ -461,7 +462,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.xs),
         constraints: const BoxConstraints(minHeight: 36),
-        decoration: _surface(context, radius: 99),
+        decoration: mapSurface(context, radius: 99),
         child: content,
       ),
     );
@@ -533,14 +534,7 @@ String _fold(String text) {
 }
 
 // Superficie común de lo que flota sobre el mapa: mismo borde y sombra sutil
-BoxDecoration _surface(BuildContext context, {double radius = AdoptifyRadius.lg}) => BoxDecoration(
-  color: context.colors.surface,
-  borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: context.colors.border),
-  boxShadow: AdoptifyShadows.soft,
-);
-
-// Cuadrado con una huella y cuántos perros reportados hay a menos de 5 km de ti
+// Cuadrado con una huella y cuántas mascotas reportadas hay a menos de 5 km de ti
 class _AlertsCard extends StatelessWidget {
   const _AlertsCard({
     required this.count,
@@ -631,7 +625,7 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: _surface(context, radius: AdoptifyRadius.md),
+      decoration: mapSurface(context, radius: AdoptifyRadius.md),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
@@ -669,7 +663,7 @@ class _SearchResults extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: AdoptifySpacing.sm),
       clipBehavior: Clip.antiAlias,
-      decoration: _surface(context, radius: AdoptifyRadius.md),
+      decoration: mapSurface(context, radius: AdoptifyRadius.md),
       child: results.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(AdoptifySpacing.lg),
@@ -699,54 +693,7 @@ class _SearchResults extends StatelessWidget {
   }
 }
 
-// Botón redondo flotante (capas, ubicación), como los controles de un mapa
-class _MapButton extends StatelessWidget {
-  const _MapButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.active = false,
-    this.loading = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final bool active;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        label: tooltip,
-        child: Material(
-          color: active ? colors.primary : colors.surface,
-          shape: CircleBorder(side: BorderSide(color: active ? colors.primary : colors.border)),
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onPressed,
-            child: SizedBox.square(
-              dimension: 48,
-              child: Center(
-                child: loading
-                    ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(icon, size: 22, color: active ? Colors.white : colors.text),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// Acción principal del mapa: el mismo rojo del botón "Reportar perro" de la web
+// Acción principal del mapa: el mismo rojo del botón "Reportar mascota" de la web
 class _ReportButton extends StatelessWidget {
   const _ReportButton({required this.onPressed});
 
@@ -827,7 +774,7 @@ class _LayersSheet extends StatelessWidget {
               value: showReports,
               onChanged: onReports,
               secondary: dot(colors.report),
-              title: Text('Perros reportados ($reportsCount)', style: textTheme.bodyMedium),
+              title: Text('Mascotas reportadas ($reportsCount)', style: textTheme.bodyMedium),
             ),
             if (showOrigin)
               ListTile(
@@ -876,7 +823,7 @@ class _DetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.md, AdoptifySpacing.xs, AdoptifySpacing.lg),
-      decoration: _surface(context),
+      decoration: mapSurface(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -934,9 +881,18 @@ class _ReportDetailCard extends StatelessWidget {
       onClose: onClose,
       leading: report.photoUrl == null ? null : AnimalPhoto(url: report.photoUrl, size: 72),
       children: [
-        Text('Perro reportado', style: textTheme.titleMedium?.copyWith(color: context.colors.reportText)),
+        Text('Mascota reportada', style: textTheme.titleMedium?.copyWith(color: context.colors.reportText)),
         const SizedBox(height: AdoptifySpacing.xs),
-        Text(report.description, style: textTheme.bodyMedium, maxLines: 3, overflow: TextOverflow.ellipsis),
+        if (report.summary.isNotEmpty) Text(report.summary, style: textTheme.titleSmall),
+        if (report.conditionLabel.isNotEmpty) Text('Estado: ${report.conditionLabel}', style: textTheme.bodyMedium),
+        if (report.features != null)
+          Text(report.features!, style: textTheme.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+        Text(
+          '“${report.description}”',
+          style: textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: AdoptifySpacing.xs),
         Text(
           '${report.statusLabel} · ${formatDate(report.createdAt)}',

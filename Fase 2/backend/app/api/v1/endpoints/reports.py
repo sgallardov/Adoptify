@@ -18,7 +18,7 @@ router = APIRouter()
     "",
     response_model=ReportResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Reportar un perro abandonado",
+    summary="Reportar una mascota abandonada",
     responses={401: {"description": "Se requiere iniciar sesión"}},
 )
 async def create_report(
@@ -28,8 +28,7 @@ async def create_report(
 ):
     report = AbandonedDogReport(
         reporter_id=current_user.id,
-        description=payload.description.strip(),
-        photo_url=payload.photo_url,
+        **payload.model_dump(exclude={"latitude", "longitude"}),
         # PostGIS guarda el punto como (longitud, latitud)
         location=WKTElement(f"POINT({payload.longitude} {payload.latitude})", srid=4326),
     )
@@ -48,7 +47,7 @@ async def create_report(
     response_model=list[NearbyReportResponse],
     summary="Buscar reportes activos cerca de un punto",
     description=(
-        "Devuelve los reportes de perros abandonados que aún no están resueltos dentro del radio indicado, "
+        "Devuelve los reportes de mascotas abandonadas que aún no están resueltos dentro del radio indicado, "
         "ordenados del más cercano al más lejano. La distancia se calcula con PostGIS sobre la superficie "
         "terrestre (geography), en kilómetros."
     ),

@@ -10,6 +10,7 @@ import '../../app/theme.dart';
 import '../../core/api_client.dart';
 import '../../core/location_service.dart';
 import '../../core/photo_service.dart';
+import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
@@ -19,21 +20,41 @@ import '../map/map_service.dart';
 
 const _minDescription = 10;
 const _maxDescription = 1000;
+const _maxFeatures = 300;
+const _maxWeightKg = 150;
 
-// Formulario para reportar un perro abandonado: equivalente a /reportar del portal
+// Nombre de cada campo en el orden del formulario, para decir cuáles hay que revisar (igual que la web)
+const _fieldLabels = {
+  'species': 'Tipo de animal',
+  'size': 'Tamaño',
+  'color': 'Color',
+  'weight_kg': 'Peso aproximado',
+  'conditions': 'Estado',
+  'description': 'Comentarios',
+};
+
+// "Revisa: Color y Comentarios."
+String _errorSummary(Map<String, String> errors) {
+  final names = [
+    for (final MapEntry(key: field, value: label) in _fieldLabels.entries)
+      if (errors.containsKey(field)) label,
+  ];
+  final list = names.length == 1 ? names.first : '${names.sublist(0, names.length - 1).join(', ')} y ${names.last}';
+  return 'Revisa: $list.';
+}
+
+// Reportar una mascota abandonada: equivalente a /reportar del portal.
+// Primero se elige el punto en un mapa a pantalla completa y después se completan los demás pasos.
 class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    if (!auth.loading && auth.user != null) return const _ReportForm();
     return Scaffold(
       appBar: AppBar(title: const Text('Reportar mascota')),
-      body: auth.loading
-          ? const Center(child: CircularProgressIndicator())
-          : auth.user == null
-          ? const _LoginRequired()
-          : const _ReportForm(),
+      body: auth.loading ? const Center(child: CircularProgressIndicator()) : const _LoginRequired(),
     );
   }
 }
@@ -50,7 +71,7 @@ class _LoginRequired extends StatelessWidget {
           const Expanded(
             child: ComingSoon(
               icon: Icons.add_location_alt,
-              title: 'Reportar un perro abandonado',
+              title: 'Reportar una mascota',
               message: 'Inicia sesión para reportar. Tu nombre y tus datos no se publican.',
             ),
           ),
@@ -72,13 +93,27 @@ class _ReportForm extends StatefulWidget {
 }
 
 class _ReportFormState extends State<_ReportForm> {
+  final _color = TextEditingController();
+  final _weight = TextEditingController();
+  final _features = TextEditingController();
   final _description = TextEditingController();
-  final _mapController = MapController();
+  // Controla el mapa a pantalla completa; se crea uno nuevo cada vez que se vuelve a elegir el punto
+  MapController _mapController = MapController();
+  bool _mapReady = false;
 
+  // Paso 1 (mapa a pantalla completa) hasta confirmar el punto; después, el formulario
+  bool _pickingLocation = true;
   LatLng? _position;
+  String? _species;
+  String? _size;
+  // Se puede marcar más de un estado y más de un comportamiento
+  final _conditions = <String>[];
+  final _behaviors = <String>[];
   bool _locating = false;
   bool _sending = false;
   String? _error;
+  // Errores por campo (mismas claves que la API), como en el formulario web
+  Map<String, String> _fieldErrors = {};
 
   // Foto opcional: se sube apenas se elige, para avisar enseguida si no sirve
   PickedPhoto? _photo;
@@ -89,11 +124,16 @@ class _ReportFormState extends State<_ReportForm> {
   @override
   void initState() {
     super.initState();
-    _description.addListener(() => setState(() {}));
+    // Lo habitual es reportar donde uno está: se marca tu ubicación de partida, sin mostrar errores
+    _locating = true;
+    _locate(silent: true);
   }
 
   @override
   void dispose() {
+    _color.dispose();
+    _weight.dispose();
+    _features.dispose();
     _description.dispose();
     _mapController.dispose();
     super.dispose();
@@ -101,29 +141,56 @@ class _ReportFormState extends State<_ReportForm> {
 
   void _place(LatLng position, {bool follow = false}) {
     setState(() => _position = position);
-    // Al usar el GPS, el mapa se centra en el punto (igual que FollowValue en la web)
-    if (follow) {
+    // Al usar el GPS, el mapa se centra en el punto (igual que FollowValue en la web).
+    // Si el mapa aún no está listo, lo centra onMapReady.
+    if (follow && _mapReady) {
       _mapController.move(position, math.max(_mapController.camera.zoom, 16));
     }
   }
 
-  Future<void> _locate() async {
-    setState(() {
-      _locating = true;
-      _error = null;
-    });
+  void _onMapReady() {
+    _mapReady = true;
+    final position = _position;
+    if (position != null) _mapController.move(position, math.max(_mapController.camera.zoom, 16));
+  }
+
+  Future<void> _locate({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _locating = true;
+        _error = null;
+      });
+    }
     try {
       final position = await LocationService.instance.current();
       if (!mounted) return;
       setState(() => _locating = false);
-      _place(position, follow: true);
+      // Si la persona ya marcó un punto a mano mientras esperaba el GPS, no se lo cambiamos
+      if (!silent || _position == null) _place(position, follow: true);
     } on LocationException catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = '${error.message} Marca el punto en el mapa.';
+        if (!silent) _error = '${error.message} Toca el mapa para marcar el punto.';
         _locating = false;
       });
     }
+  }
+
+  void _confirmLocation() => setState(() {
+        _pickingLocation = false;
+        _error = null;
+      });
+
+  // Vuelve al mapa a pantalla completa conservando lo que ya se escribió
+  void _changeLocation() {
+    FocusScope.of(context).unfocus();
+    _mapController.dispose();
+    setState(() {
+      _mapController = MapController();
+      _mapReady = false;
+      _pickingLocation = true;
+      _error = null;
+    });
   }
 
   Future<void> _pickPhoto(PhotoSource source) async {
@@ -169,16 +236,50 @@ class _ReportFormState extends State<_ReportForm> {
         _photoError = null;
       });
 
+  // Para llevar a la persona hasta el primer campo con error
+  final _fieldKeys = {for (final field in _fieldLabels.keys) field: GlobalKey()};
+
+  void _showFirstError() {
+    final first = _fieldLabels.keys.where(_fieldErrors.containsKey).firstOrNull;
+    final target = first == null ? null : _fieldKeys[first]!.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(target, alignment: 0.2, duration: const Duration(milliseconds: 300));
+    }
+  }
+
+  void _clearError(String field) {
+    if (_fieldErrors.containsKey(field)) setState(() => _fieldErrors.remove(field));
+  }
+
+  // Peso con coma o punto decimal; null si viene vacío
+  double? get _weightKg {
+    final text = _weight.text.trim().replaceAll(',', '.');
+    return text.isEmpty ? null : double.tryParse(text);
+  }
+
+  Map<String, String> _validate() {
+    final weight = _weightKg;
+    return {
+      if (_species == null) 'species': 'Selecciona el tipo de animal.',
+      if (_size == null) 'size': 'Selecciona el tamaño.',
+      if (_color.text.trim().length < 2) 'color': 'Indica el color (por ejemplo, café o negro con blanco).',
+      if (_weight.text.trim().isNotEmpty && (weight == null || weight <= 0 || weight > _maxWeightKg))
+        'weight_kg': 'Indica un peso aproximado entre 0 y $_maxWeightKg kg.',
+      if (_conditions.isEmpty) 'conditions': 'Selecciona cómo se encuentra (una o más opciones).',
+      if (_description.text.trim().length < _minDescription)
+        'description': 'Cuéntanos la situación con al menos $_minDescription caracteres.',
+    };
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    final position = _position;
-    final description = _description.text.trim();
-    if (position == null) {
-      setState(() => _error = 'Marca en el mapa dónde está el perro.');
-      return;
-    }
-    if (description.length < _minDescription) {
-      setState(() => _error = 'Describe al perro con al menos $_minDescription caracteres.');
+    final errors = _validate();
+    if (errors.isNotEmpty) {
+      setState(() {
+        _fieldErrors = errors;
+        _error = _errorSummary(errors);
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showFirstError());
       return;
     }
     setState(() {
@@ -186,18 +287,24 @@ class _ReportFormState extends State<_ReportForm> {
       _error = null;
     });
     try {
-      final report = await MapService(AuthScope.of(context).api)
-          .createReport(position, description, photoUrl: _photoUrl);
+      final features = _features.text.trim();
+      final report = await MapService(AuthScope.of(context).api).createReport(
+        NewReport(
+          position: _position!,
+          species: _species!,
+          size: _size!,
+          color: _color.text.trim(),
+          conditions: List.of(_conditions),
+          description: _description.text.trim(),
+          weightKg: _weightKg,
+          features: features.isEmpty ? null : features,
+          behaviors: List.of(_behaviors),
+          photoUrl: _photoUrl,
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('¡Gracias! Tu reporte quedó publicado en el mapa.')));
-      setState(() {
-        _sending = false;
-        _position = null;
-        _description.clear();
-        _photo = null;
-        _photoUrl = null;
-      });
       // El id del reporte hace que el mapa vuelva a cargar los datos
       context.go('/mapa', extra: report.id);
     } catch (error) {
@@ -211,8 +318,91 @@ class _ReportFormState extends State<_ReportForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Desde el formulario, "volver" regresa al mapa para cambiar el punto; desde el mapa, sale del reporte
+    return PopScope(
+      canPop: _pickingLocation,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _changeLocation();
+      },
+      child: _pickingLocation
+          ? _buildPicker(context)
+          : Scaffold(appBar: AppBar(title: const Text('Reportar mascota')), body: _buildForm(context)),
+    );
+  }
+
+  // Paso 1: mapa a pantalla completa para marcar dónde está la mascota
+  Widget _buildPicker(BuildContext context) {
+    final position = _position;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                backgroundColor: context.colors.muted,
+                initialCenter: position ?? santiago,
+                initialZoom: position == null ? 12 : 16,
+                onTap: (_, point) => _place(point),
+                onMapReady: _onMapReady,
+              ),
+              children: [
+                const OsmTileLayer(),
+                if (position != null)
+                  MarkerLayer(markers: [mapMarker(position, MapPins.reportPicker, key: const ValueKey('picker'))]),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.lg, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      MapButton(
+                        icon: Icons.arrow_back,
+                        tooltip: 'Volver',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                      const SizedBox(width: AdoptifySpacing.sm),
+                      Expanded(child: _PickerHint(marked: position != null)),
+                    ],
+                  ),
+                  const Spacer(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: MapButton(
+                      icon: Icons.my_location,
+                      tooltip: 'Usar mi ubicación',
+                      loading: _locating,
+                      onPressed: _locating ? null : _locate,
+                    ),
+                  ),
+                  const SizedBox(height: AdoptifySpacing.md),
+                  if (_error != null) ...[MessageBox.error(message: _error!), const SizedBox(height: AdoptifySpacing.md)],
+                  FilledButton.icon(
+                    onPressed: position == null ? null : _confirmLocation,
+                    icon: const Icon(Icons.check, size: 22),
+                    label: const Text('Confirmar ubicación'),
+                    style: const ButtonStyle(minimumSize: WidgetStatePropertyAll(Size.fromHeight(56))),
+                  ),
+                  osmAttribution(context, alignment: Alignment.centerRight),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Pasos 2 a 5, con el punto ya elegido
+  Widget _buildForm(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final muted = textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
+    final position = _position!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -227,83 +417,184 @@ class _ReportFormState extends State<_ReportForm> {
           children: [
             // Encabezado centrado
             Text(
-              'AYUDA A UN PERRO',
+              'AYUDA A UNA MASCOTA',
               textAlign: TextAlign.center,
               style: textTheme.labelSmall?.copyWith(color: context.colors.primaryDark),
             ),
             const SizedBox(height: AdoptifySpacing.xs),
-            Text('Reportar perro abandonado', textAlign: TextAlign.center, style: textTheme.headlineSmall),
+            Text('Reportar mascota', textAlign: TextAlign.center, style: textTheme.headlineSmall),
             const SizedBox(height: AdoptifySpacing.sm),
             Text(
-              'Marca en el mapa dónde viste al perro y cuéntanos cómo está. Las fundaciones cercanas podrán verlo.',
+              'Cuéntanos cómo es y cómo está. Las fundaciones cercanas podrán verlo. '
+              'Los campos con * son obligatorios.',
               textAlign: TextAlign.center,
               style: muted,
             ),
             const SizedBox(height: AdoptifySpacing.xl),
             _Section(
-              title: '1. ¿Dónde está el perro?',
+              title: '1. ¿Dónde está? *',
               children: [
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _locating ? null : _locate,
-                      icon: _locating
-                          ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.my_location, size: 20),
-                      label: const Text('Usar mi ubicación'),
-                    ),
-                    const SizedBox(width: AdoptifySpacing.md),
-                    Expanded(
-                      child: Text(
-                        _position != null
-                            ? 'Punto marcado. Toca otro lugar del mapa para moverlo.'
-                            : 'O toca el mapa para marcar el lugar.',
-                        style: textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AdoptifySpacing.md),
+                // Vista previa del punto elegido; se cambia volviendo al mapa a pantalla completa
                 Container(
-                  height: 320,
+                  height: 140,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     border: Border.all(color: context.colors.border),
                     borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
                   ),
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      backgroundColor: context.colors.muted,
-                      initialCenter: santiago,
-                      initialZoom: 12,
-                      onTap: (_, point) => _place(point),
+                  child: IgnorePointer(
+                    child: FlutterMap(
+                      key: ValueKey(position),
+                      options: MapOptions(
+                        backgroundColor: context.colors.muted,
+                        initialCenter: position,
+                        initialZoom: 16,
+                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      ),
+                      children: [
+                        const OsmTileLayer(),
+                        MarkerLayer(markers: [mapMarker(position, MapPins.reportPicker, key: const ValueKey('picker'))]),
+                        osmAttribution(context),
+                      ],
                     ),
-                    children: [
-                      const OsmTileLayer(),
-                      if (_position != null)
-                        MarkerLayer(
-                          markers: [mapMarker(_position!, MapPins.reportPicker, key: const ValueKey('picker'))],
-                        ),
-                      osmAttribution(context),
-                    ],
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _sending ? null : _changeLocation,
+                    icon: const Icon(Icons.edit_location_alt_outlined, size: 20),
+                    label: const Text('Cambiar ubicación'),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AdoptifySpacing.lg),
             _Section(
-              title: '2. Describe al perro y su estado',
+              title: '2. ¿Cómo es?',
               children: [
+                _Choices(
+                  key: _fieldKeys['species'],
+                  label: 'Tipo de animal *',
+                  options: reportSpecies,
+                  value: _species,
+                  error: _fieldErrors['species'],
+                  onSelected: (value) => setState(() {
+                    _species = value;
+                    _fieldErrors.remove('species');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                _Choices(
+                  key: _fieldKeys['size'],
+                  label: 'Tamaño *',
+                  options: reportSizes,
+                  value: _size,
+                  error: _fieldErrors['size'],
+                  onSelected: (value) => setState(() {
+                    _size = value;
+                    _fieldErrors.remove('size');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                KeyedSubtree(
+                  key: _fieldKeys['color'],
+                  child: TextField(
+                    key: const ValueKey('report-color'),
+                    controller: _color,
+                    maxLength: 60,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => _clearError('color'),
+                    decoration: InputDecoration(
+                      labelText: 'Color *',
+                      hintText: 'Ej.: café con blanco',
+                      errorText: _fieldErrors['color'],
+                      errorMaxLines: 2,
+                      counterText: '',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+                KeyedSubtree(
+                  key: _fieldKeys['weight_kg'],
+                  child: TextField(
+                    key: const ValueKey('report-weight'),
+                    controller: _weight,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    onChanged: (_) => _clearError('weight_kg'),
+                    decoration: InputDecoration(
+                      labelText: 'Peso aproximado (opcional)',
+                      hintText: 'Ej.: 12',
+                      suffixText: 'kg',
+                      errorText: _fieldErrors['weight_kg'],
+                      errorMaxLines: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
                 TextField(
-                  controller: _description,
-                  maxLines: 4,
-                  maxLength: _maxDescription,
+                  key: const ValueKey('report-features'),
+                  controller: _features,
+                  maxLength: _maxFeatures,
+                  maxLines: 2,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    hintText:
-                        'Ej.: perro mediano café, con collar rojo, parece herido de una pata. Está cerca del paradero.',
-                    hintMaxLines: 3,
+                    labelText: 'Características (opcional)',
+                    hintText: 'Ej.: collar rojo sin placa, mancha en un ojo',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '3. ¿Cómo está?',
+              children: [
+                Text('Puedes marcar más de una opción.', style: textTheme.bodySmall),
+                const SizedBox(height: AdoptifySpacing.md),
+                _MultiChoices(
+                  key: _fieldKeys['conditions'],
+                  label: 'Estado *',
+                  options: reportConditions,
+                  selected: _conditions,
+                  error: _fieldErrors['conditions'],
+                  onToggle: (value) => setState(() {
+                    if (!_conditions.remove(value)) _conditions.add(value);
+                    _fieldErrors.remove('conditions');
+                  }),
+                ),
+                const SizedBox(height: AdoptifySpacing.lg),
+                _MultiChoices(
+                  label: 'Comportamiento al acercarse (opcional)',
+                  options: reportBehaviors,
+                  selected: _behaviors,
+                  onToggle: (value) => setState(() {
+                    if (!_behaviors.remove(value)) _behaviors.add(value);
+                  }),
+                ),
+              ],
+            ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            _Section(
+              title: '4. Comentarios *',
+              children: [
+                KeyedSubtree(
+                  key: _fieldKeys['description'],
+                  child: TextField(
+                    key: const ValueKey('report-comments'),
+                    controller: _description,
+                    maxLines: 4,
+                    maxLength: _maxDescription,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => _clearError('description'),
+                    decoration: InputDecoration(
+                      hintText:
+                          'Cuéntanos la situación: desde cuándo lo ves, si alguien lo cuida, si está en un lugar peligroso…',
+                      hintMaxLines: 3,
+                      errorText: _fieldErrors['description'],
+                      errorMaxLines: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AdoptifySpacing.sm),
@@ -320,7 +611,8 @@ class _ReportFormState extends State<_ReportForm> {
                       const SizedBox(width: AdoptifySpacing.sm),
                       Expanded(
                         child: Text(
-                          'El reporte muestra solo la ubicación del perro, la descripción y la foto. Tu nombre y tus datos no se publican.',
+                          'El reporte muestra la ubicación, los datos de la mascota, tus comentarios y la foto. '
+                          'Tu nombre y tus datos no se publican.',
                           style: textTheme.bodySmall,
                         ),
                       ),
@@ -331,7 +623,7 @@ class _ReportFormState extends State<_ReportForm> {
             ),
             const SizedBox(height: AdoptifySpacing.lg),
             _Section(
-              title: '3. Foto del perro (opcional)',
+              title: '5. Foto (opcional)',
               children: [
                 if (_photo == null) ...[
                   Row(
@@ -406,7 +698,7 @@ class _PhotoPreview extends StatelessWidget {
                 Image.memory(
                   photo.bytes,
                   fit: BoxFit.cover,
-                  semanticLabel: 'Foto del perro',
+                  semanticLabel: 'Foto de la mascota',
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: context.colors.muted,
                     child: Icon(Icons.image_outlined, color: context.colors.placeholder),
@@ -439,6 +731,134 @@ class _PhotoPreview extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+// Indicación sobre el mapa a pantalla completa
+class _PickerHint extends StatelessWidget {
+  const _PickerHint({required this.marked});
+
+  final bool marked;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg, vertical: AdoptifySpacing.md),
+      decoration: mapSurface(context, radius: AdoptifyRadius.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('¿Dónde está la mascota?', style: textTheme.titleSmall),
+          Text(
+            marked ? 'Punto marcado. Toca otro lugar para moverlo.' : 'Toca el mapa para marcar el punto.',
+            style: textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Opciones como chips de una sola elección (tipo de animal, tamaño)
+class _Choices extends StatelessWidget {
+  const _Choices({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onSelected,
+    this.error,
+  });
+
+  final String label;
+  final Map<String, String> options;
+  final String? value;
+  final ValueChanged<String> onSelected;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AdoptifySpacing.sm),
+        Wrap(
+          spacing: AdoptifySpacing.sm,
+          runSpacing: AdoptifySpacing.sm,
+          children: [
+            for (final MapEntry(key: option, value: text) in options.entries)
+              ChoiceChip(
+                label: Text(text),
+                selected: value == option,
+                onSelected: (selected) {
+                  if (selected) onSelected(option);
+                },
+              ),
+          ],
+        ),
+        _FieldError(error),
+      ],
+    );
+  }
+}
+
+// Chips donde se marcan varias opciones; tocar una marcada la desmarca
+class _MultiChoices extends StatelessWidget {
+  const _MultiChoices({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onToggle,
+    this.error,
+  });
+
+  final String label;
+  final Map<String, String> options;
+  final List<String> selected;
+  final ValueChanged<String> onToggle;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AdoptifySpacing.sm),
+        Wrap(
+          spacing: AdoptifySpacing.sm,
+          runSpacing: AdoptifySpacing.sm,
+          children: [
+            for (final MapEntry(key: option, value: text) in options.entries)
+              FilterChip(
+                label: Text(text),
+                selected: selected.contains(option),
+                onSelected: (_) => onToggle(option),
+              ),
+          ],
+        ),
+        _FieldError(error),
+      ],
+    );
+  }
+}
+
+class _FieldError extends StatelessWidget {
+  const _FieldError(this.error);
+
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AdoptifySpacing.sm),
+      child: Text(error!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.reportText)),
     );
   }
 }

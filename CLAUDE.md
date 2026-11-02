@@ -32,11 +32,11 @@ Fase 2/backend/app/
   main.py                  # FastAPI, CORS, /health en raíz, api_router en /api/v1
   core/                    # config.py (Settings), security.py (bcrypt + JWT HS256), rut.py (normalize_rut)
   db/                      # database.py (engine async, get_db), seed.py, create_user.py
-  models/                  # user, foundation, animal, report (AbandonedDogReport)
+  models/                  # user, foundation, animal, report (AbandonedDogReport: cualquier mascota, con ficha)
   schemas/                 # Pydantic v2 por recurso
   services/match.py        # calculate_match_score (HU-05, sin endpoint aún)
   api/v1/endpoints/        # health, auth, animals, foundations (GET público), reports, uploads
-  alembic/versions/        # 0001..0004, nombrados NNNN_descripcion.py
+  alembic/versions/        # 0001..0005, nombrados NNNN_descripcion.py
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
@@ -49,7 +49,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Fundaciones, Mapa, Perfil; /reportar y /login a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
   features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
-  shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
+  shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
 ```
 
@@ -57,6 +57,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - **Roles:** `adopter` (pestaña Usuario del login), `foundation` y `admin` (pestaña Fundación). Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
 - **Rutas portal:** adopter → `/usuario` (mapa + lista), `/reportar`; foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
+- **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), `reportForm.ts` (portal) y `map_service.dart` (app): mantener las tres iguales. En la interfaz se dice "mascota", no "perro".
 - **RUT:** obligatorio y único, no autentica. Solo se valida formato; se guarda sin puntos y con K mayúscula (`normalize_rut`).
 - **Contraseñas:** 8 caracteres mínimo, 72 bytes máximo (bcrypt). Correos en minúsculas.
 - **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.

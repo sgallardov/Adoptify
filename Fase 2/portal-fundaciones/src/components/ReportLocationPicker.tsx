@@ -24,7 +24,7 @@ function FollowValue({ value }: Pick<Props, 'value'>) {
   return null
 }
 
-export default function ReportLocationPicker({ value, onChange, markerLabel = 'Ubicación del perro' }: Props) {
+export default function ReportLocationPicker({ value, onChange, markerLabel = 'Ubicación de la mascota' }: Props) {
   return (
     <MapContainer center={value ?? SANTIAGO} zoom={12} scrollWheelZoom
       className="relative z-0 h-80 w-full cursor-crosshair overflow-hidden rounded-2xl border border-base-200 sm:h-96">
