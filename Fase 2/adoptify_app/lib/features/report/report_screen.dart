@@ -23,6 +23,26 @@ const _maxDescription = 1000;
 const _maxFeatures = 300;
 const _maxWeightKg = 150;
 
+// Nombre de cada campo en el orden del formulario, para decir cuáles hay que revisar (igual que la web)
+const _fieldLabels = {
+  'species': 'Tipo de animal',
+  'size': 'Tamaño',
+  'color': 'Color',
+  'weight_kg': 'Peso aproximado',
+  'conditions': 'Estado',
+  'description': 'Comentarios',
+};
+
+// "Revisa: Color y Comentarios."
+String _errorSummary(Map<String, String> errors) {
+  final names = [
+    for (final MapEntry(key: field, value: label) in _fieldLabels.entries)
+      if (errors.containsKey(field)) label,
+  ];
+  final list = names.length == 1 ? names.first : '${names.sublist(0, names.length - 1).join(', ')} y ${names.last}';
+  return 'Revisa: $list.';
+}
+
 // Reportar una mascota abandonada: equivalente a /reportar del portal.
 // Primero se elige el punto en un mapa a pantalla completa y después se completan los demás pasos.
 class ReportScreen extends StatelessWidget {
@@ -216,15 +236,15 @@ class _ReportFormState extends State<_ReportForm> {
         _photoError = null;
       });
 
-  // "Bien" no se combina con los demás: elegirlo deja solo "Bien" y elegir otro lo quita (igual que la web)
-  void _toggleCondition(String value) {
-    if (_conditions.remove(value)) return;
-    if (value == 'bien') {
-      _conditions.clear();
-    } else {
-      _conditions.remove('bien');
+  // Para llevar a la persona hasta el primer campo con error
+  final _fieldKeys = {for (final field in _fieldLabels.keys) field: GlobalKey()};
+
+  void _showFirstError() {
+    final first = _fieldLabels.keys.where(_fieldErrors.containsKey).firstOrNull;
+    final target = first == null ? null : _fieldKeys[first]!.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(target, alignment: 0.2, duration: const Duration(milliseconds: 300));
     }
-    _conditions.add(value);
   }
 
   void _clearError(String field) {
@@ -257,8 +277,9 @@ class _ReportFormState extends State<_ReportForm> {
     if (errors.isNotEmpty) {
       setState(() {
         _fieldErrors = errors;
-        _error = 'Revisa los campos indicados antes de enviar.';
+        _error = _errorSummary(errors);
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showFirstError());
       return;
     }
     setState(() {
@@ -454,6 +475,7 @@ class _ReportFormState extends State<_ReportForm> {
               title: '2. ¿Cómo es?',
               children: [
                 _Choices(
+                  key: _fieldKeys['species'],
                   label: 'Tipo de animal *',
                   options: reportSpecies,
                   value: _species,
@@ -465,6 +487,7 @@ class _ReportFormState extends State<_ReportForm> {
                 ),
                 const SizedBox(height: AdoptifySpacing.lg),
                 _Choices(
+                  key: _fieldKeys['size'],
                   label: 'Tamaño *',
                   options: reportSizes,
                   value: _size,
@@ -475,33 +498,39 @@ class _ReportFormState extends State<_ReportForm> {
                   }),
                 ),
                 const SizedBox(height: AdoptifySpacing.lg),
-                TextField(
-                  key: const ValueKey('report-color'),
-                  controller: _color,
-                  maxLength: 60,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) => _clearError('color'),
-                  decoration: InputDecoration(
-                    labelText: 'Color *',
-                    hintText: 'Ej.: café con blanco',
-                    errorText: _fieldErrors['color'],
-                    errorMaxLines: 2,
-                    counterText: '',
+                KeyedSubtree(
+                  key: _fieldKeys['color'],
+                  child: TextField(
+                    key: const ValueKey('report-color'),
+                    controller: _color,
+                    maxLength: 60,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => _clearError('color'),
+                    decoration: InputDecoration(
+                      labelText: 'Color *',
+                      hintText: 'Ej.: café con blanco',
+                      errorText: _fieldErrors['color'],
+                      errorMaxLines: 2,
+                      counterText: '',
+                    ),
                   ),
                 ),
                 const SizedBox(height: AdoptifySpacing.md),
-                TextField(
-                  key: const ValueKey('report-weight'),
-                  controller: _weight,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                  onChanged: (_) => _clearError('weight_kg'),
-                  decoration: InputDecoration(
-                    labelText: 'Peso aproximado (opcional)',
-                    hintText: 'Ej.: 12',
-                    suffixText: 'kg',
-                    errorText: _fieldErrors['weight_kg'],
-                    errorMaxLines: 2,
+                KeyedSubtree(
+                  key: _fieldKeys['weight_kg'],
+                  child: TextField(
+                    key: const ValueKey('report-weight'),
+                    controller: _weight,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    onChanged: (_) => _clearError('weight_kg'),
+                    decoration: InputDecoration(
+                      labelText: 'Peso aproximado (opcional)',
+                      hintText: 'Ej.: 12',
+                      suffixText: 'kg',
+                      errorText: _fieldErrors['weight_kg'],
+                      errorMaxLines: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AdoptifySpacing.md),
@@ -525,12 +554,13 @@ class _ReportFormState extends State<_ReportForm> {
                 Text('Puedes marcar más de una opción.', style: textTheme.bodySmall),
                 const SizedBox(height: AdoptifySpacing.md),
                 _MultiChoices(
+                  key: _fieldKeys['conditions'],
                   label: 'Estado *',
                   options: reportConditions,
                   selected: _conditions,
                   error: _fieldErrors['conditions'],
                   onToggle: (value) => setState(() {
-                    _toggleCondition(value);
+                    if (!_conditions.remove(value)) _conditions.add(value);
                     _fieldErrors.remove('conditions');
                   }),
                 ),
@@ -549,19 +579,22 @@ class _ReportFormState extends State<_ReportForm> {
             _Section(
               title: '4. Comentarios *',
               children: [
-                TextField(
-                  key: const ValueKey('report-comments'),
-                  controller: _description,
-                  maxLines: 4,
-                  maxLength: _maxDescription,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) => _clearError('description'),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Cuéntanos la situación: desde cuándo lo ves, si alguien lo cuida, si está en un lugar peligroso…',
-                    hintMaxLines: 3,
-                    errorText: _fieldErrors['description'],
-                    errorMaxLines: 2,
+                KeyedSubtree(
+                  key: _fieldKeys['description'],
+                  child: TextField(
+                    key: const ValueKey('report-comments'),
+                    controller: _description,
+                    maxLines: 4,
+                    maxLength: _maxDescription,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => _clearError('description'),
+                    decoration: InputDecoration(
+                      hintText:
+                          'Cuéntanos la situación: desde cuándo lo ves, si alguien lo cuida, si está en un lugar peligroso…',
+                      hintMaxLines: 3,
+                      errorText: _fieldErrors['description'],
+                      errorMaxLines: 2,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AdoptifySpacing.sm),
@@ -732,6 +765,7 @@ class _PickerHint extends StatelessWidget {
 // Opciones como chips de una sola elección (tipo de animal, tamaño)
 class _Choices extends StatelessWidget {
   const _Choices({
+    super.key,
     required this.label,
     required this.options,
     required this.value,
@@ -775,6 +809,7 @@ class _Choices extends StatelessWidget {
 // Chips donde se marcan varias opciones; tocar una marcada la desmarca
 class _MultiChoices extends StatelessWidget {
   const _MultiChoices({
+    super.key,
     required this.label,
     required this.options,
     required this.selected,

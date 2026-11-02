@@ -102,7 +102,7 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   ya marcada (si diste permiso); tocar el mapa mueve el punto y **Confirmar ubicación** pasa al formulario. Ahí el
   paso 1 muestra una vista previa con **Cambiar ubicación** (el botón atrás también vuelve al mapa, sin perder lo
   escrito). Luego, igual que la web: **¿Cómo es?** (tipo y tamaño con chips, color, peso aproximado, características), **¿Cómo está?** (estado y
-  comportamiento opcional; en ambos se marcan varias opciones y "Bien" va solo), **Comentarios** y **Foto**. Cada campo muestra su error.
+  comportamiento opcional; en ambos se marcan varias opciones), **Comentarios** y **Foto**. Cada campo muestra su error; el mensaje dice qué campos revisar y la pantalla baja al primero.
   Se envía con `POST /reports`; al terminar vuelve al mapa con el nuevo pin, cuya ficha muestra los datos.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
 - La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.

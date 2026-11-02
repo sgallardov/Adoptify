@@ -43,12 +43,14 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/reportar` (botón "Reportar mascota"): formulario para reportar una mascota abandonada (requiere cuenta `adopter`), en cinco pasos:
   1. **¿Dónde está?**: clic en el mapa, arrastrar el pin o "Usar mi ubicación".
   2. **¿Cómo es?**: tipo de animal y tamaño (botones), color, peso aproximado y características.
-  3. **¿Cómo está?**: estado (Bien, Desnutrido, Herido, Enfermo, Deplorable) y comportamiento al acercarse (opcional).
-     En ambos se marcan varias opciones; "Bien" no se combina con los demás estados.
+  3. **¿Cómo está?**: estado (15 opciones: Bien, Herido, Desnutrido, Cojea, Preñada, Pulgas o garrapatas…) y
+     comportamiento al acercarse (13 opciones, opcional). En ambos se marcan varias opciones.
   4. **Comentarios**: la situación, en texto libre.
   5. **Foto** (opcional).
 
   La validación vive en `services/reportForm.ts` (probada en `tests/reportForm.test.mjs`), con un error por campo.
+  Si falta algo, el mensaje de arriba dice qué campos revisar ("Revisa: Color y Comentarios.") y la página baja al primero.
+  El peso acepta "12", "3,5" o "12 kg".
   Se envía con `POST /reports`. No se publican los datos de quien reporta.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.

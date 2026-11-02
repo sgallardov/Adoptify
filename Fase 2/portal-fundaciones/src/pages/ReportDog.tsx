@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ArrowLeft, LoaderCircle, LocateFixed, Send } from 'lucide-react'
@@ -7,7 +7,7 @@ import Feedback from '../components/Feedback'
 import type { LatLng } from '../hooks/useMapAnimals'
 import { errorMessage } from '../services/api'
 import { createReport } from '../services/reports'
-import { MAX_COMMENT, reportFields, reportOptions, reportPayload, toggleCondition, toggleOption, validateReport } from '../services/reportForm'
+import { errorSummary, firstErrorField, MAX_COMMENT, reportFields, reportOptions, reportPayload, toggleOption, validateReport } from '../services/reportForm'
 import type { MultiField, ReportErrors, TextField } from '../services/reportForm'
 import PageHeading from '../components/PageHeading'
 import ReportLocationPicker from '../components/ReportLocationPicker'
@@ -37,7 +37,7 @@ function Choices({ name, label, options, selected, onToggle, error, multiple }: 
   onToggle: (value: string) => void; error?: string; multiple?: boolean
 }) {
   return (
-    <fieldset aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined}>
+    <fieldset id={name} tabIndex={-1} aria-invalid={Boolean(error)} aria-describedby={error ? `${name}-error` : undefined} className="scroll-mt-6 outline-none">
       <legend className="text-sm font-semibold">{label}</legend>
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map(([option, text]) => (
@@ -63,7 +63,6 @@ export default function ReportDog() {
   const [locating, setLocating] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const errorSummary = useRef<HTMLDivElement>(null)
 
   function change(field: TextField, value: string) {
     setFields(previous => ({ ...previous, [field]: value }))
@@ -71,8 +70,7 @@ export default function ReportDog() {
   }
 
   function toggle(field: MultiField, value: string) {
-    const next = field === 'conditions' ? toggleCondition : toggleOption
-    setFields(previous => ({ ...previous, [field]: next(previous[field], value) }))
+    setFields(previous => ({ ...previous, [field]: toggleOption(previous[field], value) }))
     setErrors(previous => ({ ...previous, [field]: undefined }))
   }
 
@@ -108,8 +106,14 @@ export default function ReportDog() {
     const validation = validateReport(fields, position)
     if (Object.keys(validation).length || !position) {
       setErrors(validation)
-      setError('Revisa los campos indicados antes de enviar.')
-      requestAnimationFrame(() => errorSummary.current?.focus())
+      setError(errorSummary(validation))
+      // Lleva al primer campo con error (el mensaje de arriba dice cuáles son todos)
+      const first = firstErrorField(validation)
+      requestAnimationFrame(() => {
+        const target = first && document.getElementById(first)
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target?.focus({ preventScroll: true })
+      })
       return
     }
     setSending(true)
@@ -140,7 +144,7 @@ export default function ReportDog() {
         <PageHeading eyebrow="Ayuda a una mascota" title="Reportar mascota" description="Marca dónde la viste, cuéntanos cómo es y cómo está. Las fundaciones cercanas podrán verlo. Los campos con * son obligatorios." />
 
         <form onSubmit={submit} noValidate className="space-y-6" aria-busy={sending}>
-          {error && <div ref={errorSummary} tabIndex={-1}><Feedback kind="error" title={error} compact /></div>}
+          {error && <div role="alert"><Feedback kind="error" title={error} compact /></div>}
 
           <Section title="1. ¿Dónde está? *">
             <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -151,7 +155,9 @@ export default function ReportDog() {
                 {position ? 'Punto marcado. Puedes arrastrarlo para ajustarlo.' : 'O haz clic en el mapa para marcar el lugar.'}
               </p>
             </div>
-            <ReportLocationPicker value={position} onChange={place} markerLabel="Ubicación de la mascota" />
+            <div id="position" tabIndex={-1} className="scroll-mt-6 outline-none">
+              <ReportLocationPicker value={position} onChange={place} markerLabel="Ubicación de la mascota" />
+            </div>
             <FieldError id="position" error={errors.position} />
           </Section>
 
@@ -167,7 +173,7 @@ export default function ReportDog() {
                 </div>
                 <div>
                   <label htmlFor="weight_kg" className="text-sm font-semibold">Peso aproximado en kg (opcional)</label>
-                  <input {...textProps('weight_kg')} type="text" inputMode="decimal" placeholder="Ej.: 12" />
+                  <input {...textProps('weight_kg')} type="text" inputMode="decimal" placeholder="Ej.: 12 o 3,5" />
                   <FieldError id="weight_kg" error={errors.weight_kg} />
                 </div>
               </div>

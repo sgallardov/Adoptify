@@ -1,12 +1,19 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ReportSpecies = Literal["perro", "gato", "otro"]
 ReportSize = Literal["pequeño", "mediano", "grande"]
-ReportCondition = Literal["bien", "desnutrido", "herido", "enfermo", "deplorable"]
-ReportBehavior = Literal["tranquilo", "asustado", "agresivo"]
+# Mismas opciones que reportOptions (portal) y map_service.dart (app)
+ReportCondition = Literal[
+    "bien", "desnutrido", "deshidratado", "herido", "sangrando", "cojea", "atropellado", "no_se_mueve",
+    "enfermo", "problemas_piel", "parasitos", "problemas_ojos", "prenada", "con_crias", "deplorable",
+]
+ReportBehavior = Literal[
+    "tranquilo", "amistoso", "jugueton", "sigue_personas", "decaido", "asustado", "se_esconde",
+    "huye", "nervioso", "desconfiado", "ruidoso", "protector", "agresivo",
+]
 
 
 class ReportCreate(BaseModel):
@@ -19,7 +26,7 @@ class ReportCreate(BaseModel):
     color: str = Field(..., min_length=2, max_length=60)
     features: str | None = Field(None, max_length=300, description="Características: collar, manchas, raza aparente, etc.")
     conditions: list[ReportCondition] = Field(
-        ..., min_length=1, description="Estado en que se encuentra: uno o varios; 'bien' no se combina con otros"
+        ..., min_length=1, description="Estado en que se encuentra: uno o varios"
     )
     behaviors: list[ReportBehavior] = Field(default_factory=list, description="Cómo reacciona al acercarse: ninguno, uno o varios")
     description: str = Field(..., min_length=10, max_length=1000, description="Comentarios sobre la situación")
@@ -34,12 +41,6 @@ class ReportCreate(BaseModel):
     @classmethod
     def without_duplicates(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(values))
-
-    @model_validator(mode="after")
-    def good_is_exclusive(self):
-        if "bien" in self.conditions and len(self.conditions) > 1:
-            raise ValueError("El estado 'bien' no se puede combinar con otros estados.")
-        return self
 
     @field_validator("features", mode="before")
     @classmethod

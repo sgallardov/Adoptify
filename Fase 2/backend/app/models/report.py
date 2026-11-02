@@ -31,9 +31,9 @@ class AbandonedDogReport(Base):
     weight_kg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Peso aproximado
     color: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     features: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # Collar, manchas, raza aparente...
-    # Puede tener varios: 'bien' (solo), 'desnutrido', 'herido', 'enfermo', 'deplorable'
+    # Puede tener varios: 'bien', 'herido', 'desnutrido', 'cojea'... (ver ReportCondition en schemas/report.py)
     conditions: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
-    # Puede tener varios: 'tranquilo', 'asustado', 'agresivo'
+    # Puede tener varios: 'tranquilo', 'asustado', 'agresivo'... (ver ReportBehavior)
     behaviors: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(20)), nullable=True)
 
     # Comentarios de quien reporta sobre la situación

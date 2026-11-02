@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { reportCondition, reportFields, reportPayload, reportSummary, toggleCondition, toggleOption, validateReport } from '../src/services/reportForm.ts'
+import { errorSummary, firstErrorField, reportCondition, reportFields, reportPayload, reportSummary, toggleOption, validateReport } from '../src/services/reportForm.ts'
 
 const position = { lat: -33.4378, lng: -70.6505 }
 const valid = () => ({ ...reportFields(), species: 'perro', size: 'mediano', color: ' Café ', conditions: ['herido'], description: ' Cojea cerca del paradero ' })
@@ -41,13 +41,21 @@ test('resume la ficha en español y tolera reportes antiguos sin datos', () => {
   assert.equal(reportSummary(old), '')
   assert.equal(reportCondition(old), '')
 })
-test('permite varios estados, pero "Bien" no se combina con otros', () => {
-  assert.deepEqual(toggleCondition(['herido'], 'desnutrido'), ['herido', 'desnutrido'])
-  assert.deepEqual(toggleCondition(['herido', 'desnutrido'], 'herido'), ['desnutrido'])
-  assert.deepEqual(toggleCondition(['herido', 'enfermo'], 'bien'), ['bien'])
-  assert.deepEqual(toggleCondition(['bien'], 'herido'), ['herido'])
-  assert.ok(validateReport({ ...valid(), conditions: ['bien', 'herido'] }, position).conditions)
-  assert.deepEqual(validateReport({ ...valid(), conditions: ['herido', 'enfermo'] }, position), {})
+test('permite varios estados, también "Bien" junto a otros', () => {
+  assert.deepEqual(toggleOption(['bien'], 'prenada'), ['bien', 'prenada'])
+  assert.deepEqual(validateReport({ ...valid(), conditions: ['bien', 'prenada', 'parasitos'] }, position), {})
+  assert.ok(validateReport({ ...valid(), conditions: ['volando'] }, position).conditions)
+})
+test('acepta el peso escrito con kg', () => {
+  assert.deepEqual(validateReport({ ...valid(), weight_kg: '12 kg' }, position), {})
+  assert.equal(reportPayload({ ...valid(), weight_kg: '3,5kg' }, position, null).weight_kg, 3.5)
+})
+test('el mensaje dice qué campos revisar, en el orden del formulario', () => {
+  const errors = validateReport({ ...valid(), color: '', description: 'corto' }, position)
+  assert.equal(errorSummary(errors), 'Revisa: Color y Comentarios.')
+  assert.equal(firstErrorField(errors), 'color')
+  assert.equal(errorSummary(validateReport({ ...valid(), size: '' }, position)), 'Revisa: Tamaño.')
+  assert.equal(errorSummary(validateReport(reportFields(), null)), 'Revisa: Ubicación, Tipo de animal, Tamaño, Color, Estado y Comentarios.')
 })
 test('permite varios comportamientos o ninguno', () => {
   assert.deepEqual(toggleOption([], 'asustado'), ['asustado'])

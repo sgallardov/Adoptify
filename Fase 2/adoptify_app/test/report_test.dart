@@ -119,7 +119,7 @@ void main() {
     await openReport(tester, api);
 
     await tapVisible(tester, find.text('Enviar reporte'));
-    expect(find.text('Revisa los campos indicados antes de enviar.'), findsWidgets);
+    expect(find.text('Revisa: Tipo de animal, Tamaño, Color, Estado y Comentarios.'), findsWidgets);
     expect(find.text('Selecciona el tipo de animal.'), findsOneWidget);
     expect(find.text('Selecciona el tamaño.'), findsOneWidget);
     expect(find.text('Indica el color (por ejemplo, café o negro con blanco).'), findsOneWidget);
@@ -186,17 +186,33 @@ void main() {
     expect(body['behaviors'], ['asustado', 'agresivo']);
   });
 
-  testWidgets('"Bien" no se combina con otros estados', (tester) async {
+  testWidgets('"Bien" se puede marcar junto a otros estados', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;
     await openReport(tester, api);
 
     await fillRequired(tester); // marca "Herido"
-    await tapVisible(tester, find.text('Enfermo'));
     await tapVisible(tester, find.text('Bien'));
+    await tapVisible(tester, find.text('Preñada'));
     await tapVisible(tester, find.text('Enviar reporte'));
     final post = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/reports');
-    expect(jsonDecode(post.body)['conditions'], ['bien']);
+    expect(jsonDecode(post.body)['conditions'], ['herido', 'bien', 'prenada']);
+  });
+
+  testWidgets('el mensaje dice qué falta y lleva al primer campo con error', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await fillRequired(tester, comments: 'corto');
+    await tester.enterText(find.byKey(const ValueKey('report-color')), '');
+    await tapVisible(tester, find.text('Enviar reporte'));
+
+    expect(find.text('Revisa: Color y Comentarios.'), findsWidgets);
+    // Quedó a la vista el campo Color
+    final color = tester.getRect(find.byKey(const ValueKey('report-color')));
+    final screen = tester.getRect(find.byType(Scaffold).first);
+    expect(screen.contains(color.center), isTrue);
   });
 
   testWidgets('muestra el mensaje si no hay conexión al enviar', (tester) async {

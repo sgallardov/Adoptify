@@ -174,14 +174,39 @@ const reportStatuses = {'reported': 'Reportado', 'in_rescue': 'En rescate', 'res
 // Opciones del formulario de reporte: valor que guarda la API → texto (igual que reportOptions del portal)
 const reportSpecies = {'perro': 'Perro', 'gato': 'Gato', 'otro': 'Otro'};
 const reportSizes = {'pequeño': 'Pequeño', 'mediano': 'Mediano', 'grande': 'Grande'};
+// Estado y comportamiento admiten varias opciones
 const reportConditions = {
   'bien': 'Bien',
   'desnutrido': 'Desnutrido',
+  'deshidratado': 'Deshidratado',
   'herido': 'Herido',
+  'sangrando': 'Sangrando',
+  'cojea': 'Cojea',
+  'atropellado': 'Atropellado',
+  'no_se_mueve': 'No se puede mover',
   'enfermo': 'Enfermo',
+  'problemas_piel': 'Sarna o problemas de piel',
+  'parasitos': 'Pulgas o garrapatas',
+  'problemas_ojos': 'Problemas en los ojos',
+  'prenada': 'Preñada',
+  'con_crias': 'Con crías',
   'deplorable': 'Deplorable',
 };
-const reportBehaviors = {'tranquilo': 'Tranquilo', 'asustado': 'Asustado', 'agresivo': 'Agresivo'};
+const reportBehaviors = {
+  'tranquilo': 'Tranquilo',
+  'amistoso': 'Amistoso, se deja tocar',
+  'jugueton': 'Juguetón',
+  'sigue_personas': 'Sigue a las personas',
+  'decaido': 'Decaído',
+  'asustado': 'Asustado',
+  'se_esconde': 'Se esconde',
+  'huye': 'Huye al acercarse',
+  'nervioso': 'Nervioso',
+  'desconfiado': 'Desconfiado',
+  'ruidoso': 'Ladra o maúlla mucho',
+  'protector': 'Protege a sus crías',
+  'agresivo': 'Agresivo',
+};
 
 String formatAge(int? months) {
   if (months == null) return 'Edad no registrada';

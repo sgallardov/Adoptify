@@ -119,11 +119,10 @@ class TestCreateReport:
         {"conditions": None},                 # falta el estado
         {"conditions": []},                   # hay que marcar al menos un estado
         {"conditions": ["regular"]},          # estado no permitido
-        {"conditions": ["bien", "herido"]},   # "bien" no se combina con otros
         {"color": " "},                       # color vacío
         {"weight_kg": 0},                     # peso debe ser mayor que 0
         {"weight_kg": 500},                   # peso máximo 150 kg
-        {"behaviors": ["jugueton"]},          # comportamiento no permitido
+        {"behaviors": ["volando"]},           # comportamiento no permitido
     ])
     async def test_invalid_report_returns_422(self, async_client: AsyncClient, auth_headers: dict, changes: dict):
         payload = {key: value for key, value in {**REPORT, **changes}.items() if value is not None}
@@ -168,3 +167,27 @@ class TestNearbyReports:
         response = await async_client.get("/api/v1/reports/nearby", params=params)
 
         assert response.status_code == 422
+
+
+class TestReportOptions:
+    """
+    Estados y comportamientos: se pueden combinar libremente, también "bien" con otros.
+    """
+
+    async def test_good_can_be_combined_with_other_conditions(self, async_client: AsyncClient, auth_headers: dict):
+        payload = {**REPORT, "conditions": ["bien", "prenada", "parasitos"], "behaviors": ["amistoso", "sigue_personas"]}
+        response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
+
+        assert response.status_code == 201
+        assert response.json()["conditions"] == ["bien", "prenada", "parasitos"]
+        assert response.json()["behaviors"] == ["amistoso", "sigue_personas"]
+
+    async def test_new_options_are_accepted(self, async_client: AsyncClient, auth_headers: dict):
+        payload = {
+            **REPORT,
+            "conditions": ["atropellado", "sangrando", "no_se_mueve", "problemas_ojos", "problemas_piel"],
+            "behaviors": ["decaido", "se_esconde", "huye", "ruidoso", "protector"],
+        }
+        response = await async_client.post("/api/v1/reports", json=payload, headers=auth_headers)
+
+        assert response.status_code == 201
