@@ -647,6 +647,7 @@ class _ReportDetailCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return _DetailCard(
       onClose: onClose,
+      leading: report.photoUrl == null ? null : _AnimalPhoto(url: report.photoUrl, size: 72),
       children: [
         Text('Perro reportado', style: textTheme.titleMedium?.copyWith(color: AdoptifyColors.reportText)),
         const SizedBox(height: AdoptifySpacing.xs),

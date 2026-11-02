@@ -6,6 +6,7 @@ import type { LatLng } from '../hooks/useMapAnimals'
 import { capitalize } from '../services/animals'
 import { reportStatuses } from '../services/reports'
 import type { DogReport } from '../services/reports'
+import { mediaUrl } from '../services/uploads'
 import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, SANTIAGO } from './mapTiles'
 
 const animalIcon = dotIcon('bg-brand-600', 20)
@@ -63,6 +64,7 @@ export default function AnimalsMap({ animals, reports = [], origin, selectedId, 
         <Marker key={`report-${report.id}`} position={{ lat: report.latitude, lng: report.longitude }} icon={reportIcon} title="Perro reportado">
           <Popup>
             <div className="max-w-56 space-y-1 text-sm text-base-700">
+              {report.photo_url && <img src={mediaUrl(report.photo_url) ?? undefined} alt="Foto del perro reportado" className="mb-2 aspect-[16/10] w-full rounded-lg object-cover" />}
               <strong className="block text-base text-danger-700">Perro reportado</strong>
               <p className="!m-0">{report.description}</p>
               <p className="!m-0 text-base-500">

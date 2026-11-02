@@ -1,4 +1,4 @@
-# Adoptify — App móvil (HU-08, HU-14 y HU-15)
+# Adoptify — App móvil (HU-08, HU-14, HU-15 y HU-16)
 
 App Flutter para ciudadanos y adoptantes. Consume la misma API que el portal web (`Fase 2/backend`).
 
@@ -38,14 +38,14 @@ Android permite `http` sin cifrar (`usesCleartextTraffic`) solo para desarrollo;
 lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
-  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS)
+  core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS), photo_service.dart (cámara y galería)
   features/       # una carpeta por pantalla: map, report, account, auth
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
   shared/map/     # map_style.dart (mosaicos OSM, atribución, pines): equivalente a mapTiles.ts
   shared/widgets/ # app_shell.dart (barra inferior), adoptify_logo.dart, content_width.dart, coming_soon.dart, message_box.dart
-test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend y GPS)
+test/             # widget tests de navegación, login, mapa y reporte (fake_api.dart simula backend, GPS, cámara y galería)
 ```
 
 ## Navegación
@@ -90,14 +90,26 @@ naranjo = mascota en adopción, rojo = perro reportado, azul = tu ubicación.
   Los reportes creados en la app se ven en la web y viceversa (es la misma API).
 - La API ya entrega `latitude` y `longitude`: no hay que decodificar WKB.
 
+## Foto del perro (HU-16)
+En "Reportar mascota", la sección **3. Foto del perro (opcional)** tiene dos botones:
+**Tomar foto** (cámara) y **Galería**. Usa `image_picker`.
+- La foto se achica a 1600 px como máximo, en calidad 85, para no pasar los 5 MB del backend.
+- Se sube apenas se elige (`POST /uploads`, multipart) para avisar enseguida si no sirve.
+  Mientras sube, "Enviar reporte" queda deshabilitado. "Quitar foto" la descarta.
+- El reporte se envía con la URL devuelta en `photo_url`, y la ficha del reporte en el mapa muestra la foto.
+- `mediaUrl()` (`core/config.dart`) pide las fotos de `/uploads/` al mismo servidor que la API. El backend
+  arma la URL con la dirección desde la que se subió, así que una foto subida desde el portal (`localhost`)
+  no abriría en el emulador (`10.0.2.2`).
+- En las pruebas, `PhotoService.instance` se reemplaza por `FakePhotos` (igual que el GPS).
+
+**Cámara en el emulador:** la cámara trasera del emulador muestra una escena virtual; sirve para probar el flujo.
+Para la galería, arrastrar una imagen a la ventana del emulador la guarda en Descargas.
+
 **GPS en el emulador:** por defecto está en California. Para probar la búsqueda por cercanía, en el emulador
 abrir los tres puntos (Extended controls) → Location, buscar Santiago y pulsar **Set location**.
 
 ## Librerías
 `go_router` (rutas), `http` (API), `flutter_secure_storage` (token), `flutter_map` + `latlong2` (mapa),
-`geolocator` (ubicación), `camera` (fotos de reportes, para HU-16).
+`geolocator` (ubicación), `image_picker` (cámara y galería, HU-16), `camera` (sin uso por ahora).
 Permisos declarados en `android/app/src/main/AndroidManifest.xml` (internet, ubicación, cámara)
-e `ios/Runner/Info.plist` (ubicación y cámara).
-
-## Próximas HU
-- **HU-16:** subir una foto real al reportar (depende del endpoint `POST /uploads`).
+e `ios/Runner/Info.plist` (ubicación, cámara y fotos).

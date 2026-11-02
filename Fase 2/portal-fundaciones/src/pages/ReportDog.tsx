@@ -8,6 +8,7 @@ import { errorMessage } from '../services/api'
 import { createReport } from '../services/reports'
 import PageHeading from '../components/PageHeading'
 import ReportLocationPicker from '../components/ReportLocationPicker'
+import PhotoPicker from '../components/PhotoPicker'
 
 const MIN_DESCRIPTION = 10
 
@@ -16,6 +17,8 @@ export default function ReportDog() {
   const navigate = useNavigate()
   const [position, setPosition] = useState<LatLng | null>(null)
   const [description, setDescription] = useState('')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [locating, setLocating] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +58,7 @@ export default function ReportDog() {
     setSending(true)
     setError(null)
     try {
-      await createReport(position, description.trim())
+      await createReport(position, description.trim(), photoUrl)
       navigate('/usuario', { state: { reported: true } })
     } catch (err) {
       setError(errorMessage(err, 'No se pudo enviar el reporte. Inténtalo nuevamente.'))
@@ -93,14 +96,16 @@ export default function ReportDog() {
             <span className="mt-1 block text-right text-xs text-base-400">{description.length}/1000</span>
           </label>
 
+          <PhotoPicker label="3. Foto del perro (opcional)" value={photoUrl} onChange={setPhotoUrl} onUploadingChange={setUploading} />
+
           <p className="rounded-xl bg-base-100 p-3 text-xs leading-5 text-base-600">
-            El reporte muestra solo la ubicación del perro y la descripción. Tu nombre y tus datos no se publican.
+            El reporte muestra solo la ubicación del perro, la descripción y la foto. Tu nombre y tus datos no se publican.
           </p>
 
           {error && <Feedback kind="error" title={error} compact />}
           {sending && <Feedback kind="loading" title="Enviando reporte…" compact />}
 
-          <button type="submit" disabled={sending} className="button-primary">
+          <button type="submit" disabled={sending || uploading} className="button-primary">
             {sending ? <LoaderCircle className="animate-spin" size={17} /> : <Send size={17} />}{sending ? 'Enviando…' : 'Enviar reporte'}
           </button>
         </form>

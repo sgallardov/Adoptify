@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:adoptify_app/core/api_client.dart';
 import 'package:adoptify_app/core/location_service.dart';
+import 'package:adoptify_app/core/photo_service.dart';
 import 'package:adoptify_app/core/token_storage.dart';
 import 'package:adoptify_app/features/auth/auth_controller.dart';
 import 'package:http/http.dart' as http;
@@ -49,6 +51,8 @@ class FakeApi {
   final storage = MemoryTokenStorage();
   bool offline = false;
   bool animalsFail = false;
+  // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
+  int? uploadStatus;
   final reports = <Map<String, dynamic>>[
     {
       'id': 1,
@@ -69,6 +73,12 @@ class FakeApi {
   Future<http.Response> _handle(http.Request request) async {
     requests.add(request);
     if (offline) throw http.ClientException('sin conexión');
+    // La foto llega como multipart, no como JSON
+    if (request.url.path == '/uploads') {
+      if (request.headers['Authorization'] != 'Bearer $validToken') return _json(401, {'detail': 'Not authenticated'});
+      if (uploadStatus == 415) return _json(415, {'detail': 'El archivo no es una imagen válida. Usa JPG o PNG.'});
+      return _json(201, {'url': 'http://api/uploads/foto.png'});
+    }
     final body = request.body.isEmpty ? <String, dynamic>{} : jsonDecode(request.body) as Map<String, dynamic>;
 
     switch (request.url.path) {
@@ -105,7 +115,7 @@ class FakeApi {
         final report = {
           'id': reports.length + 1,
           'description': body['description'],
-          'photo_url': null,
+          'photo_url': body['photo_url'],
           'status': 'reported',
           'latitude': body['latitude'],
           'longitude': body['longitude'],
@@ -135,5 +145,25 @@ class FakeLocation extends LocationService {
   Future<LatLng> current() async {
     if (error != null) throw LocationException(error!);
     return position;
+  }
+}
+
+// PNG de 1×1 píxel: suficiente para la vista previa de la foto
+final tinyPng = Uint8List.fromList(base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
+));
+
+// Cámara y galería simuladas: devuelven siempre la misma foto, o null si se cancela
+class FakePhotos extends PhotoService {
+  FakePhotos({this.cancel = false});
+
+  final bool cancel;
+  final sources = <PhotoSource>[];
+
+  @override
+  Future<PickedPhoto?> pick(PhotoSource source) async {
+    sources.add(source);
+    if (cancel) return null;
+    return PickedPhoto(bytes: tinyPng, filename: 'perro.png');
   }
 }

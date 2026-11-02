@@ -11,6 +11,7 @@ import { animalFields, animalPayload, validateAnimal } from '../services/animalF
 import type { AnimalFields, FieldErrors } from '../services/animalForm'
 import { animalError } from '../services/animalErrors'
 import ReportLocationPicker from '../components/ReportLocationPicker'
+import PhotoPicker from '../components/PhotoPicker'
 import AnimalsState from '../components/AnimalsState'
 import Feedback from '../components/Feedback'
 import PageHeading from '../components/PageHeading'
@@ -29,6 +30,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const inFlight = useRef(false)
   const errorSummary = useRef<HTMLDivElement>(null)
   const adminCreate = user?.role === 'admin' && !animal
@@ -54,7 +56,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (inFlight.current) return
+    if (inFlight.current || uploading) return
     const validation = validateAnimal(fields, adminCreate, hasLocation)
     if (Object.keys(validation).length) { showError('Revisa los campos indicados antes de guardar.', validation); return }
     inFlight.current = true
@@ -104,7 +106,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
         {adminCreate && <p className="mt-3 text-sm text-base-500">Como administrador, indica el ID de una fundación ya registrada. Las cuentas de fundación publican directamente en su propia fundación.</p>}
         <div className="mt-5 space-y-5">
           <Field id="description" label="Su historia (opcional)" error={errors.description}><textarea {...props('description')} rows={4} maxLength={2000} /></Field>
-          {input('photo_url', 'Enlace de la foto (opcional)', { type: 'url', maxLength: 500, placeholder: 'https://…' })}
+          <PhotoPicker label="Foto (opcional)" value={fields.photo_url || null} onChange={url => change('photo_url', url ?? '')} onUploadingChange={setUploading} error={errors.photo_url} />
         </div>
       </fieldset>
       <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">
@@ -119,7 +121,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
       {saving && <Feedback kind="loading" title="Guardando animal…" compact />}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" disabled={saving} onClick={() => navigate(back)} className="button-secondary">Cancelar</button>
-        <button type="submit" disabled={saving} className="button-primary"><Save size={18} />{saving ? 'Guardando…' : animal ? 'Guardar cambios' : 'Publicar animal'}</button>
+        <button type="submit" disabled={saving || uploading} className="button-primary"><Save size={18} />{saving ? 'Guardando…' : animal ? 'Guardar cambios' : 'Publicar animal'}</button>
       </div>
     </form>
   </>

@@ -42,25 +42,35 @@ class ApiClient {
 
   Future<dynamic> post(String path, Map<String, dynamic> body) => _send('POST', path, body: body);
 
-  Future<dynamic> _send(String method, String path, {Map<String, dynamic>? body, Map<String, Object>? query}) async {
-    final token = _token;
+  // Envía un archivo como multipart/form-data en el campo 'file' (POST /uploads)
+  Future<dynamic> upload(String path, List<int> bytes, String filename) {
+    final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl$path'))
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    // Una foto tarda más en subir que una petición JSON
+    return _dispatch(request, timeout: const Duration(seconds: 30));
+  }
+
+  Future<dynamic> _send(String method, String path, {Map<String, dynamic>? body, Map<String, Object>? query}) {
     var uri = Uri.parse('$_baseUrl$path');
     if (query != null) {
       uri = uri.replace(queryParameters: query.map((key, value) => MapEntry(key, '$value')));
     }
-    final request = http.Request(method, uri)
-      ..headers['Accept'] = 'application/json';
-    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    final request = http.Request(method, uri);
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    return _dispatch(request);
+  }
+
+  Future<dynamic> _dispatch(http.BaseRequest request, {Duration timeout = const Duration(seconds: 10)}) async {
+    final token = _token;
+    request.headers['Accept'] = 'application/json';
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
     final http.Response response;
     try {
-      response = await http.Response.fromStream(
-        await _http.send(request).timeout(const Duration(seconds: 10)),
-      );
+      response = await http.Response.fromStream(await _http.send(request).timeout(timeout));
     } on TimeoutException {
       throw ApiException();
     } on http.ClientException {

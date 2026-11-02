@@ -40,14 +40,14 @@ Fase 2/backend/app/
   tests/                   # pytest-asyncio (asyncio_mode=auto), fixtures en conftest.py
 Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
-  services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports
+  services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports, uploads (multipart), photo (validación y mediaUrl)
   hooks/                   # useAnimals, useMapAnimals, useNearbyReports, useAuth
-  components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
+  components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
   pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Reportar, Mapa, Perfil), theme.dart (colores, espaciado, radios, sombra y escala tipográfica)
-  core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL), api_client.dart, token_storage.dart
+  core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
   features/<pantalla>/     # map (map_service = modelos + /animals y /reports), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/map_style.dart # mosaicos OSM, atribución y pines (MapPins), equivalente a mapTiles.ts
   shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
@@ -90,6 +90,6 @@ Pendiente (en orden aproximado de prioridad):
 2. (Hecho en backend, HU-12) `users.foundation_id` y `GET /animals` filtrado por fundación; falta consumirlo en "Mis casos" del portal.
 3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
 4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
-5. (Backend hecho, HU-16: `POST /uploads`) Falta el componente de subida en el portal y la foto en la app.
-6. App móvil Flutter: HU-08, HU-14 y HU-15 hechas; la foto en reportes queda para HU-16.
+5. Fotos (HU-16) hechas: `POST /uploads`, `PhotoPicker` en el portal (animales y reportes) y cámara/galería en la app. Pendiente: borrar archivos huérfanos y almacenamiento externo.
+6. App móvil Flutter: HU-08, HU-14, HU-15 y HU-16 hechas.
 7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.
