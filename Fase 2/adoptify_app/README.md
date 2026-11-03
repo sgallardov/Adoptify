@@ -72,6 +72,13 @@ intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista 
 `/login`, `/reportar` y los detalles se abren a pantalla completa, con flecha para volver. Reportar se abre con el
 botón rojo "Reportar mascota" del mapa.
 
+## Fotos
+Toda foto que viene de la red se muestra con `shared/widgets/network_photo.dart` (`NetworkPhoto`, también dentro de `AnimalPhoto`):
+- **Caché en disco** (`cached_network_image`): una foto ya vista no se vuelve a descargar, ni al cerrar la app. La clave es la ruta sin el `token` del enlace firmado, que cambia aunque la foto sea la misma.
+- **Tamaño justo:** se decodifica al ancho en que se muestra (`pixelsWide`); las de Unsplash se piden ya achicadas (`?w=`).
+- **Indicador de carga** mientras baja, y la huella si falla.
+- En las pruebas no hay disco ni plugins: `test/flutter_test_config.dart` pone `useDiskImageCache = false` y se usa `Image.network`.
+
 ## Diseño
 Todo el estilo sale de `lib/app/theme.dart` (misma paleta que el portal):
 - `AdoptifyColors`: colores. `AdoptifySpacing` (4/8/12/16/24/32) y `AdoptifyRadius` (8/12/16/24): medidas.
