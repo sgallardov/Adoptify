@@ -5,7 +5,6 @@ export type AuthState = {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string, accountType: AccountType) => Promise<User>
-  signUp: (email: string, rut: string, password: string, fullName: string) => Promise<User>
   signOut: () => void
 }
 

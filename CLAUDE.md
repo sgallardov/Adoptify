@@ -1,7 +1,7 @@
 # Adoptify
 
 Plataforma de rescate y adopción animal (proyecto de título Capstone, Duoc UC). Equipo: Tiare Alarcón, Santiago Gallardo, Vittorio Dotte.
-Arquitectura: API FastAPI + PostGIS, portal web React (fundaciones y adoptantes) y app móvil Flutter (`Fase 2/adoptify_app`, en desarrollo).
+Arquitectura: API FastAPI + PostGIS, portal web React (solo fundaciones) y app móvil Flutter (`Fase 2/adoptify_app`, en desarrollo).
 
 ## Cómo trabajar en este repo
 - Responde y escribe código, comentarios, mensajes de error y docs **en español**. Identificadores en inglés (como el código actual).
@@ -42,8 +42,8 @@ Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
   services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports, uploads (multipart), photo (validación y mediaUrl)
   hooks/                   # useAnimals, useMapAnimals, useNearbyReports, useAuth
-  components/              # Layout (sidebar), AnimalsMap, ReportLocationPicker, PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
-  pages/                   # Login, UserHome, ReportDog, Dashboard, Animals, AnimalDetail, Foundation, NotFound
+  components/              # Layout (sidebar), ReportLocationPicker, PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
+  pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Fundaciones, Mapa, Perfil; /reportar y /login a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
@@ -54,10 +54,10 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 ```
 
 ## Dominio
-- **Roles:** `adopter` (pestaña Usuario del login), `foundation` y `admin` (pestaña Fundación). Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
-- **Rutas portal:** adopter → `/usuario` (mapa + lista), `/reportar`; foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
+- **Roles:** `adopter` (solo app móvil), `foundation` y `admin` (portal web). Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
+- **Rutas portal:** foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
-- **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), `reportForm.ts` (portal) y `map_service.dart` (app): mantener las tres iguales. En la interfaz se dice "mascota", no "perro".
+- **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), y `map_service.dart` (app): mantener las dos iguales. En la interfaz se dice "mascota", no "perro".
 - **RUT:** obligatorio y único, no autentica. Solo se valida formato; se guarda sin puntos y con K mayúscula (`normalize_rut`).
 - **Contraseñas:** 8 caracteres mínimo, 72 bytes máximo (bcrypt). Correos en minúsculas.
 - **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.

@@ -1,6 +1,6 @@
 import { api, setToken } from './api'
 
-export type AccountType = 'user' | 'foundation'
+export type AccountType = 'foundation'
 
 export type User = {
   id: number
@@ -15,16 +15,7 @@ export async function login(email: string, password: string, accountType: Accoun
   setToken(data.access_token)
 }
 
-export async function register(email: string, rut: string, password: string, fullName: string): Promise<void> {
-  await api.post('/auth/register', { email, rut, password, full_name: fullName })
-}
-
 export async function fetchMe(): Promise<User> {
   const { data } = await api.get<User>('/auth/me')
   return data
-}
-
-// Página de inicio según el tipo de cuenta
-export function homeFor(user: User): string {
-  return user.role === 'adopter' ? '/usuario' : '/'
 }

@@ -3,8 +3,6 @@ import AuthProvider from './components/AuthProvider'
 import RequireAuth from './components/RequireAuth'
 import Layout from './components/Layout'
 import Login from './pages/Login'
-import UserHome from './pages/UserHome'
-import ReportDog from './pages/ReportDog'
 import Dashboard from './pages/Dashboard'
 import Animals from './pages/Animals'
 import AnimalDetail from './pages/AnimalDetail'
@@ -18,10 +16,6 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="login" element={<Login />} />
-          <Route element={<RequireAuth roles={['adopter']} />}>
-            <Route path="usuario" element={<UserHome />} />
-            <Route path="reportar" element={<ReportDog />} />
-          </Route>
           <Route element={<RequireAuth roles={['foundation', 'admin']} />}>
             <Route element={<Layout />}>
               <Route index element={<Dashboard />} />

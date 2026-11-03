@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import type { LatLng } from '../hooks/useMapAnimals'
+import type { LatLng } from './mapTiles'
 import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, SANTIAGO } from './mapTiles'
 
 const reportIcon = dotIcon('bg-danger-600', 22)

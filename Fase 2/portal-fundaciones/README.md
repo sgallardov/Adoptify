@@ -6,7 +6,7 @@ Maqueta web con Vite, React, TypeScript, TailwindCSS y React Router.
 
 Los colores y la tipografía se definen en `src/index.css` mediante `@theme` de
 Tailwind v4. `Brand` comparte el logo con el favicon y `Feedback` unifica los
-estados de carga, error, vacío y éxito en login, usuario y portal.
+estados de carga, error, vacío y éxito en login y portal.
 Ver [guía de identidad visual y revisión responsive](docs/identidad-visual.md).
 
 ## Iniciar
@@ -34,24 +34,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 
 ## Contenido
 
-- `/login`: inicio de sesión único con pestañas **Usuario** y **Fundación**; la pestaña Usuario permite registrarse.
-- `/usuario`: inicio del adoptante (requiere cuenta `adopter`). Mapa de OpenStreetMap con las mascotas disponibles
-  (pines naranjos) y las mascotas abandonadas reportadas (pines rojos), con la lista de mascotas al costado. El popup de un
-  reporte muestra su ficha ("Perro · Mediano · Café · ~12 kg"), el estado, las características y los comentarios;
-  "Usar mi ubicación" filtra por radio (5 a 100 km) y ordena por distancia con `GET /animals/nearby` y `GET /reports/nearby`.
-  Sin ubicación, los reportes se buscan a 100 km de Santiago.
-- `/reportar` (botón "Reportar mascota"): formulario para reportar una mascota abandonada (requiere cuenta `adopter`), en cinco pasos:
-  1. **¿Dónde está?**: clic en el mapa, arrastrar el pin o "Usar mi ubicación".
-  2. **¿Cómo es?**: tipo de animal y tamaño (botones), color, peso aproximado y características.
-  3. **¿Cómo está?**: estado (15 opciones: Bien, Herido, Desnutrido, Cojea, Preñada, Pulgas o garrapatas…) y
-     comportamiento al acercarse (13 opciones, opcional). En ambos se marcan varias opciones.
-  4. **Comentarios**: la situación, en texto libre.
-  5. **Foto** (opcional).
-
-  La validación vive en `services/reportForm.ts` (probada en `tests/reportForm.test.mjs`), con un error por campo.
-  Si falta algo, el mensaje de arriba dice qué campos revisar ("Revisa: Color y Comentarios.") y la página baja al primero.
-  El peso acepta "12", "3,5" o "12 kg".
-  Se envía con `POST /reports`. No se publican los datos de quien reporta.
+- `/login`: inicio de sesión de fundaciones (sin registro). La vista de usuario (mapa, reportes, adopción) vive solo en la app móvil.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL, búsqueda por nombre y filtros por especie y estado.
@@ -135,28 +118,6 @@ docker compose exec backend pytest tests/test_animals.py tests/test_reports.py -
 Validado: `npm run build`, navegación móvil, búsqueda, filtros combinados,
 estado sin resultados, restablecimiento y apertura del detalle de un animal.
 
-## Carrusel de adopción en `/usuario`
-
-El mapa ocupa el ancho superior y las mascotas disponibles aparecen debajo en
-`AdoptionCarousel`. Las tarjetas se recorren deslizando horizontalmente, con los
-botones anterior/siguiente o con las flechas del teclado al enfocar el carrusel.
-No hay avance automático. Si el contenedor tiene al menos 900 px, se muestran
-tres tarjetas completas dentro del mismo ancho del mapa, con solo la central
-resaltada. En espacios menores se muestra una tarjeta completa. Las flechas y
-el desplazamiento táctil recorren el resto; al detenerse, las tarjetas encajan
-sin recortes. Al llegar al inicio o al final quedan espacios libres a los lados
-para mantener centrada la tarjeta activa, sin duplicar animales. Al cambiar el
-ancho de pantalla se conserva la tarjeta activa. Solo se muestran las flechas
-inferiores, sin barra de desplazamiento ni contador visible.
-
-El mapa y las tarjetas comparten los resultados y el filtro de cercanía.
-Seleccionar un marcador centra su tarjeta; «Ver en el mapa» abre la ubicación
-del animal y desplaza la página hasta el mapa. Los animales sin coordenadas
-siguen apareciendo, con el aviso «Ubicación no registrada». Si falta la foto o
-falla su carga, aparece una huella. Se conservan los estados de carga, error
-con reintento y lista vacía. El carrusel es de exploración: no registra likes
-ni solicitudes de adopción.
-
 ## HU-13: publicar, editar y cambiar estado
 
 Requiere el backend de HU-12 y su migración `0004`. Esta rama incorpora
@@ -206,7 +167,7 @@ fundaciones, en la de adoptantes (`AppHeader`) y en el login.
 ## HU-16: subir fotos
 
 `PhotoPicker` (`components/PhotoPicker.tsx`) reemplaza el campo de enlace de la foto en
-**Publicar / Editar animal** y agrega **Foto (opcional)** en `/reportar`.
+**Publicar / Editar animal** y agrega **Foto (opcional)**.
 
 - Botón **Subir foto**: abre el selector de archivos del computador o recibe una imagen arrastrada.
   En el celular, el selector del navegador ofrece también la cámara y la galería.
@@ -214,7 +175,6 @@ fundaciones, en la de adoptantes (`AppHeader`) y en el login.
   validar por el contenido. Sube apenas se elige (`POST /uploads`, `services/uploads.ts`) y guarda la
   URL devuelta en `photo_url`. Mientras sube, guardar o enviar queda deshabilitado.
 - Con foto: vista previa, **Cambiar foto** y **Quitar**. Los errores del backend (415, 413) se muestran en español.
-- El popup de un reporte en el mapa muestra su foto.
 - `mediaUrl()` pide las fotos de `/uploads/` al mismo servidor que la API: una foto subida desde el
   emulador (`10.0.2.2`) se ve igual en el navegador.
 
