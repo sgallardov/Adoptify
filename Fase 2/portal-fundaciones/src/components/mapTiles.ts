@@ -1,6 +1,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { LatLng } from '../hooks/useMapAnimals'
+
+export type LatLng = { lat: number; lng: number }
 
 export const SANTIAGO: LatLng = { lat: -33.4489, lng: -70.6693 }
 

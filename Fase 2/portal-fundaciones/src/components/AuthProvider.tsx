@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AuthContext } from '../hooks/useAuth'
 import { getToken, setToken } from '../services/api'
-import { fetchMe, login, register } from '../services/auth'
+import { fetchMe, login } from '../services/auth'
 import type { AccountType, User } from '../services/auth'
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
@@ -25,16 +25,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return me
   }, [])
 
-  const signUp = useCallback(async (email: string, rut: string, password: string, fullName: string) => {
-    await register(email, rut, password, fullName)
-    return signIn(email, password, 'user')
-  }, [signIn])
-
   const signOut = useCallback(() => {
     setToken(null)
     setUser(null)
   }, [])
 
-  const value = useMemo(() => ({ user, loading, signIn, signUp, signOut }), [user, loading, signIn, signUp, signOut])
+  const value = useMemo(() => ({ user, loading, signIn, signOut }), [user, loading, signIn, signOut])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -22,7 +22,6 @@ export type AnimalResponse = {
   longitude: number | null
 }
 
-type NearbyAnimalResponse = AnimalResponse & { distance_km: number }
 
 function formatAge(months: number | null): string {
   if (months === null) return 'Edad no registrada'
@@ -79,11 +78,4 @@ export async function fetchAnimals(signal: AbortSignal): Promise<Animal[]> {
   const { data } = await api.get<AnimalResponse[]>('/animals', { signal })
   if (!Array.isArray(data)) throw new Error('Respuesta de animales inválida')
   return data.map(toAnimal)
-}
-
-// Animales disponibles dentro del radio, ordenados del más cercano al más lejano
-export async function fetchNearbyAnimals(lat: number, lng: number, radiusKm: number, signal: AbortSignal): Promise<Animal[]> {
-  const { data } = await api.get<NearbyAnimalResponse[]>('/animals/nearby', { params: { lat, lng, radius_km: radiusKm }, signal })
-  if (!Array.isArray(data)) throw new Error('Respuesta de animales inválida')
-  return data.map(animal => ({ ...toAnimal(animal), distanceKm: animal.distance_km }))
 }
