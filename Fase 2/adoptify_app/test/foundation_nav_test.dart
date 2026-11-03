@@ -109,10 +109,11 @@ void main() {
     Brightness brightness() => Theme.of(tester.element(screenTitle('Perfil'))).brightness;
     Future<String?> saved() async => (await SharedPreferences.getInstance()).getString('theme_mode');
 
-    // Arriba a la izquierda, antes del título, con la luna en modo claro
+    // Arriba a la derecha, después del título, con la luna en modo claro
     expect(brightness(), Brightness.light);
     final moon = find.byTooltip('Cambiar a modo oscuro');
-    expect(tester.getCenter(moon).dx, lessThan(tester.getCenter(find.text('Perfil').first).dx));
+    expect(tester.getCenter(moon).dx, greaterThan(tester.getCenter(find.text('Perfil').first).dx));
+    expect(tester.getCenter(moon).dy, lessThan(tester.getCenter(find.text('Perfil').first).dy + 1));
     expect(find.descendant(of: moon, matching: find.byIcon(Icons.dark_mode_outlined)), findsOneWidget);
 
     await tester.tap(moon);

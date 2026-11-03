@@ -7,7 +7,7 @@ import '../../shared/widgets/content_width.dart';
 import '../auth/auth_controller.dart';
 
 // Pestaña derecha de la vista de fundación. El perfil completo está pendiente; por ahora muestra quién
-// inició sesión, deja cambiar entre modo claro y oscuro (luna / sol, arriba a la izquierda) y cerrar sesión
+// inició sesión, deja cambiar entre modo claro y oscuro (luna / sol, arriba a la derecha) y cerrar sesión
 // (sin eso, una cuenta de fundación no podría salir de la app).
 class FoundationProfileScreen extends StatelessWidget {
   const FoundationProfileScreen({super.key});
@@ -19,7 +19,7 @@ class FoundationProfileScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil'), leading: const _ThemeToggle()),
+      appBar: AppBar(title: const Text('Perfil'), actions: const [_ThemeToggle(), SizedBox(width: AdoptifySpacing.xs)]),
       body: ContentWidth(
         child: Column(
           children: [

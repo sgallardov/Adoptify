@@ -64,7 +64,7 @@ diseño (`shared/widgets/app_shell.dart`).
 son placeholders "Próximamente"; cada módulo se desarrolla aparte):
 - **Chat** (`/fundacion/chat`): hablar con un adoptante cuando haya match.
 - **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca.
-- **Perfil** (`/fundacion/perfil`): por ahora muestra la cuenta, permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la izquierda (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
+- **Perfil** (`/fundacion/perfil`): por ahora muestra la cuenta, permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
 intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.
