@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -9,9 +10,17 @@ from sqlalchemy.orm import selectinload
 from app.api.v1.endpoints.auth import get_current_user, get_optional_user
 from app.db.database import get_db
 from app.models.animal import Animal
+from app.models.animal_favorite import AnimalFavorite
 from app.models.user import User
-from app.schemas.animal import AnimalCreate, AnimalResponse, AnimalUpdate, PublicAnimalResponse
+from app.schemas.animal import (
+    AnimalCreate,
+    AnimalResponse,
+    AnimalUpdate,
+    MatchAnimalResponse,
+    PublicAnimalResponse,
+)
 from app.services.communes import COMMUNES
+from app.services.match import calculate_match_score
 
 router = APIRouter()
 
@@ -97,6 +106,111 @@ async def managed_animals(current_user: User = Depends(get_current_user), db: As
 @router.get("/management/{animal_id}", response_model=AnimalResponse)
 async def managed_animal(animal_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _get_owned_animal(animal_id, current_user, db)
+
+
+@router.get(
+    "/match",
+    response_model=list[MatchAnimalResponse],
+    summary="Animales disponibles ordenados por compatibilidad",
+    description=(
+        "Usa las preferencias del formulario 'Quiero adoptar' del usuario. Devuelve los animales "
+        "disponibles con su porcentaje de compatibilidad, de mayor a menor. No incluye ubicación."
+    ),
+    responses={404: {"description": "El usuario aún no completó 'Quiero adoptar'"}},
+)
+async def match_animals(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    preferences = current_user.preferences or {}
+    if "adoption_profile" not in preferences:
+        raise HTTPException(status_code=404, detail="Completa 'Quiero adoptar' en tu perfil para ver tu match.")
+    try:
+        animals = (
+            await db.execute(
+                select(Animal)
+                .options(selectinload(Animal.foundation))
+                .where(Animal.status == "available")
+                .order_by(Animal.id)
+            )
+        ).scalars().all()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar los animales.") from exc
+
+    return _scored(preferences, animals)
+
+
+def _scored(preferences, animals) -> list[MatchAnimalResponse]:
+    scored = [
+        MatchAnimalResponse.model_validate(animal, from_attributes=True).model_copy(
+            update={"match_score": calculate_match_score(preferences, animal)}
+        )
+        for animal in animals
+    ]
+    return sorted(scored, key=lambda item: (-item.match_score, item.id))
+
+
+@router.get(
+    "/favorites",
+    response_model=list[MatchAnimalResponse],
+    summary="Animales que la persona marcó con el corazón",
+)
+async def list_favorites(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        animals = (
+            await db.execute(
+                select(Animal)
+                .options(selectinload(Animal.foundation))
+                .join(AnimalFavorite, AnimalFavorite.animal_id == Animal.id)
+                .where(AnimalFavorite.user_id == current_user.id)
+                .order_by(AnimalFavorite.created_at.desc())
+            )
+        ).scalars().all()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar tus favoritos.") from exc
+    preferences = current_user.preferences or {}
+    scores = {item.id: item.match_score for item in _scored(preferences, animals)}
+    # Orden: el más reciente primero
+    return [
+        MatchAnimalResponse.model_validate(animal, from_attributes=True).model_copy(
+            update={"match_score": scores[animal.id]}
+        )
+        for animal in animals
+    ]
+
+
+@router.put("/{animal_id}/favorite", status_code=status.HTTP_204_NO_CONTENT, summary="Marcar como favorito")
+async def add_favorite(
+    animal_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    try:
+        if await db.get(Animal, animal_id) is None:
+            raise HTTPException(status_code=404, detail="Animal no encontrado.")
+        await db.execute(
+            pg_insert(AnimalFavorite).values(user_id=current_user.id, animal_id=animal_id).on_conflict_do_nothing()
+        )
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar el favorito.") from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{animal_id}/favorite", status_code=status.HTTP_204_NO_CONTENT, summary="Quitar de favoritos")
+async def remove_favorite(
+    animal_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    try:
+        await db.execute(
+            delete(AnimalFavorite).where(
+                AnimalFavorite.user_id == current_user.id, AnimalFavorite.animal_id == animal_id
+            )
+        )
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo quitar el favorito.") from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
