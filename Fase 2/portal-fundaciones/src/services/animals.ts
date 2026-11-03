@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { api } from './api'
 import { mediaUrl } from './uploads'
 import type { Animal } from '../data/demo'
@@ -7,6 +8,7 @@ export type AnimalStatus = 'available' | 'in_process' | 'adopted'
 export type AnimalResponse = {
   id: number
   foundation_id: number
+  public_commune: string | null
   foundation_name: string | null
   name: string
   species: string
@@ -57,11 +59,17 @@ export type AnimalInput = Omit<AnimalResponse, 'id' | 'foundation_id' | 'foundat
   foundation_id?: number
 }
 
-// HU-12 expone GET /animals, pero no GET /animals/:id. La lista ya está aislada por fundación.
+export async function fetchCommunes(signal: AbortSignal): Promise<string[]> {
+  return (await api.get<string[]>('/animals/communes', { signal })).data
+}
+
 export async function fetchAnimal(id: number, signal: AbortSignal): Promise<AnimalResponse | null> {
-  const { data } = await api.get<AnimalResponse[]>('/animals', { signal })
-  if (!Array.isArray(data)) throw new Error('Respuesta de animales inválida')
-  return data.find(animal => animal.id === id) ?? null
+  try {
+    return (await api.get<AnimalResponse>(`/animals/management/${id}`, { signal })).data
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) return null
+    throw error
+  }
 }
 
 export async function createAnimal(payload: AnimalInput): Promise<AnimalResponse> {
@@ -75,7 +83,7 @@ export async function updateAnimal(id: number, payload: Partial<Omit<AnimalInput
 }
 
 export async function fetchAnimals(signal: AbortSignal): Promise<Animal[]> {
-  const { data } = await api.get<AnimalResponse[]>('/animals', { signal })
+  const { data } = await api.get<AnimalResponse[]>('/animals/management', { signal })
   if (!Array.isArray(data)) throw new Error('Respuesta de animales inválida')
   return data.map(toAnimal)
 }

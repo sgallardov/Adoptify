@@ -34,8 +34,8 @@ const luna = {
   'description': null,
   'status': 'available',
   'photo_url': null,
-  'latitude': -33.4378,
-  'longitude': -70.6505,
+  'public_commune': 'Ñuñoa',
+  'commune_point': [-33.46, -70.60],
 };
 
 final rocky = {
@@ -149,7 +149,7 @@ class FakeApi {
       case '/animals/nearby':
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [
-          {...luna, 'distance_km': 1.25},
+          luna,
         ]);
       case '/foundations':
         if (foundationsFail) return _json(503, {'detail': 'No se pudo consultar las fundaciones.'});

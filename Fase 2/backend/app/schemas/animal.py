@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+
+from app.services.communes import COMMUNES
 
 Species = Literal["perro", "gato"]
 Gender = Literal["macho", "hembra"]
@@ -8,7 +10,7 @@ Size = Literal["pequeño", "mediano", "grande"]
 AnimalStatus = Literal["available", "adopted", "in_process"]
 
 
-class AnimalResponse(BaseModel):
+class PublicAnimalResponse(BaseModel):
     """Datos públicos del animal, sin geometrías binarias ni relaciones ORM."""
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,16 +27,33 @@ class AnimalResponse(BaseModel):
     description: str | None
     status: str
     photo_url: str | None
+    public_commune: str | None = None
+
+    @computed_field
+    @property
+    def commune_point(self) -> tuple[float, float] | None:
+        point = COMMUNES.get(self.public_commune)
+        return tuple(point) if point else None
+
+
+class AnimalResponse(PublicAnimalResponse):
+    """Ficha privada, solo tras autorizar el acceso a la fundación."""
     latitude: float | None
     longitude: float | None
 
 
-class NearbyAnimalResponse(AnimalResponse):
-    """Animal encontrado en una búsqueda por cercanía, con su distancia al punto consultado."""
-    distance_km: float
+class CommuneInput(BaseModel):
+    public_commune: str | None = Field(None, max_length=100)
+
+    @field_validator("public_commune")
+    @classmethod
+    def validate_commune(cls, value):
+        if value is not None and value not in COMMUNES:
+            raise ValueError("Selecciona una comuna del listado")
+        return value
 
 
-class AnimalCreate(BaseModel):
+class AnimalCreate(CommuneInput):
     """Datos para publicar un animal. La fundación dueña sale de la sesión, no del cuerpo (salvo para admin)."""
     name: str = Field(..., min_length=1, max_length=100)
     species: Species
@@ -65,7 +84,7 @@ class AnimalCreate(BaseModel):
         return self
 
 
-class AnimalUpdate(BaseModel):
+class AnimalUpdate(CommuneInput):
     """Cambios parciales sobre un animal: solo se modifican los campos enviados."""
     name: str | None = Field(None, min_length=1, max_length=100)
     species: Species | None = None

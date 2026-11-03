@@ -13,7 +13,7 @@ ORIGIN = {"lat": -53.1638, "lng": -70.9171}
 def animal(foundation_id: int, name: str, lat: float, status: str = "available") -> Animal:
     return Animal(
         foundation_id=foundation_id, name=name, species="perro", gender="macho", size="mediano",
-        energy_level=3, status=status, location=WKTElement(f"POINT({ORIGIN['lng']} {lat})", srid=4326),
+        public_commune="Punta Arenas", energy_level=3, status=status, location=WKTElement(f"POINT({ORIGIN['lng']} {lat})", srid=4326),
     )
 
 
@@ -50,30 +50,30 @@ class TestNearbyAnimals:
         assert response.status_code == 200
         data = response.json()
         assert names(data, nearby_animals.id) == ["Cerca", "Medio"]
-        distances = {a["name"]: a["distance_km"] for a in data}
-        assert distances["Cerca"] == pytest.approx(0.69, abs=0.05)
-        assert distances["Medio"] == pytest.approx(4.03, abs=0.05)
+        assert all("distance_km" not in a for a in data)
 
     async def test_larger_radius_includes_farther_animals(self, async_client: AsyncClient, nearby_animals):
         response = await async_client.get("/api/v1/animals/nearby", params={**ORIGIN, "radius_km": 50})
 
         assert names(response.json(), nearby_animals.id) == ["Cerca", "Medio", "Lejos"]
 
-    async def test_response_includes_coordinates_and_foundation_name(self, async_client: AsyncClient, nearby_animals):
+    async def test_nearby_exposes_only_communal_reference(self, async_client: AsyncClient, nearby_animals):
         response = await async_client.get("/api/v1/animals/nearby", params={**ORIGIN, "radius_km": 1})
 
         cerca = response.json()[0]
         assert cerca["name"] == "Cerca"
-        assert cerca["latitude"] == pytest.approx(-53.17)
-        assert cerca["longitude"] == pytest.approx(ORIGIN["lng"])
+        assert "latitude" not in cerca and "longitude" not in cerca
+        assert cerca["public_commune"] == "Punta Arenas"
+        assert cerca["commune_point"] is not None
         assert cerca["foundation_name"] == "Fundación Austral Test"
 
-    async def test_animal_list_includes_coordinates(self, async_client: AsyncClient, nearby_animals):
+    async def test_public_list_excludes_private_coordinates(self, async_client: AsyncClient, nearby_animals):
         response = await async_client.get("/api/v1/animals")
 
         lejos = next(a for a in response.json() if a["name"] == "Lejos" and a["foundation_id"] == nearby_animals.id)
-        assert lejos["latitude"] == pytest.approx(-53.5)
-        assert lejos["longitude"] == pytest.approx(ORIGIN["lng"])
+        assert "latitude" not in lejos and "longitude" not in lejos
+        assert lejos["public_commune"] == "Punta Arenas"
+        assert lejos["commune_point"] is not None
         assert lejos["foundation_name"] == "Fundación Austral Test"
         assert "location" not in lejos
 

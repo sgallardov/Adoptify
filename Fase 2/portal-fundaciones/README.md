@@ -143,9 +143,9 @@ el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
   un listado de fundaciones para poblar un selector. Las cuentas de fundación
   no eligen otra fundación: el backend utiliza su asignación y verifica permisos.
 
-Axios consume `GET /animals`, `POST /animals` y `PATCH /animals/:id`, enviando
-el token de sesión. No existe GET individual en HU-12: ficha y edición buscan
-el ID en la lista autorizada. Un ID ausente muestra la página de no encontrado.
+El portal consulta `GET /animals/management` y `GET /animals/management/:id`
+con sesión autorizada. Crear y editar siguen usando `POST /animals` y
+`PATCH /animals/:id`. Un ID ajeno devuelve 403 y uno inexistente, 404.
 Las respuestas 422 se traducen por campo al español. Los errores de conexión,
 sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
 envíos duplicados; cancelar no escribe en el backend. Editar datos no envía

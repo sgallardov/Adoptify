@@ -53,6 +53,8 @@ async def test_lista_fundaciones_con_solo_sus_animales_disponibles(async_client:
     assert found["latitude"] == pytest.approx(-33.45)
     assert found["longitude"] == pytest.approx(-70.6)
     assert [animal["name"] for animal in found["animals"]] == ["Disponible"]
+    assert not {"latitude", "longitude", "distance_km"}.intersection(found["animals"][0])
+    assert found["animals"][0]["commune_point"] is None
     assert found["animals"][0]["foundation_name"] == foundation_with_animals.name
 
 

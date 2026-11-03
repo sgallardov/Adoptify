@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.db.database import get_db
 from app.models.animal import Animal
 from app.models.foundation import Foundation
-from app.schemas.animal import AnimalResponse
+from app.schemas.animal import PublicAnimalResponse
 from app.schemas.foundation import FoundationResponse
 
 router = APIRouter()
@@ -29,7 +29,7 @@ def _foundation_response(foundation: Foundation) -> FoundationResponse:
         is_verified=foundation.is_verified,
         latitude=point.y if point else None,
         longitude=point.x if point else None,
-        animals=[AnimalResponse.model_validate(animal) for animal in available],
+        animals=[PublicAnimalResponse.model_validate(animal) for animal in available],
     )
 
 

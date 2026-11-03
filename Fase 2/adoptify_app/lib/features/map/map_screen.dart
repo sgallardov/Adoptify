@@ -146,7 +146,10 @@ class _MapScreenState extends State<MapScreen> {
     _service
         .fetchNearbyReports(origin ?? santiago, origin != null ? _radiusKm : _defaultReportsRadiusKm)
         .then((reports) {
-      if (mounted && request == _request) setState(() => _reports = reports);
+      if (mounted && request == _request) {
+        setState(() => _reports = reports);
+        _fitToPoints();
+      }
     }).catchError((_) {
       if (mounted && request == _request) setState(() => _reports = []);
     });
@@ -184,6 +187,7 @@ class _MapScreenState extends State<MapScreen> {
     final points = [
       for (final animal in _animals)
         if (animal.position != null) animal.position!,
+      for (final report in _reports) report.position,
       ?_origin,
     ];
     if (points.isEmpty) return;
@@ -494,15 +498,6 @@ class _MapScreenState extends State<MapScreen> {
         MarkerLayer(
           markers: [
             if (_origin != null) mapMarker(_origin!, MapPins.origin),
-            if (_showReports)
-              for (final report in _reports)
-                mapMarker(
-                  report.position,
-                  MapPins.report,
-                  key: ValueKey('report-${report.id}'),
-                  onTap: () => _selectReport(report),
-                ),
-            // Las mascotas van al final para quedar sobre los reportes; la seleccionada, encima de todas
             if (_showAnimals) ...[
               for (final animal in _animals)
                 if (animal.position != null && animal.id != _selectedAnimalId)
@@ -521,6 +516,15 @@ class _MapScreenState extends State<MapScreen> {
                     onTap: () => _selectAnimal(animal),
                   ),
             ],
+            // Un aviso de rescate debe poder tocarse incluso si coincide con una referencia comunal.
+            if (_showReports)
+              for (final report in _reports)
+                mapMarker(
+                  report.position,
+                  MapPins.report,
+                  key: ValueKey('report-${report.id}'),
+                  onTap: () => _selectReport(report),
+                ),
           ],
         ),
       ],
@@ -687,7 +691,7 @@ class _SearchResults extends StatelessWidget {
                       leading: AnimalPhoto(url: animal.photoUrl, size: 40),
                       title: Text(animal.name, style: textTheme.titleSmall),
                       subtitle: Text(
-                        [animal.summary, ?animal.foundationName].join(' · '),
+                        [animal.publicZone, animal.summary, ?animal.foundationName].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodySmall,
@@ -776,7 +780,7 @@ class _LayersSheet extends StatelessWidget {
               value: showAnimals,
               onChanged: onAnimals,
               secondary: dot(colors.primary),
-              title: Text('Mascotas en adopción ($animalsCount)', style: textTheme.bodyMedium),
+              title: Text('Adopción · zonas aproximadas ($animalsCount)', style: textTheme.bodyMedium),
             ),
             SwitchListTile(
               value: showReports,
@@ -879,10 +883,11 @@ class _AnimalDetailCard extends StatelessWidget {
         Text(animal.summary, style: textTheme.bodyMedium),
         if (animal.foundationName != null)
           Text(animal.foundationName!, style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted)),
-        if (animal.distanceKm != null) ...[
+        Text(animal.publicZone),
+        if (animal.withinRadius) ...[
           const SizedBox(height: AdoptifySpacing.xs),
           Text(
-            'A ${formatKm(animal.distanceKm!)} km de ti',
+            'Dentro de tu radio de búsqueda',
             style: textTheme.labelLarge?.copyWith(color: context.colors.primaryDark),
           ),
         ],

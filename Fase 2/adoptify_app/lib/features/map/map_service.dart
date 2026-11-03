@@ -17,10 +17,11 @@ class Animal {
     this.photoUrl,
     this.foundationName,
     this.position,
-    this.distanceKm,
+    this.commune,
+    this.withinRadius = false,
   });
 
-  factory Animal.fromJson(Map<String, dynamic> json) => Animal(
+  factory Animal.fromJson(Map<String, dynamic> json, {bool withinRadius = false}) => Animal(
         id: json['id'] as int,
         name: json['name'] as String,
         species: json['species'] as String,
@@ -29,8 +30,9 @@ class Animal {
         status: json['status'] as String,
         photoUrl: mediaUrl(json['photo_url'] as String?),
         foundationName: json['foundation_name'] as String?,
-        position: _position(json),
-        distanceKm: (json['distance_km'] as num?)?.toDouble(),
+        position: _communePoint(json['commune_point']),
+        commune: json['public_commune'] as String?,
+        withinRadius: withinRadius,
       );
 
   final int id;
@@ -42,7 +44,9 @@ class Animal {
   final String? photoUrl;
   final String? foundationName;
   final LatLng? position;
-  final double? distanceKm;
+  final String? commune;
+  final bool withinRadius;
+  String get publicZone => commune == null ? 'Zona no informada' : 'Zona aproximada: $commune';
 
   String get age => formatAge(ageMonths);
   String get statusLabel => animalStatuses[status] ?? status;
@@ -190,6 +194,14 @@ class NewReport {
       };
 }
 
+// Los animales solo aceptan el punto comunal público. Los reportes conservan su punto de avistamiento.
+LatLng? _communePoint(Object? point) {
+  if (point is List && point.length == 2 && point[0] is num && point[1] is num) {
+    return LatLng((point[0] as num).toDouble(), (point[1] as num).toDouble());
+  }
+  return null;
+}
+
 LatLng? _position(Map<String, dynamic> json) {
   final lat = json['latitude'] as num?;
   final lng = json['longitude'] as num?;
@@ -281,7 +293,7 @@ class MapService {
   // Animales disponibles dentro del radio, ordenados del más cercano al más lejano
   Future<List<Animal>> fetchNearbyAnimals(LatLng origin, int radiusKm) async {
     final data = await _api.get('/animals/nearby', query: _near(origin, radiusKm)) as List<dynamic>;
-    return data.map((item) => Animal.fromJson(item as Map<String, dynamic>)).toList();
+    return data.map((item) => Animal.fromJson(item as Map<String, dynamic>, withinRadius: true)).toList();
   }
 
   Future<List<DogReport>> fetchNearbyReports(LatLng origin, int radiusKm) async {

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.schemas.animal import AnimalResponse
+from app.schemas.animal import PublicAnimalResponse
 
 
 class FoundationResponse(BaseModel):
@@ -16,4 +16,4 @@ class FoundationResponse(BaseModel):
     is_verified: bool
     latitude: float | None
     longitude: float | None
-    animals: list[AnimalResponse]
+    animals: list[PublicAnimalResponse]

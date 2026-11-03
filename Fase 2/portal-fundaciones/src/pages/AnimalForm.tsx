@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Save } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAnimal } from '../hooks/useAnimal'
 import type { LatLng } from '../components/mapTiles'
-import { createAnimal, updateAnimal } from '../services/animals'
+import { fetchCommunes, createAnimal, updateAnimal } from '../services/animals'
 import type { AnimalResponse } from '../services/animals'
 import { animalFields, animalPayload, validateAnimal } from '../services/animalForm'
 import type { AnimalFields, FieldErrors } from '../services/animalForm'
@@ -35,6 +35,16 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   const errorSummary = useRef<HTMLDivElement>(null)
   const adminCreate = user?.role === 'admin' && !animal
   const back = animal ? `/animales/${animal.id}` : '/animales'
+  const [communes, setCommunes] = useState<string[]>([])
+  const [communeError, setCommuneError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchCommunes(controller.signal).then(list => {
+      if (!controller.signal.aborted) { setCommunes(list); setCommuneError(false) }
+    }).catch(() => { if (!controller.signal.aborted) setCommuneError(true) })
+    return () => controller.abort()
+  }, [attempt])
   const hasLocation = animal?.latitude != null && animal?.longitude != null
   const coordinateErrors = validateAnimal(fields, false, false)
   const position: LatLng | null = fields.latitude.trim() && fields.longitude.trim() && !coordinateErrors.latitude && !coordinateErrors.longitude
@@ -112,6 +122,14 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
       <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">
         <legend className="px-2 text-lg font-bold">Ubicación del animal</legend>
         <p className="mb-4 text-sm text-base-600">Haz clic en el mapa o arrastra el marcador. También puedes escribir las coordenadas. {hasLocation ? 'Puedes mover la ubicación guardada a otro punto.' : 'Sin ubicación, el animal se publica pero no aparecerá en búsquedas por cercanía.'}</p>
+        <Field id="public_commune" label="Comuna que verán los adoptantes">
+          <select {...props('public_commune')} disabled={!communes.length}>
+            <option value="">Zona no informada</option>
+            {(!communes.length && fields.public_commune ? [fields.public_commune] : communes).map(name => <option key={name}>{name}</option>)}
+          </select>
+        </Field>
+        {communeError && <Feedback kind="error" title="No se pudieron cargar las comunas." actionLabel="Reintentar" onAction={() => setAttempt(n => n + 1)} />}
+        <p className="my-3 text-sm text-base-600">El público verá solo una referencia de la comuna. El punto exacto de este mapa es privado para tu fundación y el administrador.</p>
         <ReportLocationPicker value={position} onChange={markLocation} markerLabel="Ubicación del animal" />
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
           {input('latitude', 'Latitud', { type: 'number', min: -90, max: 90, step: 'any', placeholder: '-33.4489' })}
