@@ -9,6 +9,7 @@ import '../../core/api_client.dart';
 import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/content_width.dart';
+import '../../shared/widgets/network_photo.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
 import 'map_service.dart';
@@ -518,7 +519,10 @@ class _DetailHero extends StatelessWidget {
       child: Icon(Icons.pets, size: 64, color: context.colors.placeholder),
     );
     final url = photoUrl;
-    final photo = url == null ? fallback : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback);
+    // Ocupa el ancho de la pantalla: se decodifica a ese tamaño, no al original
+    final photo = url == null
+        ? fallback
+        : NetworkPhoto(url: url, fallback: fallback, pixelsWide: MediaQuery.sizeOf(context).width);
     return SizedBox(
       height: 260,
       width: double.infinity,
@@ -622,10 +626,11 @@ class _PhotoViewerState extends State<_PhotoViewer> {
               transformationController: _transformation,
               maxScale: 4,
               child: Center(
-                child: Image.network(
-                  widget.url,
+                // Tamaño original, para el zoom; ya viene de la caché porque se vio en el detalle
+                child: NetworkPhoto(
+                  url: widget.url,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => const Icon(Icons.pets, size: 64, color: Colors.white38),
+                  fallback: const Icon(Icons.pets, size: 64, color: Colors.white38),
                 ),
               ),
             ),
