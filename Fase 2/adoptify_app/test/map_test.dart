@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adoptify_app/app/app.dart';
@@ -90,9 +93,71 @@ void main() {
     expect(find.text('Ubicación'), findsOneWidget);
     expect(find.text('Reportado · 28-10-2026'), findsWidgets);
 
-    await tapAndSettle(tester, find.byTooltip('Volver'));
+    // Coordenadas para copiar y pegar en otra app de rutas (con punto, no con coma).
+    // El canal del portapapeles no responde solo en los tests: se simula para que no se quede esperando.
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (_) async => null);
+    expect(find.text('-33.44000, -70.66000'), findsOneWidget);
+    final copyButton = find.byTooltip('Copiar ubicación');
+    await tester.ensureVisible(copyButton);
+    await tester.tap(copyButton);
+    // pumpAndSettle agotaría la duración del SnackBar y lo dejaría cerrado: se pumpea solo lo justo
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Ubicación copiada'), findsOneWidget);
+
+    final backButton = find.byTooltip('Volver');
+    await tester.ensureVisible(backButton);
+    await tapAndSettle(tester, backButton);
     expect(find.text('Comentarios'), findsNothing);
     expect(find.text('Mascota reportada'), findsOneWidget);
+  });
+
+  Finder counter(String key, String value) =>
+      find.descendant(of: find.byKey(ValueKey(key)), matching: find.text(value));
+
+  Future<void> openReportDetail(WidgetTester tester, FakeApi api) async {
+    await openMap(tester, api);
+    await tapAndSettle(tester, find.byKey(const ValueKey('report-1')));
+    await tapAndSettle(tester, find.text('“Perro café con collar rojo cerca del paradero”').first);
+  }
+
+  testWidgets('el detalle del reporte muestra los me enteré y los comentarios anónimos', (tester) async {
+    final api = FakeApi();
+    await openReportDetail(tester, api);
+
+    expect(counter('likes-counter', '2'), findsOneWidget);
+    expect(counter('comments-counter', '1'), findsOneWidget);
+    expect(find.text('Anónimo'), findsOneWidget);
+    expect(find.text('Lo vi hace un rato cerca del paradero'), findsOneWidget);
+
+    // Sin sesión no se puede marcar ni comentar: lleva a iniciar sesión
+    expect(find.text('Inicia sesión para comentar'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('likes-counter')));
+    await tapAndSettle(tester, find.byKey(const ValueKey('likes-counter')));
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+  });
+
+  testWidgets('con sesión se marca me enteré y se comenta de forma anónima', (tester) async {
+    final api = FakeApi();
+    api.storage.token = validToken;
+    await openReportDetail(tester, api);
+
+    final likes = find.byKey(const ValueKey('likes-counter'));
+    await tester.ensureVisible(likes);
+    await tapAndSettle(tester, likes);
+    expect(counter('likes-counter', '3'), findsOneWidget);
+    expect(api.requests.last.method, 'PUT');
+    await tapAndSettle(tester, likes);
+    expect(counter('likes-counter', '2'), findsOneWidget);
+    expect(api.requests.last.method, 'DELETE');
+
+    await tester.enterText(find.byKey(const ValueKey('comment-field')), '  Voy en camino con una correa ');
+    await tester.pump();
+    await tapAndSettle(tester, find.byTooltip('Enviar'));
+    expect(find.text('Voy en camino con una correa'), findsOneWidget);
+    expect(find.text('Tú'), findsOneWidget);
+    expect(counter('comments-counter', '2'), findsOneWidget);
+    expect(jsonDecode(api.requests.last.body), {'body': 'Voy en camino con una correa'});
   });
 
   testWidgets('tocar la ficha de una mascota abre el detalle a pantalla completa', (tester) async {
