@@ -98,7 +98,7 @@ Notas:
   * Al responder, la API cambia cada referencia por un **enlace firmado que caduca en 1 hora**, solo si la petición trae un token válido; sin sesión, `photo_url` llega `null` (middleware `services/photo_access.py`, cubre todos los endpoints). El mismo enlace se reutiliza mientras le quede más de 10 minutos, para que el teléfono use su caché.
   * Al crear o editar un reporte o animal, el `photo_url` firmado que manda la app o el portal se vuelve a guardar como referencia. Los enlaces externos (Unsplash) pasan tal cual.
   * Sin la llave, las fotos se guardan en `backend/uploads` como antes (públicas y solo en ese computador). La app y el portal no cambian: muestran el enlace que reciben.
-* **RLS:** Supabase publica las tablas de `public` en su API REST con la llave publishable (pública). La migración `0008` activa RLS sin políticas en todas las tablas: esa API no ve nada y el backend (dueño de las tablas) funciona igual. **Toda tabla nueva debe hacer `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` en su migración.**
+* **RLS:** Supabase publica las tablas de `public` en su API REST con la llave publishable (pública). La migración `0009` activa RLS sin políticas en todas las tablas: esa API no ve nada y el backend (dueño de las tablas) funciona igual. **Toda tabla nueva debe hacer `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` en su migración.**
 * El plan gratis pausa el proyecto tras ~1 semana sin uso; se reactiva desde el panel sin perder datos.
 * Para volver a la BD local basta con dejar `DATABASE_URL` como en `.env.example` y `DB_SSL=false`.
 
