@@ -11,7 +11,7 @@ def calculate_match_score(preferences: Mapping[str, Any], animal: Animal) -> flo
     Criterios: preferred_species (30), preferred_size (25), rango inclusivo
     min_age_months/max_age_months (25) y preferred_energy_level (20).
     Cada coincidencia aporta el peso completo; las diferencias aportan cero.
-    Los textos se comparan sin distinguir mayúsculas ni espacios exteriores.
+    Cada preferencia puede ser un valor o una lista de valores aceptados. Los textos se comparan sin distinguir mayúsculas ni espacios exteriores.
     Se omiten preferencias o atributos ausentes (None), recalculando el total
     sobre los pesos disponibles. Sin criterios comparables se retorna 0.0.
     Las claves adicionales, como housing_type, no afectan el resultado.
@@ -28,11 +28,15 @@ def calculate_match_score(preferences: Mapping[str, Any], animal: Animal) -> flo
         actual = getattr(animal, attribute)
         if preferred is None or actual is None:
             continue
-        if isinstance(preferred, str) and isinstance(actual, str):
-            preferred = preferred.strip().casefold()
+        # Una lista de preferencias acepta cualquiera de sus valores
+        accepted = preferred if isinstance(preferred, (list, tuple, set)) else [preferred]
+        if isinstance(actual, str):
+            accepted = [item.strip().casefold() if isinstance(item, str) else item for item in accepted]
             actual = actual.strip().casefold()
+        elif any(isinstance(item, str) for item in accepted):
+            accepted = [item.strip().casefold() if isinstance(item, str) else item for item in accepted]
         available += weight
-        if preferred == actual:
+        if actual in accepted:
             earned += weight
 
     minimum = preferences.get("min_age_months")

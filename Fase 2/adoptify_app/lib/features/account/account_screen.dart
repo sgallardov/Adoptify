@@ -7,6 +7,7 @@ import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
+import 'adoption_card.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -110,6 +111,8 @@ class _Profile extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: AdoptifySpacing.lg),
+            const AdoptionCard(),
             const SizedBox(height: AdoptifySpacing.lg),
             const _AppearanceCard(),
             const SizedBox(height: AdoptifySpacing.xl),

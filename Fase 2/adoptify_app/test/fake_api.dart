@@ -52,6 +52,8 @@ class FakeApi {
   bool offline = false;
   bool animalsFail = false;
   bool foundationsFail = false;
+  // Formulario "Quiero adoptar": null hasta que se guarda, como en el backend
+  Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
   int? uploadStatus;
   final reports = <Map<String, dynamic>>[
@@ -151,6 +153,10 @@ class FakeApi {
         return _json(200, [
           {...luna, 'distance_km': 1.25},
         ]);
+      case '/users/me/adoption-profile':
+        if (request.headers['Authorization'] != 'Bearer $validToken') return _json(401, {'detail': 'Not authenticated'});
+        if (request.method == 'PUT') adoptionProfile = body;
+        return _json(200, adoptionProfile);
       case '/foundations':
         if (foundationsFail) return _json(503, {'detail': 'No se pudo consultar las fundaciones.'});
         return _json(200, [
@@ -214,7 +220,7 @@ class FakeApi {
         'is_mine': loggedIn && comment['mine'] == true,
       };
 
-  http.Response _json(int status, Object body) => http.Response.bytes(
+  http.Response _json(int status, Object? body) => http.Response.bytes(
         utf8.encode(jsonEncode(body)),
         status,
         headers: {'content-type': 'application/json'},
