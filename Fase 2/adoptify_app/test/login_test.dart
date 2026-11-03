@@ -63,21 +63,49 @@ void main() {
     expect(api.storage.token, isNull);
   });
 
-  testWidgets('la pestaña Fundación envía account_type foundation y muestra el 403', (tester) async {
+  testWidgets('un solo login: no hay pestañas ni nada que mencione fundaciones', (tester) async {
+    await openLogin(tester, FakeApi(loggedIn: false));
+
+    expect(find.text('Usuario'), findsNothing);
+    expect(find.text('Fundación'), findsNothing);
+    expect(find.textContaining('fundaci'), findsNothing);
+    expect(find.textContaining('Fundaci'), findsNothing);
+  });
+
+  testWidgets('una fundación entra por el mismo login y ve su vista "Muy pronto"', (tester) async {
     final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
-    await tester.tap(find.text('Fundación'));
-    await tester.pumpAndSettle();
-    expect(find.text('Portal de fundaciones'), findsOneWidget);
-    expect(find.text('Las cuentas de fundación las crea el equipo de Adoptify.'), findsOneWidget);
-
-    await tester.enterText(field('contacto@fundacion.cl'), 'matias.adopter@gmail.com');
-    await tester.enterText(field('Tu contraseña'), 'Adoptante2026');
+    await tester.enterText(field('tucorreo@ejemplo.cl'), 'fundacion@adoptify.cl');
+    await tester.enterText(field('Tu contraseña'), 'Fundacion2026');
     await submit(tester, 'Iniciar sesión');
 
-    expect(api.requests.last.body, contains('"account_type":"foundation"'));
-    expect(find.text('Esta cuenta no es de este tipo. Inicia sesión en la pestaña Usuario.'), findsOneWidget);
+    // El login no manda tipo de cuenta: el rol lo decide el backend
+    final login = authRequests(api).firstWhere((r) => r.url.path == '/auth/login');
+    expect(login.body, isNot(contains('account_type')));
+    expect(api.storage.token, foundationToken);
+
+    expect(find.text('Mi fundación'), findsOneWidget);
+    expect(find.text('Muy pronto'), findsOneWidget);
+    expect(find.text('Fundación Patitas'), findsOneWidget);
+    // No ve la app de adoptante: ni barra inferior ni mapa
+    expect(find.text('Mapa'), findsNothing);
+    expect(find.text('Match'), findsNothing);
+
+    await tapVisible(tester, find.text('Cerrar sesión'));
+    expect(api.storage.token, isNull);
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+  });
+
+  testWidgets('una fundación con sesión guardada abre en su vista y no puede ir al mapa', (tester) async {
+    await tester.pumpWidget(AdoptifyApp(auth: FakeApi(asFoundation: true).auth));
+    await tester.pumpAndSettle();
+    expect(find.text('Mi fundación'), findsOneWidget);
+
+    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig! as GoRouter;
+    router.go('/mapa');
+    await tester.pumpAndSettle();
+    expect(find.text('Mi fundación'), findsOneWidget);
   });
 
   testWidgets('valida los campos antes de enviar', (tester) async {

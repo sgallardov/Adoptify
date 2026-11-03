@@ -137,7 +137,7 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 | Endpoint | Descripción |
 | --- | --- |
 | `POST /api/v1/auth/register` | Registra un **adoptante** (`email`, `rut`, `password`, `full_name`). `201`, o `409` si el correo o el RUT ya existen. |
-| `POST /api/v1/auth/login` | Recibe `email`, `password` y `account_type` (`"user"` o `"foundation"`). Devuelve `access_token` (JWT) y `role`. `401` si las credenciales son incorrectas; `403` si la cuenta no corresponde a la pestaña. |
+| `POST /api/v1/auth/login` | Recibe `email`, `password` y, opcional, `account_type` (`"user"` o `"foundation"`). Sin `account_type` entra cualquier cuenta (login único de la app, que muestra la vista según el `role`); con él, solo ese tipo (el portal manda `"foundation"`). Devuelve `access_token` (JWT) y `role`. `401` si las credenciales son incorrectas; `403` si la cuenta no corresponde al `account_type` pedido. |
 | `GET /api/v1/auth/me` | Devuelve el usuario del token enviado en `Authorization: Bearer <token>`. `401` sin token o con token inválido/expirado. |
 
 * **Roles por pestaña:** `user` → `adopter`; `foundation` → `foundation` o `admin`.

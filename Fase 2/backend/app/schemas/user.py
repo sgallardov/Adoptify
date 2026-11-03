@@ -64,7 +64,11 @@ class LoginRequest(BaseModel):
     """
     email: NormalizedEmail
     password: str
-    account_type: AccountType = Field("user", description="'user' para adoptantes, 'foundation' para fundaciones")
+    # La app usa un solo login (sin tipo): entra cualquier cuenta y la app muestra la vista según el rol.
+    # El portal web manda 'foundation' para que solo entren fundaciones.
+    account_type: AccountType | None = Field(
+        None, description="Opcional. 'user' solo adoptantes, 'foundation' solo fundaciones; sin valor, cualquier cuenta"
+    )
 
 
 class TokenResponse(BaseModel):

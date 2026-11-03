@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
 import '../../shared/widgets/adoptify_logo.dart';
 import '../../shared/widgets/message_box.dart';
 import 'auth_controller.dart';
-import 'auth_service.dart';
 
-// Inicio de sesión con pestañas Usuario / Fundación, igual que el login del portal
+// Inicio de sesión único: adoptantes y fundaciones entran por el mismo formulario.
+// Después, el router muestra la vista que corresponde al rol (ver sessionRedirect en router.dart).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,12 +22,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
-  AccountType _tab = AccountType.user;
   bool _registering = false;
   bool _submitting = false;
   String? _error;
 
-  bool get _isRegister => _tab == AccountType.user && _registering;
+  bool get _isRegister => _registering;
 
   @override
   void dispose() {
@@ -37,14 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _email.dispose();
     _password.dispose();
     super.dispose();
-  }
-
-  void _changeTab(AccountType next) {
-    setState(() {
-      _tab = next;
-      _registering = false;
-      _error = null;
-    });
   }
 
   void _toggleRegister() {
@@ -67,11 +57,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isRegister) {
         await auth.signUp(email, _rut.text.trim(), _password.text, _fullName.text.trim());
       } else {
-        await auth.signIn(email, _password.text, _tab);
+        await auth.signIn(email, _password.text);
       }
-      if (!mounted) return;
-      // Con la sesión iniciada, la app abre en el mapa
-      context.go('/mapa');
+      // Con la sesión iniciada, el router lleva al mapa o a la vista de fundación según el rol
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -84,17 +72,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final isUser = _tab == AccountType.user;
-    final title = _isRegister
-        ? 'Crea tu cuenta'
-        : isUser
-        ? 'Hola de nuevo'
-        : 'Portal de fundaciones';
+    final title = _isRegister ? 'Crea tu cuenta' : 'Hola de nuevo';
     final description = _isRegister
         ? 'Regístrate para encontrar a tu próximo compañero.'
-        : isUser
-        ? 'Inicia sesión para encontrar a tu próximo compañero.'
-        : 'Inicia sesión para gestionar a tus rescatados.';
+        : 'Inicia sesión para encontrar a tu próximo compañero.';
 
     return Scaffold(
       appBar: AppBar(),
@@ -122,8 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _AccountTabs(selected: _tab, onChanged: _changeTab),
-                          const SizedBox(height: AdoptifySpacing.xxl),
                           Text(title, style: textTheme.headlineSmall, textAlign: TextAlign.center),
                           const SizedBox(height: AdoptifySpacing.sm),
                           Text(
@@ -154,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           _Field(
                             label: 'Correo electrónico',
                             controller: _email,
-                            hint: isUser ? 'tucorreo@ejemplo.cl' : 'contacto@fundacion.cl',
+                            hint: 'tucorreo@ejemplo.cl',
                             keyboardType: TextInputType.emailAddress,
                             autofillHints: const [AutofillHints.email],
                             validator: (value) {
@@ -206,68 +185,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: AdoptifySpacing.xl),
                           Divider(color: context.colors.muted),
                           const SizedBox(height: AdoptifySpacing.lg),
-                          _Footer(isUser: isUser, isRegister: _isRegister, onToggle: _toggleRegister),
+                          _Footer(isRegister: _isRegister, onToggle: _toggleRegister),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountTabs extends StatelessWidget {
-  const _AccountTabs({required this.selected, required this.onChanged});
-
-  final AccountType selected;
-  final ValueChanged<AccountType> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final labelStyle = Theme.of(context).textTheme.labelLarge;
-    return Container(
-      padding: const EdgeInsets.all(AdoptifySpacing.xs),
-      decoration: BoxDecoration(color: context.colors.muted, borderRadius: BorderRadius.circular(AdoptifyRadius.md)),
-      child: Row(
-        children: [
-          _tab(context, AccountType.user, 'Usuario', Icons.person_outline, labelStyle),
-          const SizedBox(width: AdoptifySpacing.xs),
-          _tab(context, AccountType.foundation, 'Fundación', Icons.business_outlined, labelStyle),
-        ],
-      ),
-    );
-  }
-
-  Widget _tab(BuildContext context, AccountType type, String label, IconData icon, TextStyle? labelStyle) {
-    final active = selected == type;
-    final color = active ? context.colors.primaryText : context.colors.textMuted;
-    return Expanded(
-      child: Semantics(
-        selected: active,
-        button: true,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            color: active ? context.colors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
-            boxShadow: active ? AdoptifyShadows.soft : null,
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
-            onTap: () => onChanged(type),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 18, color: color),
-                  const SizedBox(width: AdoptifySpacing.sm),
-                  Text(label, style: labelStyle?.copyWith(color: color)),
                 ],
               ),
             ),
@@ -328,22 +250,14 @@ class _Field extends StatelessWidget {
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.isUser, required this.isRegister, required this.onToggle});
+  const _Footer({required this.isRegister, required this.onToggle});
 
-  final bool isUser;
   final bool isRegister;
   final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.textMuted);
-    if (!isUser) {
-      return Text(
-        'Las cuentas de fundación las crea el equipo de Adoptify.',
-        style: muted,
-        textAlign: TextAlign.center,
-      );
-    }
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,

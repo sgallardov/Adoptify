@@ -47,7 +47,7 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión o a /mapa con sesión, también al cerrar sesión o vencer el token; barra: Fundaciones, Mapa, Perfil; /reportar, /match y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion si es fundación/admin, también al cerrar sesión o vencer el token; barra: Fundaciones, Mapa, Perfil; /reportar, /match y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
   features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
@@ -55,7 +55,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 ```
 
 ## Dominio
-- **Roles:** `adopter` (solo app móvil), `foundation` y `admin` (portal web). Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
+- **Roles:** `adopter` (app móvil), `foundation` y `admin` (portal web; en la app, vista `/fundacion` "Muy pronto"). **La app tiene un solo login sin pestañas** (no manda `account_type`): el router lleva a cada rol a su vista y el adoptante nunca ve que existen cuentas de fundación. El portal sigue mandando `account_type: "foundation"`. Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
 - **Rutas portal:** foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
 - **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), y `map_service.dart` (app): mantener las dos iguales. En la interfaz se dice "mascota", no "perro".
