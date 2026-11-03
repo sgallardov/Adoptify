@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.endpoints.auth import get_current_user
+from app.api.v1.endpoints.auth import get_current_user, get_optional_user
 from app.db.database import get_db
 from app.models.report import AbandonedDogReport
+from app.models.report_social import ReportComment, ReportLike
 from app.models.user import User
 from app.schemas.report import NearbyReportResponse, ReportCreate, ReportResponse
+from app.schemas.report_social import CommentCreate, CommentResponse, LikesResponse
 
 router = APIRouter()
 
@@ -85,3 +88,151 @@ async def list_nearby_reports(
         )
         for report, distance in rows
     ]
+
+
+# --- Comentarios anónimos y "me enteré" de un reporte ---
+
+async def _ensure_report(report_id: int, db: AsyncSession) -> None:
+    try:
+        exists = (await db.execute(select(AbandonedDogReport.id).where(AbandonedDogReport.id == report_id))).first()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar el reporte.") from exc
+    if exists is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado.")
+
+
+async def _likes(report_id: int, user: User | None, db: AsyncSession) -> LikesResponse:
+    count = (await db.execute(
+        select(func.count()).select_from(ReportLike).where(ReportLike.report_id == report_id)
+    )).scalar_one()
+    liked = user is not None and (await db.execute(
+        select(ReportLike.user_id).where(ReportLike.report_id == report_id, ReportLike.user_id == user.id)
+    )).first() is not None
+    return LikesResponse(count=count, liked=liked)
+
+
+@router.get(
+    "/{report_id}/comments",
+    response_model=list[CommentResponse],
+    summary="Comentarios de un reporte",
+    description=(
+        "Comentarios anónimos del reporte, del más antiguo al más nuevo. Nunca incluye quién los escribió; "
+        "con token, `is_mine` indica los propios."
+    ),
+    responses={404: {"description": "El reporte no existe"}},
+)
+async def list_comments(
+    report_id: int,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _ensure_report(report_id, db)
+    statement = (
+        select(ReportComment)
+        .where(ReportComment.report_id == report_id)
+        .order_by(ReportComment.created_at, ReportComment.id)
+    )
+    try:
+        comments = (await db.execute(statement)).scalars().all()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo cargar los comentarios.") from exc
+    return [
+        CommentResponse(
+            id=comment.id,
+            body=comment.body,
+            created_at=comment.created_at,
+            is_mine=current_user is not None and comment.author_id == current_user.id,
+        )
+        for comment in comments
+    ]
+
+
+@router.post(
+    "/{report_id}/comments",
+    response_model=CommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Comentar un reporte (anónimo)",
+    responses={401: {"description": "Se requiere iniciar sesión"}, 404: {"description": "El reporte no existe"}},
+)
+async def create_comment(
+    report_id: int,
+    payload: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _ensure_report(report_id, db)
+    comment = ReportComment(report_id=report_id, author_id=current_user.id, body=payload.body)
+    db.add(comment)
+    try:
+        await db.commit()
+        await db.refresh(comment)
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar el comentario.") from exc
+    return CommentResponse(id=comment.id, body=comment.body, created_at=comment.created_at, is_mine=True)
+
+
+@router.get(
+    "/{report_id}/likes",
+    response_model=LikesResponse,
+    summary="Cuántos se enteraron de un reporte",
+    description="Cantidad de \"me enteré\". Con token, `liked` indica si quien consulta ya lo marcó.",
+    responses={404: {"description": "El reporte no existe"}},
+)
+async def get_likes(
+    report_id: int,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _ensure_report(report_id, db)
+    try:
+        return await _likes(report_id, current_user, db)
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar los me enteré.") from exc
+
+
+@router.put(
+    "/{report_id}/likes",
+    response_model=LikesResponse,
+    summary="Marcar \"me enteré\" en un reporte",
+    description="Idempotente: marcarlo dos veces cuenta una sola.",
+    responses={401: {"description": "Se requiere iniciar sesión"}, 404: {"description": "El reporte no existe"}},
+)
+async def like_report(
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _ensure_report(report_id, db)
+    try:
+        await db.execute(
+            insert(ReportLike).values(report_id=report_id, user_id=current_user.id).on_conflict_do_nothing()
+        )
+        await db.commit()
+        return await _likes(report_id, current_user, db)
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar el me enteré.") from exc
+
+
+@router.delete(
+    "/{report_id}/likes",
+    response_model=LikesResponse,
+    summary="Quitar el \"me enteré\" de un reporte",
+    responses={401: {"description": "Se requiere iniciar sesión"}, 404: {"description": "El reporte no existe"}},
+)
+async def unlike_report(
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _ensure_report(report_id, db)
+    try:
+        await db.execute(
+            delete(ReportLike).where(ReportLike.report_id == report_id, ReportLike.user_id == current_user.id)
+        )
+        await db.commit()
+        return await _likes(report_id, current_user, db)
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo quitar el me enteré.") from exc
