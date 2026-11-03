@@ -49,15 +49,6 @@ void main() {
     PhotoService.instance = PhotoService();
   });
 
-  testWidgets('sin sesión pide iniciar sesión para reportar', (tester) async {
-    await openReport(tester, FakeApi());
-
-    expect(find.text('Inicia sesión para reportar. Tu nombre y tus datos no se publican.'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Iniciar sesión'));
-    await tester.pumpAndSettle();
-    expect(find.text('Hola de nuevo'), findsOneWidget);
-  });
-
   testWidgets('abre el mapa a pantalla completa con tu ubicación marcada', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;

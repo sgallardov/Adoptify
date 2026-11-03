@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
 
 import '../features/account/account_screen.dart';
+import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/session_loading_screen.dart';
 import '../features/foundations/foundations_screen.dart';
 import '../features/map/detail_screen.dart';
 import '../features/map/map_screen.dart';
@@ -10,12 +12,29 @@ import '../features/match/match_screen.dart';
 import '../features/report/report_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
+const _loading = '/cargando';
+const _login = '/login';
+
+// Login obligatorio: sin sesión, cualquier ruta lleva al login; con sesión, el login lleva al mapa.
+// Mientras se revisa la sesión guardada se muestra la pantalla de carga. Se vuelve a evaluar cada vez
+// que cambia la sesión (iniciar, cerrar o token vencido), gracias a refreshListenable.
+String? sessionRedirect(AuthController auth, String location) {
+  if (auth.loading) return location == _loading ? null : _loading;
+  final loggedIn = auth.user != null;
+  if (!loggedIn) return location == _login ? null : _login;
+  if (location == _login || location == _loading) return '/mapa';
+  return null;
+}
+
 // Rutas de la app. Las pestañas comparten la barra inferior (AppShell) y
 // cada una conserva su propio historial al cambiar de pestaña.
 // El orden de las ramas es el de la barra: Fundaciones, Mapa, Perfil.
-GoRouter createAppRouter() => GoRouter(
-  initialLocation: '/mapa',
+GoRouter createAppRouter(AuthController auth) => GoRouter(
+  initialLocation: _loading,
+  refreshListenable: auth,
+  redirect: (context, state) => sessionRedirect(auth, state.matchedLocation),
   routes: [
+    GoRoute(path: _loading, builder: (context, state) => const SessionLoadingScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
@@ -31,8 +50,9 @@ GoRouter createAppRouter() => GoRouter(
         ]),
       ],
     ),
+    // Primera pantalla sin sesión (login obligatorio)
+    GoRoute(path: _login, builder: (context, state) => const LoginScreen()),
     // Fuera de la barra inferior: pantallas completas con botón para volver
-    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     // Se abre con el botón "Reportar mascota" del mapa
     GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),
     // Se abre con el botón "Haz Match!" del mapa

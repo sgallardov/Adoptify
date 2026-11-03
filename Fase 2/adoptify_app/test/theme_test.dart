@@ -25,11 +25,15 @@ void main() {
     expect(find.text('Apariencia'), findsOneWidget);
     expect(brightnessOf(tester), Brightness.light);
 
+    await tester.ensureVisible(find.text('Oscuro'));
+
     await tester.tap(find.text('Oscuro'));
     await tester.pumpAndSettle();
     expect(brightnessOf(tester), Brightness.dark);
     expect(Theme.of(tester.element(find.byType(AccountScreen))).extension<AdoptifyColors>(), AdoptifyColors.dark);
     expect((await SharedPreferences.getInstance()).getString('theme_mode'), 'dark');
+
+    await tester.ensureVisible(find.text('Claro'));
 
     await tester.tap(find.text('Claro'));
     await tester.pumpAndSettle();

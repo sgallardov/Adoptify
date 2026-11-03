@@ -47,7 +47,7 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; abre en /mapa; barra: Fundaciones, Mapa, Perfil; /reportar y /login a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión o a /mapa con sesión, también al cerrar sesión o vencer el token; barra: Fundaciones, Mapa, Perfil; /reportar, /match y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
   features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
@@ -83,7 +83,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
 - Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
 - HTTP solo a través de `ApiClient` (`AuthScope.of(context).api`); errores al usuario con `errorMessage(err, fallback)`, igual que el portal.
-- Cada pantalla nueva con su widget test en `test/`; la API se simula con `test/fake_api.dart` (MockClient + MemoryTokenStorage).
+- Cada pantalla nueva con su widget test en `test/`; la API se simula con `test/fake_api.dart` (MockClient + MemoryTokenStorage). `FakeApi()` parte con la sesión de Matías iniciada; `FakeApi(loggedIn: false)` parte en el login.
 
 ## Estado y pendientes
 Hecho: HU-01 a HU-07, búsqueda por cercanía, mapa Leaflet/OSM y reportes de perros abandonados (rama `feat/mapa-leaflet-reportes`).
