@@ -93,3 +93,49 @@ async def test_missing_required_fields_are_rejected(async_client: AsyncClient, a
     invalid = {k: v for k, v in FORM.items() if k not in ("housing_type", "wanted_species")}
     response = await async_client.put("/api/v1/users/me/adoption-profile", json=invalid, headers=adopter_headers)
     assert response.status_code == 422
+
+
+async def test_match_requires_adoption_profile_and_hides_location(async_client: AsyncClient, adopter_headers):
+    missing = await async_client.get("/api/v1/animals/match", headers=adopter_headers)
+    assert missing.status_code == 404
+
+    saved = await async_client.put("/api/v1/users/me/adoption-profile", json=FORM, headers=adopter_headers)
+    assert saved.status_code == 200
+
+    response = await async_client.get("/api/v1/animals/match", headers=adopter_headers)
+    assert response.status_code == 200
+    cards = response.json()
+    scores = [card["match_score"] for card in cards]
+    assert scores == sorted(scores, reverse=True)
+    for card in cards:
+        assert "public_commune" not in card and "commune_point" not in card
+        assert "latitude" not in card
+
+
+async def test_favorites_add_list_and_remove(async_client: AsyncClient, adopter_headers, db_session: AsyncSession):
+    from app.models.foundation import Foundation
+
+    suffix = uuid.uuid4().hex[:8]
+    foundation = Foundation(name="Fund Fav", rut=f"9{random.randint(1000000, 9999999)}-{suffix[:1]}", email=f"f{suffix}@x.cl")
+    db_session.add(foundation)
+    await db_session.flush()
+    animal = Animal(
+        foundation_id=foundation.id, name="Fav", species="perro", size="mediano",
+        age_months=24, energy_level=3, gender="macho",
+    )
+    db_session.add(animal)
+    await db_session.commit()
+    try:
+        await async_client.put("/api/v1/users/me/adoption-profile", json=FORM, headers=adopter_headers)
+        url = f"/api/v1/animals/{animal.id}/favorite"
+        assert (await async_client.put(url, headers=adopter_headers)).status_code == 204
+        assert (await async_client.put(url, headers=adopter_headers)).status_code == 204
+        favorites = (await async_client.get("/api/v1/animals/favorites", headers=adopter_headers)).json()
+        assert [item["id"] for item in favorites] == [animal.id]
+        assert "public_commune" not in favorites[0]
+        assert (await async_client.delete(url, headers=adopter_headers)).status_code == 204
+        assert (await async_client.get("/api/v1/animals/favorites", headers=adopter_headers)).json() == []
+        assert (await async_client.put("/api/v1/animals/999999/favorite", headers=adopter_headers)).status_code == 404
+    finally:
+        await db_session.delete(foundation)
+        await db_session.commit()

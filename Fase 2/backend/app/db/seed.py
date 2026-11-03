@@ -132,7 +132,8 @@ async def seed_database():
                 status="available",
                 photo_url="https://images.unsplash.com/photo-1543466835-00a7907e9de1",
                 tags={"vacunas": True, "esterilizado": True, "apto_ninos": True},
-                location=WKTElement("POINT(-70.6189 -33.4312)", srid=4326)
+                location=WKTElement("POINT(-70.6189 -33.4312)", srid=4326),
+                public_commune="Providencia"
             ),
             Animal(
                 foundation_id=fundacion1.id,
@@ -147,7 +148,8 @@ async def seed_database():
                 status="available",
                 photo_url="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba",
                 tags={"vacunas": True, "esterilizado": True, "apto_departamento": True},
-                location=WKTElement("POINT(-70.6210 -33.4340)", srid=4326)
+                location=WKTElement("POINT(-70.6210 -33.4340)", srid=4326),
+                public_commune="Providencia"
             ),
             Animal(
                 foundation_id=fundacion2.id,
@@ -162,7 +164,8 @@ async def seed_database():
                 status="available",
                 photo_url="https://images.unsplash.com/photo-1589941013453-ec89f33b5455",
                 tags={"vacunas": True, "esterilizado": True, "necesita_patio": True},
-                location=WKTElement("POINT(-70.7578 -33.5112)", srid=4326)
+                location=WKTElement("POINT(-70.7578 -33.5112)", srid=4326),
+                public_commune="Maipú"
             ),
             Animal(
                 foundation_id=fundacion2.id,
@@ -177,7 +180,8 @@ async def seed_database():
                 status="available",
                 photo_url="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e",
                 tags={"vacunas": True, "esterilizado": False, "sociable": True},
-                location=WKTElement("POINT(-70.7590 -33.5130)", srid=4326)
+                location=WKTElement("POINT(-70.7590 -33.5130)", srid=4326),
+                public_commune="Maipú"
             )
         ]
 
