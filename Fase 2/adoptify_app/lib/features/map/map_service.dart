@@ -121,6 +121,34 @@ String? _label(Map<String, String> options, String? value) => value == null ? nu
 
 List<String> _strings(Object? value) => value is List ? value.cast<String>() : const [];
 
+// Comentario anónimo de un reporte: la API nunca dice quién lo escribió, solo si es tuyo
+class ReportComment {
+  const ReportComment({required this.id, required this.body, required this.createdAt, required this.isMine});
+
+  factory ReportComment.fromJson(Map<String, dynamic> json) => ReportComment(
+        id: json['id'] as int,
+        body: json['body'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+        isMine: json['is_mine'] as bool? ?? false,
+      );
+
+  final int id;
+  final String body;
+  final DateTime createdAt;
+  final bool isMine;
+}
+
+// Cuántos marcaron "me enteré" en un reporte y si tú eres uno de ellos
+class ReportLikes {
+  const ReportLikes({required this.count, required this.liked});
+
+  factory ReportLikes.fromJson(Map<String, dynamic> json) =>
+      ReportLikes(count: json['count'] as int, liked: json['liked'] as bool);
+
+  final int count;
+  final bool liked;
+}
+
 // Datos que se envían al reportar (POST /reports)
 class NewReport {
   const NewReport({
@@ -232,6 +260,10 @@ String formatKm(double km) {
 String formatDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
 
+// 29-10-2026, 20:13
+String formatDateTime(DateTime date) =>
+    '${formatDate(date)}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
 class MapService {
   MapService(this._api);
 
@@ -260,6 +292,26 @@ class MapService {
   Future<DogReport> createReport(NewReport report) async {
     final data = await _api.post('/reports', report.toJson());
     return DogReport.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<ReportComment>> fetchComments(int reportId) async {
+    final data = await _api.get('/reports/$reportId/comments') as List<dynamic>;
+    return data.map((item) => ReportComment.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<ReportComment> addComment(int reportId, String body) async {
+    final data = await _api.post('/reports/$reportId/comments', {'body': body});
+    return ReportComment.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ReportLikes> fetchLikes(int reportId) async =>
+      ReportLikes.fromJson(await _api.get('/reports/$reportId/likes') as Map<String, dynamic>);
+
+  // Marca o quita tu "me enteré" y devuelve el total actualizado
+  Future<ReportLikes> setLiked(int reportId, bool liked) async {
+    final path = '/reports/$reportId/likes';
+    final data = liked ? await _api.put(path) : await _api.delete(path);
+    return ReportLikes.fromJson(data as Map<String, dynamic>);
   }
 
   // Sube la foto (POST /uploads) y devuelve su URL para guardarla en photo_url

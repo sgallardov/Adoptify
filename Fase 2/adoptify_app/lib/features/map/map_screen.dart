@@ -341,12 +341,18 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Expanded(child: _buildStatus()),
                             const SizedBox(width: AdoptifySpacing.sm),
-                            _AlertsCard(
-                              count: _alertsNearby,
-                              loading: _detecting || _alertsLoading,
-                              hasLocation: _userPosition != null,
-                              onActivate: _locating ? null : _locate,
-                              onRetry: _loadAlerts,
+                            Column(
+                              children: [
+                                _AlertsCard(
+                                  count: _alertsNearby,
+                                  loading: _detecting || _alertsLoading,
+                                  hasLocation: _userPosition != null,
+                                  onActivate: _locating ? null : _locate,
+                                  onRetry: _loadAlerts,
+                                ),
+                                const SizedBox(height: AdoptifySpacing.sm),
+                                _MatchButton(onPressed: () => context.push('/match')),
+                              ],
                             ),
                           ],
                         ),
@@ -539,6 +545,65 @@ String _fold(String text) {
     buffer.write(index >= 0 ? to[index] : char);
   }
   return buffer.toString();
+}
+
+// Acceso al match de adopción: botón circular bajo la tarjeta de avisos.
+// Degradado de la marca (naranja → rojo de reportes) para que destaque sobre el mapa.
+class _MatchButton extends StatelessWidget {
+  const _MatchButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      label: 'Haz Match: mascotas en adopción según tus gustos',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [colors.primary, colors.report],
+          ),
+          boxShadow: [
+            BoxShadow(color: colors.primary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            splashColor: Colors.white.withValues(alpha: 0.2),
+            child: SizedBox.square(
+              dimension: 80,
+              // Margen interno para que el texto no toque el borde curvo del círculo
+              child: Padding(
+                padding: const EdgeInsets.all(AdoptifySpacing.md),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.favorite, size: 18, color: Colors.white),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Haz Match!',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // Superficie común de lo que flota sobre el mapa: mismo borde y sombra sutil

@@ -76,6 +76,15 @@ class FakeApi {
     },
   ];
 
+  // Comentarios por reporte y "me enteré": los de otros vecinos y los de la cuenta de prueba
+  final comments = <int, List<Map<String, dynamic>>>{
+    1: [
+      {'id': 1, 'body': 'Lo vi hace un rato cerca del paradero', 'created_at': '2026-11-02T23:13:00Z', 'mine': false},
+    ],
+  };
+  final otherLikes = <int, int>{1: 2};
+  final myLikes = <int>{};
+
   late final AuthController auth = AuthController(
     ApiClient(tokenStorage: storage, httpClient: MockClient(_handle), baseUrl: 'http://api'),
   );
@@ -90,6 +99,34 @@ class FakeApi {
       return _json(201, {'url': 'http://api/uploads/foto.png'});
     }
     final body = request.body.isEmpty ? <String, dynamic>{} : jsonDecode(request.body) as Map<String, dynamic>;
+    final loggedIn = request.headers['Authorization'] == 'Bearer $validToken';
+
+    // Comentarios anónimos y "me enteré" de un reporte
+    final social = RegExp(r'^/reports/(\d+)/(comments|likes)$').firstMatch(request.url.path);
+    if (social != null) {
+      final reportId = int.parse(social.group(1)!);
+      if (!reports.any((report) => report['id'] == reportId)) return _json(404, {'detail': 'Reporte no encontrado.'});
+      final writing = request.method != 'GET';
+      if (writing && !loggedIn) return _json(401, {'detail': 'Not authenticated'});
+      if (social.group(2) == 'comments') {
+        final list = comments.putIfAbsent(reportId, () => []);
+        if (writing) {
+          final comment = {
+            'id': list.length + 1,
+            'body': (body['body'] as String).trim(),
+            'created_at': '2026-11-02T23:30:00Z',
+            'mine': true,
+          };
+          list.add(comment);
+          return _json(201, _comment(comment, loggedIn));
+        }
+        return _json(200, [for (final comment in list) _comment(comment, loggedIn)]);
+      }
+      if (request.method == 'PUT') myLikes.add(reportId);
+      if (request.method == 'DELETE') myLikes.remove(reportId);
+      final liked = loggedIn && myLikes.contains(reportId);
+      return _json(200, {'count': (otherLikes[reportId] ?? 0) + (liked ? 1 : 0), 'liked': liked});
+    }
 
     switch (request.url.path) {
       case '/auth/login':
@@ -174,6 +211,14 @@ class FakeApi {
     }
     return _json(404, {'detail': 'Not Found'});
   }
+
+  // 'mine' marca los escritos con la cuenta de prueba; la API solo lo dice si hay sesión
+  Map<String, dynamic> _comment(Map<String, dynamic> comment, bool loggedIn) => {
+        'id': comment['id'],
+        'body': comment['body'],
+        'created_at': comment['created_at'],
+        'is_mine': loggedIn && comment['mine'] == true,
+      };
 
   http.Response _json(int status, Object? body) => http.Response.bytes(
         utf8.encode(jsonEncode(body)),
