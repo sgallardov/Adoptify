@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import '../../app/theme_controller.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
 import '../auth/auth_controller.dart';
 
 // Pestaña derecha de la vista de fundación. El perfil completo está pendiente; por ahora muestra quién
-// inició sesión y deja cerrarla (sin eso, una cuenta de fundación no podría salir de la app).
+// inició sesión, deja cambiar entre modo claro y oscuro (luna / sol, arriba a la izquierda) y cerrar sesión
+// (sin eso, una cuenta de fundación no podría salir de la app).
 class FoundationProfileScreen extends StatelessWidget {
   const FoundationProfileScreen({super.key});
 
@@ -17,7 +19,7 @@ class FoundationProfileScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil')),
+      appBar: AppBar(title: const Text('Perfil'), leading: const _ThemeToggle()),
       body: ContentWidth(
         child: Column(
           children: [
@@ -59,6 +61,23 @@ class FoundationProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Luna en modo claro (pasa a oscuro) y sol en modo oscuro (pasa a claro). Usa el mismo ThemeController que
+// la tarjeta Apariencia del Perfil de adoptante, así que la elección se guarda en el dispositivo.
+class _ThemeToggle extends StatelessWidget {
+  const _ThemeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    // brightness ya refleja el modo del sistema cuando no se ha elegido uno
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(
+      onPressed: () => ThemeScope.of(context).setMode(dark ? ThemeMode.light : ThemeMode.dark),
+      icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+      tooltip: dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro',
     );
   }
 }
