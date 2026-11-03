@@ -37,6 +37,24 @@ class PublicAnimalResponse(BaseModel):
         return tuple(point) if point else None
 
 
+class MatchAnimalResponse(BaseModel):
+    """Tarjeta del match: sin zona ni comuna, para no mostrar dónde está el animal."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    foundation_name: str | None
+    name: str
+    species: str
+    breed: str | None
+    age_months: int | None
+    gender: str
+    size: str
+    energy_level: int
+    description: str | None
+    photo_url: str | None
+    match_score: float = 0.0
+
+
 class AnimalResponse(PublicAnimalResponse):
     """Ficha privada, solo tras autorizar el acceso a la fundación."""
     latitude: float | None

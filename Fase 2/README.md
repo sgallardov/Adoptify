@@ -292,6 +292,21 @@ Incluyen los tres escenarios exigidos (total, parcial y nulo), preferencias
 incompletas, edad desconocida y rango de edad invertido. La función puede usarse
 desde futuros endpoints; esta HU no agrega una ruta HTTP.
 
+### Match y favoritos (backend y app)
+
+Todos requieren Bearer token y viven bajo `/api/v1/animals`:
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| `GET` | `/match` | Animales `available` con su `match_score`, de mayor a menor, según "Quiero adoptar". `404` si el usuario no completó ese formulario. No incluye ubicación. |
+| `GET` | `/favorites` | Animales marcados con el corazón por el usuario. |
+| `PUT` | `/{animal_id}/favorite` | Marca un favorito (`204`). |
+| `DELETE` | `/{animal_id}/favorite` | Quita un favorito (`204`). |
+
+Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
+En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha
+guarda el favorito) y el corazón de la barra abre la lista de favoritos.
+
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 
 Para ejecutar la suite completa de pruebas unitarias y de integración dentro del contenedor:

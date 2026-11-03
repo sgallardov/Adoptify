@@ -56,6 +56,8 @@ class FakeApi {
   Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
   int? uploadStatus;
+  // Ids marcados con el corazón en el match
+  final favorites = <int>{};
   final reports = <Map<String, dynamic>>[
     {
       'id': 1,
@@ -128,6 +130,14 @@ class FakeApi {
       return _json(200, {'count': (otherLikes[reportId] ?? 0) + (liked ? 1 : 0), 'liked': liked});
     }
 
+    final favorite = RegExp(r'^/animals/(\d+)/favorite$').firstMatch(request.url.path);
+    if (favorite != null) {
+      if (!loggedIn) return _json(401, {'detail': 'Not authenticated'});
+      final id = int.parse(favorite.group(1)!);
+      request.method == 'PUT' ? favorites.add(id) : favorites.remove(id);
+      return http.Response('', 204);
+    }
+
     switch (request.url.path) {
       case '/auth/login':
         if (body['email'] != matias['email'] || body['password'] != 'Adoptante2026') {
@@ -148,6 +158,13 @@ class FakeApi {
       case '/animals':
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [luna, rocky]);
+      case '/animals/match':
+        if (!loggedIn) return _json(401, {'detail': 'Not authenticated'});
+        if (adoptionProfile == null) return _json(404, {'detail': "Completa 'Quiero adoptar' en tu perfil para ver tu match."});
+        return _json(200, _matchCards);
+      case '/animals/favorites':
+        if (!loggedIn) return _json(401, {'detail': 'Not authenticated'});
+        return _json(200, [for (final card in _matchCards) if (favorites.contains(card['id'])) card]);
       case '/animals/nearby':
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [
@@ -211,6 +228,38 @@ class FakeApi {
     }
     return _json(404, {'detail': 'Not Found'});
   }
+
+  // Sin comuna ni coordenadas: la tarjeta del match no muestra dónde está el animal
+  static const _matchCards = <Map<String, dynamic>>[
+    {
+      'id': 7,
+      'foundation_name': 'Fundación Patitas',
+      'name': 'Luna',
+      'species': 'perro',
+      'breed': null,
+      'age_months': 18,
+      'gender': 'hembra',
+      'size': 'mediano',
+      'energy_level': 3,
+      'description': 'Muy cariñosa',
+      'photo_url': null,
+      'match_score': 100.0,
+    },
+    {
+      'id': 9,
+      'foundation_name': 'Fundación Patitas',
+      'name': 'Thor',
+      'species': 'perro',
+      'breed': null,
+      'age_months': 60,
+      'gender': 'macho',
+      'size': 'grande',
+      'energy_level': 5,
+      'description': null,
+      'photo_url': null,
+      'match_score': 55.0,
+    },
+  ];
 
   // 'mine' marca los escritos con la cuenta de prueba; la API solo lo dice si hay sesión
   Map<String, dynamic> _comment(Map<String, dynamic> comment, bool loggedIn) => {
