@@ -8,7 +8,8 @@ engine = create_async_engine(
     settings.async_database_url,
     echo=False,
     future=True,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args=settings.db_connect_args,
 )
 
 # Fábrica de sesiones asíncronas

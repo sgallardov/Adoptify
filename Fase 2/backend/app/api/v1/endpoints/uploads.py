@@ -8,6 +8,7 @@ from app.api.v1.endpoints.auth import get_current_user
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.upload import UploadResponse
+from app.services import storage
 
 router = APIRouter()
 
@@ -61,6 +62,14 @@ async def upload_image(
 
     # Nombre aleatorio: nunca se usa el nombre que envía el cliente
     filename = f"{uuid.uuid4().hex}.{extension}"
+
+    # BD compartida: la foto va al bucket público de Supabase para que todo el equipo la vea
+    if settings.storage_enabled:
+        try:
+            return UploadResponse(url=await storage.upload_photo(filename, content, extension))
+        except storage.StorageError as exc:
+            raise HTTPException(status_code=503, detail="No se pudo guardar la imagen.") from exc
+
     directory = Path(settings.UPLOAD_DIR)
     try:
         await asyncio.to_thread(directory.mkdir, parents=True, exist_ok=True)

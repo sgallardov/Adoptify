@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.services import storage
+
 ReportSpecies = Literal["perro", "gato", "otro"]
 ReportSize = Literal["pequeño", "mediano", "grande"]
 # Mismas opciones que reportOptions (portal) y map_service.dart (app)
@@ -31,6 +33,12 @@ class ReportCreate(BaseModel):
     behaviors: list[ReportBehavior] = Field(default_factory=list, description="Cómo reacciona al acercarse: ninguno, uno o varios")
     description: str = Field(..., min_length=10, max_length=1000, description="Comentarios sobre la situación")
     photo_url: str | None = Field(None, max_length=500)
+
+    # La app y el portal devuelven el enlace firmado que recibieron al subir la foto: se guarda la referencia
+    @field_validator("photo_url", mode="before")
+    @classmethod
+    def photo_as_reference(cls, value):
+        return storage.to_reference(value) if isinstance(value, str) else value
 
     @field_validator("color", "description", mode="before")
     @classmethod

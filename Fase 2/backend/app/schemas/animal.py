@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from app.services import storage
 from app.services.communes import COMMUNES
 
 Species = Literal["perro", "gato"]
@@ -87,6 +88,12 @@ class AnimalCreate(CommuneInput):
     longitude: float | None = Field(None, ge=-180, le=180)
     foundation_id: int | None = Field(None, description="Solo para administradores; las fundaciones usan la suya")
 
+    # La app y el portal devuelven el enlace firmado que recibieron al subir la foto: se guarda la referencia
+    @field_validator("photo_url", mode="before")
+    @classmethod
+    def photo_as_reference(cls, value):
+        return storage.to_reference(value) if isinstance(value, str) else value
+
     @field_validator("name")
     @classmethod
     def validate_name(cls, value: str) -> str:
@@ -116,6 +123,12 @@ class AnimalUpdate(CommuneInput):
     photo_url: str | None = Field(None, max_length=500)
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
+
+    # La app y el portal devuelven el enlace firmado que recibieron al subir la foto: se guarda la referencia
+    @field_validator("photo_url", mode="before")
+    @classmethod
+    def photo_as_reference(cls, value):
+        return storage.to_reference(value) if isinstance(value, str) else value
 
     @field_validator("name", "species", "gender", "size", "energy_level", "status", mode="before")
     @classmethod
