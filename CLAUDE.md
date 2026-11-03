@@ -47,11 +47,11 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion si es fundación/admin, también al cerrar sesión o vencer el token; barra: Fundaciones, Mapa, Perfil; /reportar, /match y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion/agregar si es fundación/admin (barra propia: Chat, Agregar mascota, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mapa, Match, Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
-  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión)
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), foundation_chat / foundation_add / foundation_profile (vista de fundación; hoy placeholders "Próximamente")
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
-  shared/widgets/          # app_shell.dart (barra inferior), coming_soon.dart
+  shared/widgets/          # app_shell.dart (barra inferior: AppShell de adoptante y FoundationShell, mismo diseño), coming_soon.dart
 ```
 
 ## Dominio

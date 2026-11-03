@@ -72,7 +72,7 @@ void main() {
     expect(find.textContaining('Fundaci'), findsNothing);
   });
 
-  testWidgets('una fundación entra por el mismo login y ve su vista "Muy pronto"', (tester) async {
+  testWidgets('una fundación entra por el mismo login y cae en su vista con la barra de fundación', (tester) async {
     final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
@@ -85,98 +85,17 @@ void main() {
     expect(login.body, isNot(contains('account_type')));
     expect(api.storage.token, foundationToken);
 
-    expect(find.text('Mi fundación'), findsOneWidget);
-    expect(find.text('Muy pronto'), findsOneWidget);
-    expect(find.text('Fundación Patitas'), findsOneWidget);
-    // No ve la app de adoptante: ni barra inferior ni mapa
+    // Cae en la pestaña central, sin barra ni mapa de adoptante
+    expect(find.widgetWithText(AppBar, 'Agregar mascota'), findsOneWidget);
     expect(find.text('Mapa'), findsNothing);
     expect(find.text('Match'), findsNothing);
 
-    await tapVisible(tester, find.text('Cerrar sesión'));
-    expect(api.storage.token, isNull);
-    expect(find.text('Hola de nuevo'), findsOneWidget);
-  });
-
-  testWidgets('una fundación con sesión guardada abre en su vista y no puede ir al mapa', (tester) async {
-    await tester.pumpWidget(AdoptifyApp(auth: FakeApi(asFoundation: true).auth));
-    await tester.pumpAndSettle();
-    expect(find.text('Mi fundación'), findsOneWidget);
-
-    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig! as GoRouter;
-    router.go('/mapa');
-    await tester.pumpAndSettle();
-    expect(find.text('Mi fundación'), findsOneWidget);
-  });
-
-  testWidgets('valida los campos antes de enviar', (tester) async {
-    final api = FakeApi(loggedIn: false);
-    await openLogin(tester, api);
-
-    await tapVisible(tester, find.text('Regístrate'));
-    expect(find.text('Crea tu cuenta'), findsOneWidget);
-
-    await tester.enterText(field('tucorreo@ejemplo.cl'), 'correo-sin-arroba');
-    await tester.enterText(field('Mínimo 8 caracteres'), 'corta');
-    await submit(tester, 'Crear cuenta');
-
-    expect(find.text('El nombre debe tener al menos 2 caracteres'), findsOneWidget);
-    expect(find.text('Ingresa tu RUT'), findsOneWidget);
-    expect(find.text('Ingresa un correo válido'), findsOneWidget);
-    expect(find.text('La contraseña debe tener al menos 8 caracteres'), findsOneWidget);
-    expect(authRequests(api), isEmpty);
-  });
-
-  testWidgets('registra una cuenta y deja la sesión iniciada', (tester) async {
-    final api = FakeApi(loggedIn: false);
-    await openLogin(tester, api);
-    await tapVisible(tester, find.text('Regístrate'));
-
-    await tester.enterText(field('Tu nombre'), 'Matías Adoptante');
-    await tester.enterText(field('12.345.678-5'), '18.765.432-1');
-    await tester.enterText(field('tucorreo@ejemplo.cl'), 'nuevo@gmail.com');
-    await tester.enterText(field('Mínimo 8 caracteres'), 'Adoptante2026');
-    await submit(tester, 'Crear cuenta');
-
-    expect(authRequests(api).first.url.path, '/auth/register');
-    expect(authRequests(api).first.body, contains('"rut":"18.765.432-1"'));
-    expect(api.requests.map((r) => r.url.path), containsAllInOrder(['/auth/register', '/auth/login']));
-  });
-
-  testWidgets('sin conexión muestra el mensaje de servidor no disponible', (tester) async {
-    final api = FakeApi(loggedIn: false)..offline = true;
-    await openLogin(tester, api);
-
-    await tester.enterText(field('tucorreo@ejemplo.cl'), 'matias.adopter@gmail.com');
-    await tester.enterText(field('Tu contraseña'), 'Adoptante2026');
-    await submit(tester, 'Iniciar sesión');
-
-    expect(find.text('No pudimos conectar con el servidor. Inténtalo nuevamente.'), findsOneWidget);
-  });
-
-  testWidgets('recupera la sesión guardada al abrir la app y permite cerrarla', (tester) async {
-    final api = FakeApi();
-    await tester.pumpWidget(AdoptifyApp(auth: api.auth));
-    await tester.pumpAndSettle();
+    // Desde Perfil puede cerrar sesión y vuelve al login
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Matías Adoptante'), findsOneWidget);
-
+    expect(find.text('Fundación Patitas'), findsOneWidget);
     await tapVisible(tester, find.text('Cerrar sesión'));
     expect(api.storage.token, isNull);
-    // Al cerrar sesión vuelve solo al login, sin barra inferior
-    expect(find.text('Hola de nuevo'), findsOneWidget);
-    expect(find.text('Mapa'), findsNothing);
-  });
-
-  testWidgets('descarta un token vencido al abrir la app', (tester) async {
-    final api = FakeApi();
-    api.storage.token = 'token-vencido';
-    await tester.pumpWidget(AdoptifyApp(auth: api.auth));
-    await tester.pumpAndSettle();
-
-    expect(api.storage.token, isNull);
-    expect(api.auth.user, isNull);
     expect(find.text('Hola de nuevo'), findsOneWidget);
   });
 

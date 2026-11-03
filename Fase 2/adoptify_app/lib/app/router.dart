@@ -4,7 +4,9 @@ import '../features/account/account_screen.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
-import '../features/foundation_home/foundation_home_screen.dart';
+import '../features/foundation_add/add_animal_screen.dart';
+import '../features/foundation_chat/foundation_chat_screen.dart';
+import '../features/foundation_profile/foundation_profile_screen.dart';
 import '../features/foundations/foundations_screen.dart';
 import '../features/map/detail_screen.dart';
 import '../features/map/map_screen.dart';
@@ -17,17 +19,21 @@ import '../shared/widgets/app_shell.dart';
 const _loading = '/cargando';
 const _login = '/login';
 const _foundation = '/fundacion';
+// Pestaña central y principal: a donde cae una fundación al iniciar sesión
+const _foundationHome = '/fundacion/agregar';
 
 // Login obligatorio y único: sin sesión, cualquier ruta lleva al login. Con sesión, la vista depende del
-// rol: los adoptantes usan la app normal (mapa y pestañas) y las fundaciones solo su vista /fundacion.
+// rol: los adoptantes usan la app normal (mapa y pestañas) y las fundaciones solo su vista /fundacion/...
 // Mientras se revisa la sesión guardada se muestra la pantalla de carga. Se vuelve a evaluar cada vez
 // que cambia la sesión (iniciar, cerrar o token vencido), gracias a refreshListenable.
 String? sessionRedirect(AuthController auth, String location) {
   if (auth.loading) return location == _loading ? null : _loading;
   final user = auth.user;
   if (user == null) return location == _login ? null : _login;
-  if (user.isFoundation) return location == _foundation ? null : _foundation;
-  if (location == _login || location == _loading || location == _foundation) return '/mapa';
+  final inFoundationArea = location == _foundation || location.startsWith('$_foundation/');
+  if (user.isFoundation) return inFoundationArea ? null : _foundationHome;
+  // /fundaciones (pestaña de adoptante) no es parte del área de fundación: por eso se compara con la barra
+  if (location == _login || location == _loading || inFoundationArea) return '/mapa';
   return null;
 }
 
@@ -40,6 +46,22 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
   redirect: (context, state) => sessionRedirect(auth, state.matchedLocation),
   routes: [
     GoRoute(path: _loading, builder: (context, state) => const SessionLoadingScreen()),
+    // Vista de las cuentas de fundación (y admin): su propia barra con Chat, Agregar mascota y Perfil.
+    // Los tres módulos son placeholders hasta que se desarrollen.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, shell) => FoundationShell(shell: shell),
+      branches: [
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/fundacion/chat', builder: (context, state) => const FoundationChatScreen()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(path: _foundationHome, builder: (context, state) => const AddAnimalScreen()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/fundacion/perfil', builder: (context, state) => const FoundationProfileScreen()),
+        ]),
+      ],
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
@@ -60,8 +82,6 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     ),
     // Primera pantalla sin sesión (login obligatorio)
     GoRoute(path: _login, builder: (context, state) => const LoginScreen()),
-    // Única vista de las cuentas de fundación (y admin) en la app
-    GoRoute(path: _foundation, builder: (context, state) => const FoundationHomeScreen()),
     // Fuera de la barra inferior: pantallas completas con botón para volver
     // Se abre con el botón "Reportar mascota" del mapa
     GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),
