@@ -16,8 +16,11 @@ logger = logging.getLogger("adoptify")
 
 CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png"}
 REFERENCE_PREFIX = "storage:"
-# Duración de cada enlace firmado; se reutiliza hasta que le quedan menos de 10 minutos
-SIGNED_URL_SECONDS = 60 * 60
+# Duración de cada enlace firmado (PHOTO_LINK_HOURS); se reutiliza hasta que le quedan menos de 10 minutos,
+# así todos reciben el mismo enlace y la CDN de Supabase y el teléfono no vuelven a descargar la foto
+SIGNED_URL_SECONDS = settings.PHOTO_LINK_HOURS * 60 * 60
+# Cada foto tiene un nombre aleatorio y nunca cambia: la CDN y los navegadores pueden guardarla un año
+PHOTO_CACHE_CONTROL = "max-age=31536000"
 _REUSE_MARGIN_SECONDS = 10 * 60
 _signed_cache: dict[str, tuple[str, float]] = {}
 
@@ -107,7 +110,12 @@ async def signed_urls(filenames: set[str]) -> dict[str, str]:
 async def upload_photo(filename: str, content: bytes, extension: str) -> str:
     """Sube la foto al bucket privado y devuelve la referencia que se guarda en photo_url."""
     url = f"{_base_url()}/storage/v1/object/{settings.SUPABASE_BUCKET}/{filename}"
-    headers = {**_headers(), "Content-Type": CONTENT_TYPES[extension], "x-upsert": "false"}
+    headers = {
+        **_headers(),
+        "Content-Type": CONTENT_TYPES[extension],
+        "x-upsert": "false",
+        "cache-control": PHOTO_CACHE_CONTROL,
+    }
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(url, content=content, headers=headers)

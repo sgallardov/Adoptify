@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     SUPABASE_URL: Optional[str] = None
     SUPABASE_SERVICE_KEY: Optional[str] = None
     SUPABASE_BUCKET: str = "fotos"
+    # Vigencia de cada enlace firmado de foto. Más largo = más reutilización (CDN y caché del teléfono);
+    # más corto = un enlace copiado deja de servir antes.
+    PHOTO_LINK_HOURS: int = 6
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -67,6 +70,26 @@ class Settings(BaseSettings):
     def storage_enabled(self) -> bool:
         """Las fotos van a Supabase Storage solo si están la URL del proyecto y la llave secreta."""
         return bool(self.SUPABASE_URL and self.SUPABASE_SERVICE_KEY)
+
+    @property
+    def uses_shared_db(self) -> bool:
+        """La BD está lejos (Supabase): cada ida y vuelta cuesta ~130 ms desde Chile."""
+        return bool(self.DATABASE_URL)
+
+    @property
+    def db_pool_options(self) -> dict:
+        """
+        Opciones del pool de conexiones. Con la BD compartida:
+        - sin pool_pre_ping: verificar la conexión antes de cada petición costaba una ida y vuelta extra;
+        - pool_use_lifo: se reutiliza siempre la última conexión usada, que se mantiene viva
+          (ver keep_connections_warm en database.py) en vez de rotar entre varias que se enfrían;
+        - pool chico: el pooler de Supabase limita las conexiones y somos varios backends.
+        En local la verificación no cuesta nada y se mantiene.
+        """
+        if self.uses_shared_db:
+            return {"pool_pre_ping": False, "pool_use_lifo": True, "pool_recycle": 1800,
+                    "pool_size": 3, "max_overflow": 2}
+        return {"pool_pre_ping": True}
 
     @property
     def db_connect_args(self) -> dict:
