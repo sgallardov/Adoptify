@@ -42,6 +42,10 @@ class ApiClient {
 
   Future<dynamic> post(String path, Map<String, dynamic> body) => _send('POST', path, body: body);
 
+  Future<dynamic> put(String path) => _send('PUT', path);
+
+  Future<dynamic> delete(String path) => _send('DELETE', path);
+
   // Envía un archivo como multipart/form-data en el campo 'file' (POST /uploads)
   Future<dynamic> upload(String path, List<int> bytes, String filename) {
     final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl$path'))

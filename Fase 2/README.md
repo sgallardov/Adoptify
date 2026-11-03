@@ -147,6 +147,14 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * `GET /api/v1/reports/nearby?lat=-33.4378&lng=-70.6505&radius_km=10` (público): reportes no resueltos dentro del radio, del más cercano al más lejano, con `distance_km`. Mismos límites de parámetros que `/animals/nearby`.
 * La respuesta no expone quién hizo el reporte (`reporter_id`) ni la geometría cruda.
 
+### Comentarios anónimos y "me enteré" en los reportes
+* Tablas (migración `0006`), en la misma PostgreSQL: `report_comments` (`report_id`, `author_id`, `body` hasta 500 caracteres, `created_at`; índice por `report_id, created_at`) y `report_likes` (clave primaria `report_id, user_id`: un "me enteré" por persona). Ambas se borran en cascada con el reporte. Un comentario pesa menos de 1 KB, así que miles de comentarios ocupan pocos MB; cuando exista la expiración de reportes, sus comentarios se irán con ellos.
+* `GET /api/v1/reports/{id}/comments` (público): comentarios del más antiguo al más nuevo con `id`, `body`, `created_at` e `is_mine` (con token, marca los propios). Nunca expone quién escribió.
+* `POST /api/v1/reports/{id}/comments` (requiere token): `{"body": "..."}` de 1 a 500 caracteres (se recortan espacios). Devuelve `201`.
+* `GET /api/v1/reports/{id}/likes` (público): `{"count": 3, "liked": false}`; `liked` es `true` si quien consulta (con token) ya lo marcó.
+* `PUT /api/v1/reports/{id}/likes` y `DELETE /api/v1/reports/{id}/likes` (requieren token): marcan o quitan tu "me enteré" (marcar dos veces cuenta una) y devuelven el total actualizado.
+* Reporte inexistente: `404`. En la app, el detalle del reporte muestra los contadores (♡ y 💬), la conversación ("Anónimo" o "Tú") y una barra fija para escribir; sin sesión invita a iniciarla.
+
 ### HU-12: Módulo de fundaciones (backend)
 Cada fundación gestiona solo sus propios animales.
 * **Vínculo cuenta–fundación (migración `0004`):** `users.foundation_id` (FK nullable a `foundations.id`, `ON DELETE SET NULL`). Solo se usa en cuentas `foundation`; `admin` y `adopter` lo dejan en `NULL`. Una cuenta `foundation` sin fundación asignada no puede gestionar animales (`403`) ni ve ninguno en el listado.
