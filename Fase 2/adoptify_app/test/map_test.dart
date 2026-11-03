@@ -135,16 +135,12 @@ void main() {
     expect(find.text('Anónimo'), findsOneWidget);
     expect(find.text('Lo vi hace un rato cerca del paradero'), findsOneWidget);
 
-    // Sin sesión no se puede marcar ni comentar: lleva a iniciar sesión
-    expect(find.text('Inicia sesión para comentar'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('likes-counter')));
-    await tapAndSettle(tester, find.byKey(const ValueKey('likes-counter')));
-    expect(find.text('Hola de nuevo'), findsOneWidget);
+    // Con el login obligatorio siempre hay sesión: se puede escribir de inmediato
+    expect(find.byKey(const ValueKey('comment-field')), findsOneWidget);
   });
 
   testWidgets('con sesión se marca me enteré y se comenta de forma anónima', (tester) async {
     final api = FakeApi();
-    api.storage.token = validToken;
     await openReportDetail(tester, api);
 
     final likes = find.byKey(const ValueKey('likes-counter'));

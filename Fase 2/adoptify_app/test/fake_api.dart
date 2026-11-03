@@ -47,8 +47,12 @@ final rocky = {
 
 // API simulada con las mismas respuestas que el backend para /auth, /animals y /reports
 class FakeApi {
+  // El login es obligatorio: por defecto la app abre con la sesión de Matías iniciada.
+  // loggedIn: false parte en el login (pruebas de iniciar sesión y registro).
+  FakeApi({bool loggedIn = true}) : storage = MemoryTokenStorage(loggedIn ? validToken : null);
+
   final requests = <http.Request>[];
-  final storage = MemoryTokenStorage();
+  final MemoryTokenStorage storage;
   bool offline = false;
   bool animalsFail = false;
   bool foundationsFail = false;

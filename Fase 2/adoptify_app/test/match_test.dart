@@ -1,12 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:adoptify_app/app/app.dart';
 
 import 'fake_api.dart';
 
-Future<void> openMatch(WidgetTester tester, FakeApi api, {bool loggedIn = true}) async {
-  if (loggedIn) api.storage.token = validToken;
+// FakeApi() ya parte con la sesión de Matías iniciada (login obligatorio)
+Future<void> openMatch(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Match'));
@@ -14,9 +13,12 @@ Future<void> openMatch(WidgetTester tester, FakeApi api, {bool loggedIn = true})
 }
 
 void main() {
-  testWidgets('sin sesión pide iniciar sesión', (tester) async {
-    await openMatch(tester, FakeApi(), loggedIn: false);
-    expect(find.text('Inicia sesión para hacer match'), findsOneWidget);
+  testWidgets('sin sesión no se llega a Match: la app abre en el login', (tester) async {
+    // Login obligatorio: sin sesión no hay barra inferior ni pestaña Match
+    await tester.pumpWidget(AdoptifyApp(auth: FakeApi(loggedIn: false).auth));
+    await tester.pumpAndSettle();
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+    expect(find.text('Match'), findsNothing);
   });
 
   testWidgets('sin "Quiero adoptar" invita a completarlo en el perfil', (tester) async {

@@ -20,8 +20,8 @@ class AdoptifyApp extends StatefulWidget {
 }
 
 class _AdoptifyAppState extends State<AdoptifyApp> {
-  // Un router por instancia: así cada arranque (y cada test) parte en /inicio
-  late final GoRouter _router = createAppRouter();
+  // Un router por instancia: así cada arranque (y cada test) parte revisando la sesión
+  late final GoRouter _router = createAppRouter(_auth);
   late final AuthController _auth =
       widget.auth ?? AuthController(ApiClient(tokenStorage: SecureTokenStorage()));
   late final ThemeController _theme = widget.theme ?? ThemeController();

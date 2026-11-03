@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:adoptify_app/app/app.dart';
 
 import 'fake_api.dart';
 
-// Abre la app y entra al login desde la pestaña Perfil
+// Login obligatorio: sin sesión, la app abre directo en el login
 Future<void> openLogin(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('Perfil'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(FilledButton, 'Iniciar sesión'));
   await tester.pumpAndSettle();
 }
 
 Finder field(String hint) => find.widgetWithText(TextFormField, hint);
 
-// Solo las llamadas a /auth: el mapa, que es la pantalla inicial, también hace peticiones
+// Solo las llamadas a /auth (después de entrar, el mapa también hace peticiones)
 List<http.Request> authRequests(FakeApi api) => api.requests.where((r) => r.url.path.startsWith('/auth')).toList();
 
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
@@ -36,7 +33,7 @@ Future<void> submit(WidgetTester tester, String label) async {
 
 void main() {
   testWidgets('inicia sesión, guarda el token, vuelve al mapa y muestra el perfil', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
     await tester.enterText(field('tucorreo@ejemplo.cl'), 'matias.adopter@gmail.com');
@@ -55,7 +52,7 @@ void main() {
   });
 
   testWidgets('muestra el mensaje del backend si las credenciales son incorrectas', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
     await tester.enterText(field('tucorreo@ejemplo.cl'), 'matias.adopter@gmail.com');
@@ -67,7 +64,7 @@ void main() {
   });
 
   testWidgets('la pestaña Fundación envía account_type foundation y muestra el 403', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
     await tester.tap(find.text('Fundación'));
@@ -84,7 +81,7 @@ void main() {
   });
 
   testWidgets('valida los campos antes de enviar', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
 
     await tapVisible(tester, find.text('Regístrate'));
@@ -102,7 +99,7 @@ void main() {
   });
 
   testWidgets('registra una cuenta y deja la sesión iniciada', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi(loggedIn: false);
     await openLogin(tester, api);
     await tapVisible(tester, find.text('Regístrate'));
 
@@ -118,7 +115,7 @@ void main() {
   });
 
   testWidgets('sin conexión muestra el mensaje de servidor no disponible', (tester) async {
-    final api = FakeApi()..offline = true;
+    final api = FakeApi(loggedIn: false)..offline = true;
     await openLogin(tester, api);
 
     await tester.enterText(field('tucorreo@ejemplo.cl'), 'matias.adopter@gmail.com');
@@ -130,7 +127,6 @@ void main() {
 
   testWidgets('recupera la sesión guardada al abrir la app y permite cerrarla', (tester) async {
     final api = FakeApi();
-    api.storage.token = validToken;
     await tester.pumpWidget(AdoptifyApp(auth: api.auth));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Perfil'));
@@ -140,7 +136,9 @@ void main() {
 
     await tapVisible(tester, find.text('Cerrar sesión'));
     expect(api.storage.token, isNull);
-    expect(find.widgetWithText(FilledButton, 'Iniciar sesión'), findsOneWidget);
+    // Al cerrar sesión vuelve solo al login, sin barra inferior
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+    expect(find.text('Mapa'), findsNothing);
   });
 
   testWidgets('descarta un token vencido al abrir la app', (tester) async {
@@ -151,5 +149,22 @@ void main() {
 
     expect(api.storage.token, isNull);
     expect(api.auth.user, isNull);
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+  });
+
+  testWidgets('sin sesión la app abre en el login y no deja entrar al mapa', (tester) async {
+    final api = FakeApi(loggedIn: false);
+    await openLogin(tester, api);
+
+    expect(find.text('Hola de nuevo'), findsOneWidget);
+    expect(find.text('Mapa'), findsNothing);
+    // Sin sesión no se piden mascotas ni reportes: nada se carga antes de entrar
+    expect(api.requests.where((r) => !r.url.path.startsWith('/auth')), isEmpty);
+
+    // Intentar abrir el mapa (por ejemplo, desde un enlace) también lleva al login
+    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig! as GoRouter;
+    router.go('/mapa');
+    await tester.pumpAndSettle();
+    expect(find.text('Hola de nuevo'), findsOneWidget);
   });
 }

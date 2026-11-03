@@ -34,16 +34,18 @@ void main() {
 
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
-    expect(find.text('Tu cuenta de Adoptify'), findsOneWidget);
+    // Login obligatorio: siempre hay sesión, Perfil muestra la cuenta
+    expect(find.text('Matías Adoptante'), findsOneWidget);
 
     await tester.tap(find.text('Mapa'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Reportar mascota'));
     await tester.pumpAndSettle();
-    expect(find.text('Inicia sesión para reportar. Tu nombre y tus datos no se publican.'), findsOneWidget);
+    // Con sesión, Reportar abre directo el mapa para marcar el punto
+    expect(find.text('Confirmar ubicación'), findsOneWidget);
 
     // Reportar es una pantalla completa: se vuelve al mapa con la flecha
-    await tester.pageBack();
+    await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Capas'), findsOneWidget);
   });
