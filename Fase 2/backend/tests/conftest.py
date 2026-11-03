@@ -8,14 +8,22 @@ from app.main import app
 from app.core.config import settings
 from app.db.database import get_db
 
+@pytest.fixture(autouse=True)
+def local_storage(monkeypatch):
+    """Las pruebas nunca suben fotos al bucket compartido de Supabase: usan la carpeta local."""
+    monkeypatch.setattr(settings, "SUPABASE_URL", None)
+    monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", None)
+
+
 @pytest.fixture
 async def test_engine():
     """
     Crea un motor de SQLAlchemy específico para cada prueba usando NullPool.
     Esto previene que las conexiones queden atadas a un event loop cerrado.
     """
+    # Siempre la BD local (o TEST_DATABASE_URL): las pruebas crean y borran datos y no deben tocar la compartida
     engine = create_async_engine(
-        settings.async_database_url,
+        settings.test_database_url,
         poolclass=NullPool,
         future=True
     )

@@ -97,3 +97,4 @@ async def test_public_base_url_is_used_when_configured(async_client, auth_header
     url = response.json()["url"]
     uploaded_files.append(url.rsplit("/", 1)[1])
     assert url.startswith("https://api.adoptify.cl/uploads/")
+

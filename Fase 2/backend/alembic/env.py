@@ -18,7 +18,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.async_database_url)
+# configparser trata "%" como interpolación: se escapa por si la contraseña viene codificada (%40, %23...)
+config.set_main_option("sqlalchemy.url", settings.async_database_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 def include_object(object, name, type_, reflected, compare_to):
@@ -60,6 +61,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=settings.db_connect_args,
     )
 
     async with connectable.connect() as connection:

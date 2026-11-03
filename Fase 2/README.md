@@ -78,6 +78,30 @@ y las instrucciones completas. HU-07 conecta listado, detalle y contadores a
    ```
    Ambos contenedores (`adoptify_db` y `adoptify_backend`) deben figurar en estado `Up` (o `healthy`).
 
+### 🌐 Base de datos compartida (Supabase)
+Para que todo el equipo vea los mismos usuarios, animales, reportes y comentarios, cada uno corre su backend local apuntando a una sola BD en Supabase (PostgreSQL + PostGIS administrado, plan gratis de 500 MB).
+
+1. En el panel de Supabase del proyecto: **Database → Extensions → `postgis` → Enable** (una sola vez).
+2. Botón **Connect** → pestaña **Session pooler** (no "Direct connection": esa es solo IPv6 y Docker en Windows no la alcanza). Copiar la URI.
+3. En `Fase 2/.env` (nunca en git), reemplazar `DATABASE_URL` y activar SSL:
+   ```env
+   DATABASE_URL=postgresql+asyncpg://postgres.<ref>:<contraseña>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+   DB_SSL=true
+   ```
+   Si la contraseña tiene caracteres como `@`, `#`, `/` o `%`, va codificada (`@` → `%40`, `#` → `%23`).
+4. `docker compose up -d --force-recreate backend` para que tome el `.env`.
+5. **Solo la primera vez y una sola persona:** `docker compose exec backend alembic upgrade head` y `docker compose exec backend python -m app.db.seed`. Después, cada migración nueva la aplica una sola persona; los demás solo hacen `git pull`.
+
+Notas:
+* `pytest` **siempre usa el Postgres local** de Docker (o `TEST_DATABASE_URL`), así las pruebas no ensucian la BD compartida. Por eso el servicio `db` sigue en el compose.
+* **Fotos compartidas y privadas:** con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (llave secreta, Project Settings → API Keys) en el `.env`, `POST /uploads` sube cada foto al bucket **privado** `fotos` de Supabase Storage. En la BD se guarda una referencia (`storage:<archivo>`), no un enlace.
+  * Al responder, la API cambia cada referencia por un **enlace firmado que caduca en 1 hora**, solo si la petición trae un token válido; sin sesión, `photo_url` llega `null` (middleware `services/photo_access.py`, cubre todos los endpoints). El mismo enlace se reutiliza mientras le quede más de 10 minutos, para que el teléfono use su caché.
+  * Al crear o editar un reporte o animal, el `photo_url` firmado que manda la app o el portal se vuelve a guardar como referencia. Los enlaces externos (Unsplash) pasan tal cual.
+  * Sin la llave, las fotos se guardan en `backend/uploads` como antes (públicas y solo en ese computador). La app y el portal no cambian: muestran el enlace que reciben.
+* **RLS:** Supabase publica las tablas de `public` en su API REST con la llave publishable (pública). La migración `0008` activa RLS sin políticas en todas las tablas: esa API no ve nada y el backend (dueño de las tablas) funciona igual. **Toda tabla nueva debe hacer `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` en su migración.**
+* El plan gratis pausa el proyecto tras ~1 semana sin uso; se reactiva desde el panel sin perder datos.
+* Para volver a la BD local basta con dejar `DATABASE_URL` como en `.env.example` y `DB_SSL=false`.
+
 ---
 
 ## ✅ Verificación de Criterios de Aceptación

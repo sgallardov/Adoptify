@@ -8,6 +8,7 @@ import logging
 from app.core.config import settings
 from app.api.api_router import api_router
 from app.api.v1.endpoints.health import router as health_router
+from app.services.photo_access import sign_photo_urls
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("adoptify")
@@ -41,6 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Fotos privadas del bucket: enlace firmado solo para quien tiene sesión (ver services/photo_access.py)
+app.middleware("http")(sign_photo_urls)
 
 # Endpoint raíz informativo
 @app.get("/", tags=["General"])
