@@ -10,7 +10,8 @@ from app.api.v1.endpoints.auth import get_current_user, get_optional_user
 from app.db.database import get_db
 from app.models.animal import Animal
 from app.models.user import User
-from app.schemas.animal import AnimalCreate, AnimalResponse, AnimalUpdate, NearbyAnimalResponse
+from app.schemas.animal import AnimalCreate, AnimalResponse, AnimalUpdate, PublicAnimalResponse
+from app.services.communes import COMMUNES
 
 router = APIRouter()
 
@@ -54,7 +55,7 @@ async def _get_owned_animal(animal_id: int, current_user: User, db: AsyncSession
 
 @router.get(
     "",
-    response_model=list[AnimalResponse],
+    response_model=list[PublicAnimalResponse],
     summary="Listar animales publicados",
     description=(
         "Público para visitantes y adoptantes. Si quien consulta es una fundación, "
@@ -65,6 +66,10 @@ async def list_animals(
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
+    return await _animals_for_account(current_user, db)
+
+
+async def _animals_for_account(current_user: User | None, db: AsyncSession):
     statement = select(Animal).options(selectinload(Animal.foundation)).order_by(Animal.id)
     if current_user is not None and current_user.role == "foundation":
         # Una cuenta de fundación sin fundación asignada no ve ningún animal
@@ -78,9 +83,25 @@ async def list_animals(
         ) from exc
 
 
+@router.get("/communes", response_model=list[str])
+async def list_communes():
+    return sorted(COMMUNES)
+
+
+@router.get("/management", response_model=list[AnimalResponse])
+async def managed_animals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_foundation_staff(current_user)
+    return await _animals_for_account(current_user, db)
+
+
+@router.get("/management/{animal_id}", response_model=AnimalResponse)
+async def managed_animal(animal_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _get_owned_animal(animal_id, current_user, db)
+
+
 @router.get(
     "/nearby",
-    response_model=list[NearbyAnimalResponse],
+    response_model=list[PublicAnimalResponse],
     summary="Buscar animales disponibles cerca de un punto",
     description=(
         "Devuelve los animales con estado 'available' que están dentro del radio indicado, "
@@ -100,7 +121,7 @@ async def list_nearby_animals(
     distance_m = func.ST_Distance(animal_location, origin).label("distance_m")
 
     statement = (
-        select(Animal, distance_m)
+        select(Animal)
         .options(selectinload(Animal.foundation))
         .where(
             Animal.status == "available",
@@ -110,19 +131,13 @@ async def list_nearby_animals(
         .order_by(distance_m, Animal.id)
     )
     try:
-        rows = (await db.execute(statement)).all()
+        rows = (await db.execute(statement)).scalars().all()
     except SQLAlchemyError as exc:
         raise HTTPException(
             status_code=503, detail="No se pudo buscar animales cercanos."
         ) from exc
 
-    return [
-        NearbyAnimalResponse(
-            **AnimalResponse.model_validate(animal).model_dump(),
-            distance_km=round(distance / 1000, 2),
-        )
-        for animal, distance in rows
-    ]
+    return rows
 
 
 @router.post(

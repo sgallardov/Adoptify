@@ -62,7 +62,8 @@ function Detail({ record, onUpdate }: { record: AnimalResponse; onUpdate: (anima
         <dl className="grid grid-cols-2 gap-6 border-y border-base-100 py-6">
           {[['Edad', animal.age], ['Sexo', animal.gender], ['Tamaño', animal.size], ['Energía', `${animal.energy} de 5`]].map(([label, value]) => <div key={label}><dt className="text-xs text-base-500">{label}</dt><dd className="mt-1 text-sm font-semibold">{value}</dd></div>)}
         </dl>
-        <p className="mt-5 text-sm text-base-500">{record.latitude != null && record.longitude != null ? `Ubicación: ${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}` : 'Ubicación no registrada'}</p>
+        <p className="mt-5 text-sm text-base-500">{record.latitude != null && record.longitude != null ? `Punto privado: ${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}` : 'Ubicación no registrada'}</p>
+        <p className="mt-1 text-sm text-base-500">Zona pública: {record.public_commune || 'Zona no informada'}</p>
         <Link to={`/animales/${animal.id}/editar`} className="button-secondary mt-5">Editar animal</Link>
         <StatusEditor key={`${record.id}-${record.status}`} record={record} onUpdate={updated => { onUpdate(updated); setNotice('El estado del animal se actualizó correctamente.') }} />
       </div>

@@ -3,7 +3,7 @@ import type { AnimalInput, AnimalResponse } from './animals'
 export type AnimalFields = {
   name: string; species: string; gender: string; size: string; breed: string
   age_months: string; energy_level: string; description: string; photo_url: string
-  latitude: string; longitude: string; foundation_id: string
+  public_commune: string; latitude: string; longitude: string; foundation_id: string
 }
 export type FieldErrors = Partial<Record<keyof AnimalFields | 'status', string>>
 
@@ -13,7 +13,7 @@ export function animalFields(animal?: AnimalResponse): AnimalFields {
     size: animal?.size ?? '', breed: animal?.breed ?? '', age_months: animal?.age_months?.toString() ?? '',
     energy_level: String(animal?.energy_level ?? 3), description: animal?.description ?? '',
     photo_url: animal?.photo_url ?? '', latitude: animal?.latitude?.toString() ?? '',
-    longitude: animal?.longitude?.toString() ?? '', foundation_id: '',
+    public_commune: animal?.public_commune ?? '', longitude: animal?.longitude?.toString() ?? '', foundation_id: '',
   }
 }
 
@@ -45,7 +45,7 @@ export function validateAnimal(fields: AnimalFields, adminCreate: boolean, hadLo
 
 export function animalPayload(fields: AnimalFields, adminCreate: boolean, status: AnimalInput['status']): AnimalInput {
   return {
-    name: fields.name.trim(), species: fields.species, gender: fields.gender, size: fields.size,
+    public_commune: fields.public_commune || null, name: fields.name.trim(), species: fields.species, gender: fields.gender, size: fields.size,
     breed: fields.breed.trim() || null, age_months: fields.age_months.trim() ? Number(fields.age_months) : null,
     energy_level: Number(fields.energy_level), description: fields.description.trim() || null,
     photo_url: fields.photo_url.trim() || null, status,

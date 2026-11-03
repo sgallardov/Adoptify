@@ -284,3 +284,25 @@ Esto ejecuta 18 pruebas asíncronas verificando automáticamente:
 
 
 
+
+
+### Ubicación pública de adopción y avisos de rescate
+
+Aplicar la migración 0007 con `docker compose exec backend alembic upgrade head`.
+En el formulario de animales, elegir la comuna que verá el público. Es opcional:
+los animales existentes conservan su punto privado y quedan con «Zona no informada»
+hasta que su fundación complete la comuna. El formulario usa `GET /api/v1/animals/communes`.
+
+- El listado público, la búsqueda por radio y los animales de `GET /foundations`
+  entregan `public_commune` y `commune_point` (latitud, longitud de referencia).
+  Cada animal de una comuna usa el mismo punto fijo. Nunca se deriva del domicilio.
+  Sin comuna, ambos valores son nulos. El cálculo del radio se realiza en PostGIS
+  con la ubicación real, sin exponer coordenadas privadas ni distancia numérica.
+- Solo `GET /animals/management` y `GET /animals/management/{id}` permiten
+  consultar puntos privados, con autenticación y autorización de propietario o admin.
+- Los avisos activos de rescate mantienen sus coordenadas exactas de avistamiento;
+  al superponerse, su marcador tiene prioridad. Las sedes conservan su ubicación pública.
+- Referencias comunales: datos ADM3 de Chile de [GeoNames](https://www.geonames.org/),
+  [extracto CL](https://download.geonames.org/export/dump/CL.zip) bajo
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). El catálogo local
+  adapta los nombres y conserva únicamente el nombre y las coordenadas de cada comuna.

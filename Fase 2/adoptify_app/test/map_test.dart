@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,6 +35,9 @@ void main() {
     expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
     expect(find.byKey(const ValueKey('animal-8')), findsNothing);
     expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
+    final markers = tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers;
+    expect(markers.singleWhere((m) => m.key == const ValueKey('report-1')).point, const LatLng(-33.44, -70.66));
+    expect(markers.singleWhere((m) => m.key == const ValueKey('animal-7')).point, const LatLng(-33.46, -70.60));
     // Sin ubicación, los reportes se buscan alrededor de Santiago a 100 km
     final reportsRequest = api.requests.firstWhere((r) => r.url.path == '/reports/nearby');
     expect(reportsRequest.url.queryParameters['radius_km'], '100');
@@ -167,7 +172,8 @@ void main() {
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
     await tapAndSettle(tester, find.text('Luna').first);
 
-    expect(find.text('Ubicación'), findsOneWidget);
+    expect(find.text('Zona aproximada: Ñuñoa'), findsWidgets);
+    expect(find.byTooltip('Copiar ubicación'), findsNothing);
     expect(find.text('Fundación Patitas'), findsWidgets);
 
     await tapAndSettle(tester, find.byTooltip('Volver'));
@@ -219,7 +225,7 @@ void main() {
     await openMap(tester, api);
 
     await tapAndSettle(tester, find.byTooltip('Capas'));
-    expect(find.text('Mascotas en adopción (1)'), findsOneWidget);
+    expect(find.text('Adopción · zonas aproximadas (1)'), findsOneWidget);
     expect(find.text('Mascotas reportadas (1)'), findsOneWidget);
 
     await tapAndSettle(tester, find.text('Mascotas reportadas (1)'));
@@ -240,7 +246,7 @@ void main() {
     expect(find.text('Radio 10 km'), findsOneWidget);
 
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
-    expect(find.text('A 1,25 km de ti'), findsOneWidget);
+    expect(find.text('Dentro de tu radio de búsqueda'), findsOneWidget);
 
     await tapAndSettle(tester, find.text('Ver todas'));
     expect(find.text('Ver todas'), findsNothing);

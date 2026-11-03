@@ -47,16 +47,17 @@ class AnimalDetailScreen extends StatelessWidget {
                       const SizedBox(height: AdoptifySpacing.sm),
                       _IconLine(icon: Icons.home_work_outlined, text: animal.foundationName!),
                     ],
-                    if (animal.distanceKm != null) ...[
+                    Text(animal.publicZone),
+                    if (animal.withinRadius) ...[
                       const SizedBox(height: AdoptifySpacing.sm),
                       Text(
-                        'A ${formatKm(animal.distanceKm!)} km de ti',
+                        'Dentro de tu radio de búsqueda',
                         style: textTheme.labelLarge?.copyWith(color: colors.primaryDark),
                       ),
                     ],
                     if (animal.position != null) ...[
                       const SizedBox(height: AdoptifySpacing.xl),
-                      _LocationSection(position: animal.position!, pin: MapPins.animal),
+                      _MiniMap(position: animal.position!, pin: MapPins.animal),
                     ],
                   ],
                 ),
@@ -241,6 +242,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             ),
                           ],
                           const SizedBox(height: AdoptifySpacing.xl),
+                          const Text('Último avistamiento'),
                           _LocationSection(position: report.position, pin: MapPins.report),
                           const SizedBox(height: AdoptifySpacing.lg),
                           _CommentsSection(

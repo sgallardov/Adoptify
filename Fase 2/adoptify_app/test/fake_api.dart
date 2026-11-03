@@ -34,8 +34,8 @@ const luna = {
   'description': null,
   'status': 'available',
   'photo_url': null,
-  'latitude': -33.4378,
-  'longitude': -70.6505,
+  'public_commune': 'Ñuñoa',
+  'commune_point': [-33.46, -70.60],
 };
 
 final rocky = {
@@ -151,7 +151,7 @@ class FakeApi {
       case '/animals/nearby':
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [
-          {...luna, 'distance_km': 1.25},
+          luna,
         ]);
       case '/users/me/adoption-profile':
         if (request.headers['Authorization'] != 'Bearer $validToken') return _json(401, {'detail': 'Not authenticated'});

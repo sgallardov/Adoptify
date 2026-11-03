@@ -212,3 +212,46 @@ async def test_list_is_filtered_for_foundations_but_not_for_others(async_client,
 async def test_invalid_token_is_treated_as_visitor_on_public_list(async_client, world):
     response = await async_client.get("/api/v1/animals", headers={"Authorization": "Bearer token-falso"})
     assert response.status_code == 200
+
+
+async def test_private_location_only_for_owner_or_admin(async_client, world):
+    animal = world["animals"][0]
+    url = f"/api/v1/animals/management/{animal.id}"
+    for role in ("a", "admin"):
+        response = await async_client.get(url, headers=world["headers"][role])
+        assert response.status_code == 200
+        assert response.json()["latitude"] == pytest.approx(-45.5712)
+    for role in ("b", "adopter", "sin_fundacion"):
+        assert (await async_client.get(url, headers=world["headers"][role])).status_code == 403
+    assert (await async_client.get(url)).status_code in (401, 403)
+    listed = await async_client.get("/api/v1/animals/management", headers=world["headers"]["a"])
+    assert [a["id"] for a in listed.json()] == [animal.id]
+    assert (await async_client.get("/api/v1/animals/management", headers=world["headers"]["adopter"])).status_code == 403
+    assert (await async_client.get("/api/v1/animals/management")).status_code in (401, 403)
+
+
+async def test_commune_is_independent_of_private_point_on_create_and_update(async_client, world):
+    headers = world["headers"]["a"]
+    public_commune = "Ñuñoa"
+    catalog = (await async_client.get("/api/v1/animals/communes")).json()
+    assert public_commune in catalog
+    body = {**NEW_ANIMAL, "public_commune": public_commune}
+    created = await async_client.post("/api/v1/animals", json=body, headers=headers)
+    assert created.status_code == 201
+    animal = created.json()
+    assert animal["commune_point"] != [body["latitude"], body["longitude"]]
+    url = f"/api/v1/animals/{animal['id']}"
+    updated = await async_client.patch(url, headers=headers, json={"latitude": -33.45, "longitude": -70.67})
+    assert updated.status_code == 200
+    assert updated.json()["commune_point"] == animal["commune_point"]
+    assert updated.json()["latitude"] == -33.45
+    for endpoint in ["/api/v1/animals", "/api/v1/animals/nearby?lat=-33.45&lng=-70.67&radius_km=1"]:
+        items = (await async_client.get(endpoint)).json()
+        public = next(item for item in items if item["id"] == animal["id"])
+        assert public["commune_point"] == animal["commune_point"]
+        assert public["public_commune"] == public_commune
+        assert not {"latitude", "longitude", "distance_km", "location"}.intersection(public)
+    assert (await async_client.patch(url, headers=headers, json={"public_commune": "Dirección particular"})).status_code == 422
+    cleared = await async_client.patch(url, headers=headers, json={"public_commune": None})
+    assert cleared.json()["commune_point"] is None
+    assert cleared.json()["latitude"] == -33.45
