@@ -210,6 +210,7 @@ Recibe un diccionario de preferencias (por ejemplo, `user.preferences or {}`) y 
 | `min_age_months`, `max_age_months` | `age_months` | 25 | Dentro del rango inclusivo |
 | `preferred_energy_level` | `energy_level` | 20 | Igualdad numérica (escala 1 a 5) |
 
+Cada preferencia puede ser un valor o una lista de valores aceptados (`["perro", "gato"]`).
 Los textos ignoran mayúsculas y espacios exteriores. Cada criterio aporta todo su
 peso si coincide y cero si difiere. La fórmula es `100 * pesos_coincidentes / pesos_comparables`,
 redondeada a dos decimales. Las preferencias o atributos ausentes (`None`) se omiten;
@@ -231,6 +232,23 @@ preferences = {
 }
 score = calculate_match_score(preferences, animal)  # 55.0: especie + edad
 ```
+
+### Formulario "Quiero adoptar" (app móvil)
+
+Es opcional: quien solo reporta animales nunca lo completa y su `preferences` queda vacío.
+Se llena y se edita desde **Perfil → Quiero adoptar**.
+
+| Endpoint | Descripción |
+| --- | --- |
+| `GET /api/v1/users/me/adoption-profile` | Devuelve el formulario guardado, o `null` si aún no lo completó. `401` sin sesión. |
+| `PUT /api/v1/users/me/adoption-profile` | Crea o reemplaza el formulario. `422` si falta algo obligatorio (vivienda, niños, otras mascotas, horas solo, especie y tamaño); `403` si la cuenta no es `adopter`. |
+
+Se guarda en `users.preferences` (sin migración): el formulario completo en `adoption_profile` y,
+junto a él, las claves que usa el motor (`preferred_species`, `preferred_size`, `preferred_energy_level`,
+`min_age_months`, `max_age_months`), derivadas en `services/adoption_profile.py`. Las listas vacías
+("me da igual") no entran al cálculo. La actividad se traduce a energía del animal (tranquilo 1-2,
+moderado 3, muy activo 4-5) y las edades a meses (cachorro 0-11, adulto 12-83, senior 84+).
+Las opciones deben coincidir con `schemas/adoption_profile.py` y `adoption_service.dart`.
 
 Pruebas unitarias (no requieren conexión a BD):
 
