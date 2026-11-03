@@ -6,7 +6,8 @@ import '../../app/theme.dart';
 // Índices de las pestañas, en el mismo orden que las ramas de app/router.dart
 const _foundationsTab = 0;
 const _mapTab = 1;
-const _profileTab = 2;
+const _matchTab = 2;
+const _profileTab = 3;
 
 // Estructura común de las pestañas: contenido + barra de navegación inferior
 class AppShell extends StatelessWidget {
@@ -60,6 +61,15 @@ class AppShell extends StatelessWidget {
                         activeIcon: Icons.map,
                         active: current == _mapTab,
                         onTap: () => _go(_mapTab),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NavTab(
+                        label: 'Match',
+                        icon: Icons.favorite_border,
+                        activeIcon: Icons.favorite,
+                        active: current == _matchTab,
+                        onTap: () => _go(_matchTab),
                       ),
                     ),
                     Expanded(
@@ -132,7 +142,8 @@ class _NavTab extends StatelessWidget {
                   child: Icon(active ? activeIcon : icon, color: color, size: _iconSize),
                 ),
                 const SizedBox(height: 2),
-                Text(label, style: labelStyle),
+                // Con cuatro pestañas el texto puede no caber: se reduce en vez de partirse en dos líneas
+                FittedBox(fit: BoxFit.scaleDown, child: Text(label, style: labelStyle, maxLines: 1)),
               ],
             ),
           ),
