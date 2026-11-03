@@ -1,8 +1,6 @@
 import '../../core/api_client.dart';
 
-// Pestaña del login: 'user' para adoptantes, 'foundation' para fundaciones
-enum AccountType { user, foundation }
-
+// Cuenta con sesión iniciada; role: 'adopter', 'foundation' o 'admin'
 class AppUser {
   const AppUser({
     required this.id,
@@ -32,6 +30,9 @@ class AppUser {
         'admin' => 'Administrador',
         _ => role,
       };
+
+  // Las fundaciones (y el admin) entran por el mismo login y ven su propia vista, no la de adoptante
+  bool get isFoundation => role == 'foundation' || role == 'admin';
 }
 
 // Llamadas a /auth, igual que services/auth.ts del portal
@@ -40,12 +41,9 @@ class AuthService {
 
   final ApiClient _api;
 
-  Future<void> login(String email, String password, AccountType accountType) async {
-    final data = await _api.post('/auth/login', {
-      'email': email,
-      'password': password,
-      'account_type': accountType.name,
-    });
+  // Login único: sin account_type entra cualquier cuenta y la app muestra la vista según el rol
+  Future<void> login(String email, String password) async {
+    final data = await _api.post('/auth/login', {'email': email, 'password': password});
     await _api.setToken((data as Map<String, dynamic>)['access_token'] as String);
   }
 

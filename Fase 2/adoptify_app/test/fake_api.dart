@@ -11,6 +11,8 @@ import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
 
 const validToken = 'token-valido';
+// Sesión de la cuenta de fundación de prueba
+const foundationToken = 'token-fundacion';
 
 const matias = {
   'id': 1,
@@ -18,6 +20,15 @@ const matias = {
   'rut': '18765432-1',
   'full_name': 'Matías Adoptante',
   'role': 'adopter',
+};
+
+// Cuenta de fundación: entra por el mismo login y la app la lleva a su vista
+const patitas = {
+  'id': 2,
+  'email': 'fundacion@adoptify.cl',
+  'rut': '20123456-3',
+  'full_name': 'Fundación Patitas',
+  'role': 'foundation',
 };
 
 const luna = {
@@ -49,7 +60,9 @@ final rocky = {
 class FakeApi {
   // El login es obligatorio: por defecto la app abre con la sesión de Matías iniciada.
   // loggedIn: false parte en el login (pruebas de iniciar sesión y registro).
-  FakeApi({bool loggedIn = true}) : storage = MemoryTokenStorage(loggedIn ? validToken : null);
+  // asFoundation: true parte con la sesión de la fundación de prueba.
+  FakeApi({bool loggedIn = true, bool asFoundation = false})
+      : storage = MemoryTokenStorage(asFoundation ? foundationToken : (loggedIn ? validToken : null));
 
   final requests = <http.Request>[];
   final MemoryTokenStorage storage;
@@ -143,22 +156,23 @@ class FakeApi {
     }
 
     switch (request.url.path) {
+      // Login único: sin account_type, entra cualquier cuenta con su rol
       case '/auth/login':
-        if (body['email'] != matias['email'] || body['password'] != 'Adoptante2026') {
-          return _json(401, {'detail': 'Correo o contraseña incorrectos'});
+        if (body['email'] == matias['email'] && body['password'] == 'Adoptante2026') {
+          return _json(200, {'access_token': validToken, 'token_type': 'bearer', 'role': 'adopter'});
         }
-        if (body['account_type'] != 'user') {
-          return _json(403, {'detail': 'Esta cuenta no es de este tipo. Inicia sesión en la pestaña Usuario.'});
+        if (body['email'] == patitas['email'] && body['password'] == 'Fundacion2026') {
+          return _json(200, {'access_token': foundationToken, 'token_type': 'bearer', 'role': 'foundation'});
         }
-        return _json(200, {'access_token': validToken, 'token_type': 'bearer', 'role': 'adopter'});
+        return _json(401, {'detail': 'Correo o contraseña incorrectos'});
       case '/auth/register':
         if (body['email'] == matias['email']) return _json(409, {'detail': 'Ya existe un usuario con ese correo'});
         return _json(201, {...matias, 'email': body['email'], 'full_name': body['full_name']});
       case '/auth/me':
-        if (request.headers['Authorization'] != 'Bearer $validToken') {
-          return _json(401, {'detail': 'Token inválido o expirado'});
-        }
-        return _json(200, matias);
+        final authorization = request.headers['Authorization'];
+        if (authorization == 'Bearer $validToken') return _json(200, matias);
+        if (authorization == 'Bearer $foundationToken') return _json(200, patitas);
+        return _json(401, {'detail': 'Token inválido o expirado'});
       case '/animals':
         if (animalsFail) return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [luna, rocky]);

@@ -34,8 +34,8 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<AppUser> signIn(String email, String password, AccountType accountType) async {
-    await _service.login(email, password, accountType);
+  Future<AppUser> signIn(String email, String password) async {
+    await _service.login(email, password);
     final me = await _service.fetchMe();
     _user = me;
     notifyListeners();
@@ -44,7 +44,7 @@ class AuthController extends ChangeNotifier {
 
   Future<AppUser> signUp(String email, String rut, String password, String fullName) async {
     await _service.register(email, rut, password, fullName);
-    return signIn(email, password, AccountType.user);
+    return signIn(email, password);
   }
 
   Future<void> signOut() async {

@@ -108,7 +108,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Correo o contraseña incorrectos")
 
-    if user.role not in ACCOUNT_TYPE_ROLES[payload.account_type]:
+    if payload.account_type and user.role not in ACCOUNT_TYPE_ROLES[payload.account_type]:
         other_tab = "Usuario" if payload.account_type == "foundation" else "Fundación"
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -172,6 +172,26 @@ class TestLoginAccountTabs:
         assert foundation_tab.json()["role"] == "foundation"
         assert user_tab.status_code == 403
 
+    async def test_single_login_without_account_type_accepts_any_role(
+        self, async_client: AsyncClient, db_session: AsyncSession, registered_email: str
+    ):
+        """Login único de la app: sin account_type entra cualquier cuenta y la respuesta trae su rol."""
+        await async_client.post(
+            "/api/v1/auth/register",
+            json={"email": registered_email, "rut": unique_rut(), "password": "ClaveSegura123", "full_name": "Cuenta Prueba"},
+        )
+        credentials = {"email": registered_email, "password": "ClaveSegura123"}
+
+        as_adopter = await async_client.post("/api/v1/auth/login", json=credentials)
+        assert as_adopter.status_code == 200
+        assert as_adopter.json()["role"] == "adopter"
+
+        await db_session.execute(update(User).where(User.email == registered_email).values(role="foundation"))
+        await db_session.commit()
+        as_foundation = await async_client.post("/api/v1/auth/login", json=credentials)
+        assert as_foundation.status_code == 200
+        assert as_foundation.json()["role"] == "foundation"
+
 
 class TestLoginInputNormalization:
     """

@@ -39,7 +39,7 @@ lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
   core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS), photo_service.dart (cámara y galería)
-  features/       # una carpeta por pantalla: map, report, account, auth
+  features/       # una carpeta por pantalla: map, report, account, auth, foundation_chat, foundation_add, foundation_profile
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
@@ -49,13 +49,27 @@ test/             # widget tests de navegación, login, mapa y reporte (fake_api
 ```
 
 ## Navegación
-La app abre en el **Mapa** (también al iniciar sesión). Barra inferior con 3 elementos
-(`StatefulShellRoute`, cada uno conserva su historial), de izquierda a derecha:
+El login es obligatorio y único: la app abre en una pantalla de carga mientras revisa la sesión guardada y
+de ahí va al login o, con sesión, a la vista que corresponde al rol (`sessionRedirect` en `router.dart`).
+Cada vista tiene su barra inferior (`StatefulShellRoute`, cada pestaña conserva su historial) con el mismo
+diseño (`shared/widgets/app_shell.dart`).
+
+**Adoptante** (`adopter`): abre en el **Mapa**. Barra de izquierda a derecha:
 - **Fundaciones** (`/fundaciones`): fundaciones con sus mascotas en adopción.
 - **Mapa** (`/mapa`).
+- **Match** (`/match`).
 - **Perfil** (`/cuenta`).
 
-`/login` y `/reportar` se abren a pantalla completa, con flecha para volver. Reportar se abre con el
+**Fundación** (`foundation` o `admin`): abre en **Agregar mascota**. Barra de izquierda a derecha (hoy las tres
+son placeholders "Próximamente"; cada módulo se desarrolla aparte):
+- **Chat** (`/fundacion/chat`): hablar con un adoptante cuando haya match.
+- **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca.
+- **Perfil** (`/fundacion/perfil`): por ahora muestra la cuenta y permite cerrar sesión.
+
+Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
+intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.
+
+`/login`, `/reportar` y los detalles se abren a pantalla completa, con flecha para volver. Reportar se abre con el
 botón rojo "Reportar mascota" del mapa.
 
 ## Diseño
@@ -69,7 +83,7 @@ Todo el estilo sale de `lib/app/theme.dart` (misma paleta que el portal):
 
 ## Inicio de sesión (HU-14)
 Mismo formato y mismas cuentas que el login del portal web:
-- Pestañas **Usuario** y **Fundación** (`account_type` `user` / `foundation`); solo Usuario permite registrarse.
+- Un solo formulario, sin pestañas: no manda `account_type` y el backend decide el rol; cualquiera puede registrarse como adoptante (las cuentas de fundación las crea el equipo).
 - Consume `POST /auth/login`, `POST /auth/register` y `GET /auth/me`; los mensajes de error son los del backend
   y siguen las mismas reglas que `errorMessage()` del portal.
 - El token se guarda cifrado con `flutter_secure_storage` y `ApiClient` lo envía como `Authorization: Bearer` en cada petición.
