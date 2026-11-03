@@ -13,23 +13,28 @@ Future<void> openFoundations(WidgetTester tester, FakeApi api) async {
 }
 
 void main() {
-  testWidgets('lista las fundaciones con sus mascotas en adopción', (tester) async {
+  testWidgets('lista las fundaciones con sus mascotas en adopción', (
+    tester,
+  ) async {
     final api = FakeApi();
     await openFoundations(tester, api);
 
-    expect(find.text('2 fundaciones · 1 mascota en adopción'), findsOneWidget);
+    expect(find.text('8'), findsWidgets);
+    expect(find.text('Historias que buscan hogar'), findsOneWidget);
+    expect(find.byKey(const ValueKey('adoption-stories')), findsOneWidget);
     expect(find.text('Fundación Patitas'), findsOneWidget);
-    expect(find.text('Providencia, Santiago'), findsOneWidget);
-    expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
-    expect(find.text('+56 9 1111 2222'), findsOneWidget);
-    expect(find.byTooltip('Fundación verificada'), findsOneWidget);
-    expect(find.text('En adopción (1)'), findsOneWidget);
     expect(find.text('Luna'), findsOneWidget);
-    expect(find.text('Perro · 1 año y 6 meses'), findsOneWidget);
+    expect(find.text('Perro · 1 año y 6 meses · mediano'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Refugio Sin Casos'), 200, scrollable: find.byType(Scrollable).first);
-    expect(find.text('Valparaíso'), findsOneWidget);
-    expect(find.text('Por ahora no tiene mascotas en adopción.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Rescatamos perros y gatos de la calle.'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Providencia, Santiago'), findsOneWidget);
+    expect(find.byTooltip('Fundación verificada'), findsOneWidget);
+    expect(find.text('1 animal disponible'), findsOneWidget);
+
   });
 
   testWidgets('si la API falla permite reintentar', (tester) async {

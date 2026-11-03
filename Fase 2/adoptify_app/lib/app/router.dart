@@ -7,6 +7,8 @@ import '../features/auth/session_loading_screen.dart';
 import '../features/foundation_add/add_animal_screen.dart';
 import '../features/foundation_chat/foundation_chat_screen.dart';
 import '../features/foundation_profile/foundation_profile_screen.dart';
+import '../features/foundations/foundation_detail_screen.dart';
+import '../features/foundations/foundation_service.dart';
 import '../features/foundations/foundations_screen.dart';
 import '../features/map/detail_screen.dart';
 import '../features/map/map_screen.dart';
@@ -30,10 +32,13 @@ String? sessionRedirect(AuthController auth, String location) {
   if (auth.loading) return location == _loading ? null : _loading;
   final user = auth.user;
   if (user == null) return location == _login ? null : _login;
-  final inFoundationArea = location == _foundation || location.startsWith('$_foundation/');
+  final inFoundationArea =
+      location == _foundation || location.startsWith('$_foundation/');
   if (user.isFoundation) return inFoundationArea ? null : _foundationHome;
   // /fundaciones (pestaña de adoptante) no es parte del área de fundación: por eso se compara con la barra
-  if (location == _login || location == _loading || inFoundationArea) return '/mapa';
+  if (location == _login || location == _loading || inFoundationArea) {
+    return '/mapa';
+  }
   return null;
 }
 
@@ -45,51 +50,109 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
   refreshListenable: auth,
   redirect: (context, state) => sessionRedirect(auth, state.matchedLocation),
   routes: [
-    GoRoute(path: _loading, builder: (context, state) => const SessionLoadingScreen()),
+    GoRoute(
+      path: _loading,
+      builder: (context, state) => const SessionLoadingScreen(),
+    ),
     // Vista de las cuentas de fundación (y admin): su propia barra con Chat, Agregar mascota y Perfil.
     // Los tres módulos son placeholders hasta que se desarrollen.
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => FoundationShell(shell: shell),
       branches: [
-        StatefulShellBranch(routes: [
-          GoRoute(path: '/fundacion/chat', builder: (context, state) => const FoundationChatScreen()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(path: _foundationHome, builder: (context, state) => const AddAnimalScreen()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(path: '/fundacion/perfil', builder: (context, state) => const FoundationProfileScreen()),
-        ]),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/fundacion/chat',
+              builder: (context, state) => const FoundationChatScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: _foundationHome,
+              builder: (context, state) => const AddAnimalScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/fundacion/perfil',
+              builder: (context, state) => const FoundationProfileScreen(),
+            ),
+          ],
+        ),
       ],
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [
-        StatefulShellBranch(routes: [
-          GoRoute(path: '/fundaciones', builder: (context, state) => const FoundationsScreen()),
-        ]),
-        StatefulShellBranch(routes: [
-          // extra: id del reporte recién creado, para que el mapa recargue los datos
-          GoRoute(path: '/mapa', builder: (context, state) => MapScreen(refreshKey: state.extra)),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(path: '/match', builder: (context, state) => const MatchScreen()),
-        ]),
-        StatefulShellBranch(routes: [
-          GoRoute(path: '/cuenta', builder: (context, state) => const AccountScreen()),
-        ]),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/fundaciones',
+              builder: (context, state) => const FoundationsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            // extra: id del reporte recién creado, para que el mapa recargue los datos
+            GoRoute(
+              path: '/mapa',
+              builder: (context, state) => MapScreen(refreshKey: state.extra),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/match',
+              builder: (context, state) => const MatchScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/cuenta',
+              builder: (context, state) => const AccountScreen(),
+            ),
+          ],
+        ),
       ],
     ),
     // Primera pantalla sin sesión (login obligatorio)
     GoRoute(path: _login, builder: (context, state) => const LoginScreen()),
     // Fuera de la barra inferior: pantallas completas con botón para volver
     // Se abre con el botón "Reportar mascota" del mapa
-    GoRoute(path: '/reportar', builder: (context, state) => const ReportScreen()),
+    GoRoute(
+      path: '/reportar',
+      builder: (context, state) => const ReportScreen(),
+    ),
     // Se abre con el corazón de la pestaña Match
-    GoRoute(path: '/favoritos', builder: (context, state) => const FavoritesScreen()),
+    GoRoute(
+      path: '/favoritos',
+      builder: (context, state) => const FavoritesScreen(),
+    ),
+    // Perfil público de una organización. El objeto llega desde el directorio y evita otra petición.
+    GoRoute(
+      path: '/fundaciones/:id',
+      builder: (context, state) =>
+          FoundationDetailScreen(foundation: state.extra as Foundation),
+    ),
     // Se abren al tocar la ficha de una mascota o un reporte en el mapa; el objeto viaja en `extra`
     // (ya está cargado ahí) para no volver a pedirlo a la API.
-    GoRoute(path: '/animales/:id', builder: (context, state) => AnimalDetailScreen(animal: state.extra as Animal)),
-    GoRoute(path: '/reportes/:id', builder: (context, state) => ReportDetailScreen(report: state.extra as DogReport)),
+    GoRoute(
+      path: '/animales/:id',
+      builder: (context, state) =>
+          AnimalDetailScreen(animal: state.extra as Animal),
+    ),
+    GoRoute(
+      path: '/reportes/:id',
+      builder: (context, state) =>
+          ReportDetailScreen(report: state.extra as DogReport),
+    ),
   ],
 );
