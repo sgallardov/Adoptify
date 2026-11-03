@@ -111,7 +111,17 @@ async def seed_database():
             location=WKTElement("POINT(-70.7578 -33.5112)", srid=4326)
         )
 
-        session.add_all([fundacion1, fundacion2])
+        # Catálogo adicional solo para una base local nueva. Nunca ejecutar este seed contra Supabase.
+        extra_foundations = [
+            Foundation(name="Huellas del Sur", rut="76.500.101-1", email="hola@huellasdelsur.cl", phone="+56933001122", address="", commune="La Florida", city="Santiago", description="Rescatamos, rehabilitamos y buscamos hogares responsables.", is_verified=True, location=WKTElement("POINT(-70.5980 -33.5220)", srid=4326)),
+            Foundation(name="Patitas de Cerro", rut="76.500.102-K", email="contacto@patitascerro.cl", phone="+56933001123", address="", commune="Valparaíso", city="Valparaíso", description="Red vecinal de rescate y adopción en la costa.", is_verified=True, location=WKTElement("POINT(-71.6127 -33.0472)", srid=4326)),
+            Foundation(name="Bigotes Libres", rut="76.500.103-8", email="hola@bigoteslibres.cl", phone="+56933001124", address="", commune="Ñuñoa", city="Santiago", description="Especialistas en gatos que necesitan una segunda oportunidad.", is_verified=False, location=WKTElement("POINT(-70.5905 -33.4569)", srid=4326)),
+            Foundation(name="Refugio El Arrayán", rut="76.500.104-6", email="equipo@elarrayan.cl", phone="+56933001125", address="", commune="Puente Alto", city="Santiago", description="Cuidado temporal y rehabilitación de perros mayores.", is_verified=True, location=WKTElement("POINT(-70.5770 -33.6117)", srid=4326)),
+            Foundation(name="Rescate Horizonte", rut="76.500.105-4", email="hola@rescatehorizonte.cl", phone="+56933001126", address="", commune="Concepción", city="Concepción", description="Un equipo de voluntariado que acompaña rescates urgentes.", is_verified=False, location=WKTElement("POINT(-73.0503 -36.8270)", srid=4326)),
+            Foundation(name="Casa Michi", rut="76.500.106-2", email="equipo@casamichi.cl", phone="+56933001127", address="", commune="Quilicura", city="Santiago", description="Hogar temporal para gatos rescatados y socialización felina.", is_verified=True, location=WKTElement("POINT(-70.7270 -33.3667)", srid=4326)),
+        ]
+
+        session.add_all([fundacion1, fundacion2, *extra_foundations])
         await session.flush()
 
         # La cuenta de fundación queda ligada a su fundación (HU-12)
@@ -185,9 +195,37 @@ async def seed_database():
             )
         ]
 
+        # Un caso visible por cada fundación adicional. Estos datos se crean solo en una BD local vacía.
+        extra_animals = [
+            ("Mora", "gato", 14, "pequeño", "La Florida", "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba"),
+            ("Toto", "perro", 9, "pequeño", "Valparaíso", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e"),
+            ("Nube", "gato", 6, "pequeño", "Ñuñoa", "https://images.unsplash.com/photo-1495360010541-f48722b34f7d"),
+            ("Canela", "perro", 84, "mediano", "Puente Alto", "https://images.unsplash.com/photo-1587300003388-59208cc962cb"),
+            ("Kira", "perro", 18, "mediano", "Concepción", "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8"),
+            ("Olivia", "gato", 20, "pequeño", "Quilicura", "https://images.unsplash.com/photo-1494256997604-768d1f608cac"),
+        ]
+        for foundation, (name, species, age_months, size, commune, photo_url) in zip(extra_foundations, extra_animals):
+            point = foundation.location
+            animals.append(Animal(
+                foundation_id=foundation.id,
+                name=name,
+                species=species,
+                breed="Mestizo",
+                age_months=age_months,
+                gender="hembra",
+                size=size,
+                energy_level=3,
+                description="Caso de demostración para explorar la vitrina de adopción local.",
+                status="available",
+                photo_url=photo_url,
+                tags={"vacunas": True, "esterilizado": True},
+                location=point,
+                public_commune=commune,
+            ))
+
         session.add_all(animals)
         await session.commit()
-        logger.info(f"Seed completado exitosamente: {len(users)} usuarios, 2 fundaciones, {len(animals)} animales.")
+        logger.info(f"Seed completado exitosamente: {len(users)} usuarios, {2 + len(extra_foundations)} fundaciones, {len(animals)} animales.")
 
 if __name__ == "__main__":
     asyncio.run(seed_database())
