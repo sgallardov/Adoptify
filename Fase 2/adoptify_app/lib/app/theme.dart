@@ -26,6 +26,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     required this.primaryStrong,
     required this.successStrong,
     required this.onAccent,
+    required this.foundation,
   });
 
   final Color primary; // botones y pines de mascotas (orange-600)
@@ -51,6 +52,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
   final Color primaryStrong; // naranjo (orange-700), contraste 5:1 con blanco
   final Color successStrong; // verde (green-700), contraste 5:1 con blanco
   final Color onAccent; // texto e íconos sobre primary, primaryStrong y successStrong
+  final Color foundation; // pines de fundaciones en el mapa (cyan-600), con onAccent encima
 
   static const light = AdoptifyColors(
     primary: Color(0xFFEA580C),
@@ -74,6 +76,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     primaryStrong: Color(0xFFC2410C),
     successStrong: Color(0xFF15803D),
     onAccent: Color(0xFFFFFFFF),
+    foundation: Color(0xFF0891B2),
   );
 
   static const dark = AdoptifyColors(
@@ -98,6 +101,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     primaryStrong: Color(0xFFC2410C),
     successStrong: Color(0xFF15803D),
     onAccent: Color(0xFFFFFFFF),
+    foundation: Color(0xFF0891B2),
   );
 
   static AdoptifyColors of(BuildContext context) => Theme.of(context).extension<AdoptifyColors>()!;
@@ -132,6 +136,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
       primaryStrong: mix(primaryStrong, other.primaryStrong),
       successStrong: mix(successStrong, other.successStrong),
       onAccent: mix(onAccent, other.onAccent),
+      foundation: mix(foundation, other.foundation),
     );
   }
 }
