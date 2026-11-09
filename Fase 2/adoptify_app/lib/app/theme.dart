@@ -23,6 +23,9 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     required this.origin,
     required this.success,
     required this.successSoft,
+    required this.primaryStrong,
+    required this.successStrong,
+    required this.onAccent,
   });
 
   final Color primary; // botones y pines de mascotas (orange-600)
@@ -43,6 +46,11 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
   final Color origin; // pin de tu ubicación (sky)
   final Color success; // texto de éxito
   final Color successSoft; // fondo de mensajes de éxito
+  // Fondos de color con texto onAccent encima (insignias, encabezados). Son iguales en los dos modos:
+  // primaryDark y success se aclaran en modo oscuro porque son para texto, y ahí el blanco no se lee.
+  final Color primaryStrong; // naranjo (orange-700), contraste 5:1 con blanco
+  final Color successStrong; // verde (green-700), contraste 5:1 con blanco
+  final Color onAccent; // texto e íconos sobre primary, primaryStrong y successStrong
 
   static const light = AdoptifyColors(
     primary: Color(0xFFEA580C),
@@ -63,6 +71,9 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     origin: Color(0xFF0284C7),
     success: Color(0xFF14532D),
     successSoft: Color(0xFFF0FDF4),
+    primaryStrong: Color(0xFFC2410C),
+    successStrong: Color(0xFF15803D),
+    onAccent: Color(0xFFFFFFFF),
   );
 
   static const dark = AdoptifyColors(
@@ -84,6 +95,9 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     origin: Color(0xFF0EA5E9),
     success: Color(0xFF86EFAC),
     successSoft: Color(0xFF052E16),
+    primaryStrong: Color(0xFFC2410C),
+    successStrong: Color(0xFF15803D),
+    onAccent: Color(0xFFFFFFFF),
   );
 
   static AdoptifyColors of(BuildContext context) => Theme.of(context).extension<AdoptifyColors>()!;
@@ -115,6 +129,9 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
       origin: mix(origin, other.origin),
       success: mix(success, other.success),
       successSoft: mix(successSoft, other.successSoft),
+      primaryStrong: mix(primaryStrong, other.primaryStrong),
+      successStrong: mix(successStrong, other.successStrong),
+      onAccent: mix(onAccent, other.onAccent),
     );
   }
 }

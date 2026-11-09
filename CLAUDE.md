@@ -79,7 +79,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Accesibilidad: etiquetas en formularios, navegación por teclado, estados vacíos y de error visibles.
 
 **App móvil**
-- Una carpeta por pantalla en `features/`. Colores, espaciado, radios, sombras y textos solo desde `app/theme.dart` (`context.colors`, `AdoptifySpacing`, `AdoptifyRadius`, `AdoptifyShadows`, `Theme.of(context).textTheme`); nada de tamaños o colores sueltos. `context.colors` cambia con el modo oscuro (Perfil → Apariencia). Títulos centrados.
+- Una carpeta por pantalla en `features/`. Colores, espaciado, radios, sombras y textos solo desde `app/theme.dart` (`context.colors`, `AdoptifySpacing`, `AdoptifyRadius`, `AdoptifyShadows`, `Theme.of(context).textTheme`); nada de tamaños o colores sueltos. `context.colors` cambia con el modo oscuro (Perfil → Apariencia). Texto sobre fondos de color: `onAccent` sobre `primaryStrong`/`successStrong` (iguales en los dos modos); `primaryDark` y `success` son para texto y se aclaran en modo oscuro, nunca de fondo. Títulos centrados.
 - Rutas nuevas en `app/router.dart`; pantallas con barra inferior dentro del `StatefulShellRoute`, pantallas completas fuera.
 - Mapas con `flutter_map` + OSM (mismo proveedor que la web). La API ya entrega `latitude`/`longitude`: no parsear WKB.
 - HTTP solo a través de `ApiClient` (`AuthScope.of(context).api`); errores al usuario con `errorMessage(err, fallback)`, igual que el portal.
