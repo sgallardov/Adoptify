@@ -1,3 +1,5 @@
+import 'package:latlong2/latlong.dart';
+
 import '../../core/api_client.dart';
 import '../map/map_service.dart';
 
@@ -14,6 +16,7 @@ class Foundation {
     this.address,
     this.commune,
     this.phone,
+    this.distanceKm,
   });
 
   factory Foundation.fromJson(Map<String, dynamic> json) => Foundation(
@@ -26,6 +29,7 @@ class Foundation {
         address: json['address'] as String?,
         commune: json['commune'] as String?,
         phone: json['phone'] as String?,
+        distanceKm: (json['distance_km'] as num?)?.toDouble(),
         animals: [
           for (final item in json['animals'] as List<dynamic>) Animal.fromJson(item as Map<String, dynamic>),
         ],
@@ -40,6 +44,8 @@ class Foundation {
   final String? address;
   final String? commune;
   final String? phone;
+  // Solo si se pidió con tu ubicación
+  final double? distanceKm;
   final List<Animal> animals;
 
   String get place => [?commune, city].join(', ');
@@ -50,8 +56,10 @@ class FoundationService {
 
   final ApiClient _api;
 
-  Future<List<Foundation>> fetchFoundations() async {
-    final data = await _api.get('/foundations') as List<dynamic>;
+  // Con tu ubicación vienen de la más cercana a la más lejana; sin ella, por nombre
+  Future<List<Foundation>> fetchFoundations({LatLng? origin}) async {
+    final query = origin == null ? null : {'lat': origin.latitude, 'lng': origin.longitude};
+    final data = await _api.get('/foundations', query: query) as List<dynamic>;
     return [for (final item in data) Foundation.fromJson(item as Map<String, dynamic>)];
   }
 }

@@ -47,7 +47,7 @@ void main() {
     final api = FakeApi();
     await openMap(tester, api);
 
-    expect(find.text('x1 aviso'), findsOneWidget);
+    expect(find.text('1 aviso'), findsOneWidget);
     expect(find.text('cerca tuyo'), findsOneWidget);
     final alerts = api.requests.lastWhere((r) => r.url.path == '/reports/nearby');
     expect(alerts.url.queryParameters, {'lat': '-33.4378', 'lng': '-70.6505', 'radius_km': '5'});
@@ -241,12 +241,31 @@ void main() {
     expect(nearby.url.queryParameters, {'lat': '-33.4378', 'lng': '-70.6505', 'radius_km': '10'});
     expect(find.text('Radio 10 km'), findsOneWidget);
 
+    // Con zoom de calles la mascota queda fuera de la pantalla: al cambiar el radio se encuadra
+    await tapAndSettle(tester, find.text('Radio 10 km'));
+    await tapAndSettle(tester, find.text('Radio 25 km').last);
     await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
     expect(find.text('Dentro de tu radio de búsqueda'), findsOneWidget);
 
     await tapAndSettle(tester, find.text('Ver todas'));
     expect(find.text('Ver todas'), findsNothing);
     expect(api.requests.last.url.path, isNot('/animals/nearby'));
+  });
+
+  testWidgets('usar mi ubicación centra el mapa en ti con zoom de calles', (tester) async {
+    await openMap(tester, FakeApi());
+    MapCamera camera() => tester.widget<FlutterMap>(find.byType(FlutterMap)).mapController!.camera;
+
+    await tapAndSettle(tester, find.byTooltip('Usar mi ubicación'));
+    // Ya llegaron las mascotas del radio y el mapa sigue centrado en ti, sin alejarse para encuadrarlas
+    expect(camera().center.latitude, closeTo(-33.4378, 0.0001));
+    expect(camera().center.longitude, closeTo(-70.6505, 0.0001));
+    expect(camera().zoom, 16);
+
+    // Al cambiar el radio se encuadran los resultados
+    await tapAndSettle(tester, find.text('Radio 10 km'));
+    await tapAndSettle(tester, find.text('Radio 25 km').last);
+    expect(camera().zoom, lessThan(16));
   });
 
   testWidgets('muestra el error de ubicación sin romper el mapa', (tester) async {

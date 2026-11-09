@@ -242,7 +242,7 @@ class FakeApi {
           return _json(503, {
             'detail': 'No se pudo consultar las fundaciones.',
           });
-        return _json(200, [
+        return _json(200, _nearestFirst(request.url.queryParameters, [
           {
             'id': 1,
             'name': 'Fundación Patitas',
@@ -317,8 +317,8 @@ class FakeApi {
             'phone': null,
             'email': 'contacto@patitascerro.cl',
             'is_verified': true,
-            'latitude': null,
-            'longitude': null,
+            'latitude': -33.0472,
+            'longitude': -71.6127,
             'animals': [
               {
                 ...luna,
@@ -443,7 +443,7 @@ class FakeApi {
               },
             ],
           },
-        ]);
+        ]));
       case '/reports/nearby':
         return _json(200, reports);
       case '/reports':
@@ -521,6 +521,36 @@ class FakeApi {
     status,
     headers: {'content-type': 'application/json'},
   );
+}
+
+// Como GET /foundations con lat y lng: agrega distance_km, ordena por cercanía y deja al final las sin ubicación
+List<Map<String, dynamic>> _nearestFirst(Map<String, String> query, List<Map<String, dynamic>> foundations) {
+  final lat = double.tryParse(query['lat'] ?? '');
+  final lng = double.tryParse(query['lng'] ?? '');
+  if (lat == null || lng == null) return foundations;
+  final withDistance = [
+    for (final item in foundations)
+      {
+        ...item,
+        'distance_km': item['latitude'] == null
+            ? null
+            : (const Distance().as(
+                        LengthUnit.Meter,
+                        LatLng(lat, lng),
+                        LatLng(item['latitude'] as double, item['longitude'] as double),
+                      ) /
+                      100)
+                  .round() /
+                10,
+      },
+  ];
+  return withDistance
+    ..sort((a, b) {
+      final da = a['distance_km'] as double?;
+      final db = b['distance_km'] as double?;
+      if (da == null || db == null) return da == null ? (db == null ? 0 : 1) : -1;
+      return da.compareTo(db);
+    });
 }
 
 // Ubicación simulada: devuelve un punto fijo o falla con el mensaje indicado

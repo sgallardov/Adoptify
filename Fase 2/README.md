@@ -210,7 +210,7 @@ Cada fundación gestiona solo sus propios animales.
 * **Roles:** `admin` puede crear, editar y borrar en cualquier fundación; `adopter` recibe `403`.
 
 ### Fundaciones
-* `GET /api/v1/foundations` (público): fundaciones ordenadas por nombre con `description`, `address`, `commune`, `city`, `phone`, `email`, `is_verified`, `latitude`/`longitude` y `animals` (solo los disponibles, con el mismo formato de `GET /animals`). No expone el RUT ni la geometría cruda. La usa la pestaña Fundaciones de la app.
+* `GET /api/v1/foundations` (público): fundaciones ordenadas por nombre o, con `lat` y `lng` (opcionales, juntos; si llega solo uno, `422`), de la más cercana a la más lejana con `distance_km` (las sin ubicación al final), con `description`, `address`, `commune`, `city`, `phone`, `email`, `is_verified`, `latitude`/`longitude` y `animals` (solo los disponibles, con el mismo formato de `GET /animals`). No expone el RUT ni la geometría cruda. La usa la pestaña Fundaciones de la app.
 
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
