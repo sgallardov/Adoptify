@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import 'network_photo.dart';
 
 // Foto cuadrada de una mascota (o de un reporte), con una huella si no hay foto o no carga
 class AnimalPhoto extends StatelessWidget {
@@ -18,7 +19,8 @@ class AnimalPhoto extends StatelessWidget {
         width: size,
         height: size,
         color: context.colors.muted,
-        child: url == null ? fallback : Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
+        // Al doble del lado: una foto apaisada recortada al cuadrado sigue nítida
+        child: url == null ? fallback : NetworkPhoto(url: url!, fallback: fallback, pixelsWide: size * 2),
       ),
     );
   }

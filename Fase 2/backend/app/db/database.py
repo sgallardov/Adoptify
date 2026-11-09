@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from typing import AsyncGenerator, Dict, Any
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
@@ -8,9 +10,29 @@ engine = create_async_engine(
     settings.async_database_url,
     echo=False,
     future=True,
-    pool_pre_ping=True,
     connect_args=settings.db_connect_args,
+    **settings.db_pool_options,
 )
+
+# Con la BD compartida, abrir una conexión nueva cuesta ~3 s (SSL + pooler, desde Chile). Se abre una al
+# arrancar y se usa cada pocos minutos para que nunca la pague una petición de la app.
+KEEP_WARM_SECONDS = 180
+
+
+async def warm_up() -> None:
+    """Abre (o reutiliza) una conexión del pool con una consulta mínima."""
+    async with engine.connect() as connection:
+        await connection.execute(text("SELECT 1"))
+
+
+async def keep_connections_warm() -> None:
+    """Tarea de fondo: mantiene viva la conexión y, cuando toca renovarla (pool_recycle), lo hace aquí."""
+    while True:
+        try:
+            await warm_up()
+        except Exception as exc:  # sin BD la app sigue respondiendo con sus 503; se reintenta en la próxima vuelta
+            logging.getLogger("adoptify").warning("No se pudo mantener la conexión a la BD: %s", exc)
+        await asyncio.sleep(KEEP_WARM_SECONDS)
 
 # Fábrica de sesiones asíncronas
 AsyncSessionLocal = async_sessionmaker(

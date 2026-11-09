@@ -69,3 +69,20 @@ class TestSharedDatabaseConfig:
         # Sin DB_SSL, la conexión local de Docker va sin cifrar (el .env de cada uno puede activarlo)
         assert Settings.model_fields["DB_SSL"].default is False
         assert Settings(_env_file=None, DB_SSL=False).db_connect_args == {}
+
+
+class TestConnectionPool:
+    """Con la BD compartida (lejos) se evitan idas y vueltas extra; en local se mantiene la verificación."""
+
+    def test_shared_db_skips_pre_ping_and_reuses_one_connection(self):
+        from app.core.config import Settings
+
+        options = Settings(_env_file=None, DATABASE_URL="postgresql://u:p@remoto.supabase.com:5432/postgres").db_pool_options
+        assert options["pool_pre_ping"] is False
+        assert options["pool_use_lifo"] is True
+        assert options["pool_size"] + options["max_overflow"] <= 5
+
+    def test_local_db_keeps_pre_ping(self):
+        from app.core.config import Settings
+
+        assert Settings(_env_file=None, DATABASE_URL=None).db_pool_options == {"pool_pre_ping": True}

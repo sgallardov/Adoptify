@@ -79,25 +79,44 @@ y las instrucciones completas. HU-07 conecta listado, detalle y contadores a
    Ambos contenedores (`adoptify_db` y `adoptify_backend`) deben figurar en estado `Up` (o `healthy`).
 
 ### 🌐 Base de datos compartida (Supabase)
-Para que todo el equipo vea los mismos usuarios, animales, reportes y comentarios, cada uno corre su backend local apuntando a una sola BD en Supabase (PostgreSQL + PostGIS administrado, plan gratis de 500 MB).
+Para que todo el equipo vea los mismos usuarios, animales, reportes y comentarios, cada uno corre su backend local apuntando a una sola BD en Supabase (PostgreSQL + PostGIS administrado, plan gratis de 500 MB). El proyecto está en la región **São Paulo (`sa-east-1`)**, la más cercana a Chile.
 
 1. En el panel de Supabase del proyecto: **Database → Extensions → `postgis` → Enable** (una sola vez).
-2. Botón **Connect** → pestaña **Session pooler** (no "Direct connection": esa es solo IPv6 y Docker en Windows no la alcanza). Copiar la URI.
-3. En `Fase 2/.env` (nunca en git), reemplazar `DATABASE_URL` y activar SSL:
+2. Botón **Connect** → pestaña **Session pooler** (no "Direct connection": esa es solo IPv6 y Docker en Windows no la alcanza). Copiar la URI tal cual: el host puede ser `aws-0-…` o `aws-1-…` según el proyecto.
+3. En `Fase 2/.env` (nunca en git), reemplazar `DATABASE_URL`, activar SSL y apuntar las fotos al mismo proyecto:
    ```env
-   DATABASE_URL=postgresql+asyncpg://postgres.<ref>:<contraseña>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+   DATABASE_URL=postgresql+asyncpg://postgres.<ref>:<contraseña>@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
    DB_SSL=true
+   SUPABASE_URL=https://<ref>.supabase.co
+   SUPABASE_SERVICE_KEY=<llave secreta>
    ```
-   Si la contraseña tiene caracteres como `@`, `#`, `/` o `%`, va codificada (`@` → `%40`, `#` → `%23`).
+   La contraseña es la de la base de datos (Project Settings → Database), no la de la cuenta de Supabase; va sin corchetes. Si tiene caracteres como `@`, `#`, `/` o `%`, va codificada (`@` → `%40`, `#` → `%23`).
 4. `docker compose up -d --force-recreate backend` para que tome el `.env`.
-5. **Solo la primera vez y una sola persona:** `docker compose exec backend alembic upgrade head` y `docker compose exec backend python -m app.db.seed`. Después, cada migración nueva la aplica una sola persona; los demás solo hacen `git pull`.
+5. **Solo la primera vez y una sola persona:**
+   ```bash
+   docker compose exec backend alembic upgrade head
+   docker compose exec backend python -m app.db.seed
+   docker compose exec backend python -c "import asyncio; from app.services import storage; print(asyncio.run(storage.ensure_bucket()))"
+   ```
+   El último comando crea el bucket privado `fotos`: sin él, `POST /uploads` responde 503. Después, cada migración nueva la aplica una sola persona; los demás solo hacen `git pull`.
 
 Notas:
 * `pytest` **siempre usa el Postgres local** de Docker (o `TEST_DATABASE_URL`), así las pruebas no ensucian la BD compartida. Por eso el servicio `db` sigue en el compose.
 * **Fotos compartidas y privadas:** con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (llave secreta, Project Settings → API Keys) en el `.env`, `POST /uploads` sube cada foto al bucket **privado** `fotos` de Supabase Storage. En la BD se guarda una referencia (`storage:<archivo>`), no un enlace.
-  * Al responder, la API cambia cada referencia por un **enlace firmado que caduca en 1 hora**, solo si la petición trae un token válido; sin sesión, `photo_url` llega `null` (middleware `services/photo_access.py`, cubre todos los endpoints). El mismo enlace se reutiliza mientras le quede más de 10 minutos, para que el teléfono use su caché.
+  * Al responder, la API cambia cada referencia por un **enlace firmado que caduca en `PHOTO_LINK_HOURS` horas (6 por defecto)**, solo si la petición trae un token válido; sin sesión, `photo_url` llega `null` (middleware `services/photo_access.py`, cubre todos los endpoints). El mismo enlace se reutiliza mientras le quede más de 10 minutos, para que el teléfono use su caché.
   * Al crear o editar un reporte o animal, el `photo_url` firmado que manda la app o el portal se vuelve a guardar como referencia. Los enlaces externos (Unsplash) pasan tal cual.
   * Sin la llave, las fotos se guardan en `backend/uploads` como antes (públicas y solo en ese computador). La app y el portal no cambian: muestran el enlace que reciben.
+* **Rendimiento con la BD compartida:** cada ida y vuelta a Supabase cuesta ~55 ms desde Chile con el proyecto en São Paulo (~125 ms cuando estaba en us-east-1) y abrir una conexión, ~3 s. Por eso, con `DATABASE_URL`, el pool no verifica la conexión antes de cada petición (`pool_pre_ping=False`), reutiliza siempre la última (`pool_use_lifo`) y una tarea de fondo la usa cada 3 minutos (`keep_connections_warm`), así ninguna petición paga la conexión nueva. Las fotos se suben con `cache-control: max-age=31536000` (nombres aleatorios que no cambian) para que la CDN de Supabase las guarde. Medido: `/reports/nearby` bajó de 0,61 s a 0,26 s, y a 0,12 s al pasar a São Paulo.
+
+  | Proceso (ms, p50) | us-east-1 | São Paulo |
+  | --- | --- | --- |
+  | Login | 445 | 313 |
+  | `GET /animals` | 495 | 238 |
+  | `GET /reports/nearby` | 249 | 119 |
+  | `GET /animals/favorites` | 617 | 178 |
+  | `POST /uploads` (773 KB) | 2195 | ~800 |
+  | `POST /reports` | 1522 | 491 |
+  | `POST /reports/{id}/comments` | 1118 | 561 |
 * **RLS:** Supabase publica las tablas de `public` en su API REST con la llave publishable (pública). La migración `0009` activa RLS sin políticas en todas las tablas: esa API no ve nada y el backend (dueño de las tablas) funciona igual. **Toda tabla nueva debe hacer `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` en su migración.**
 * El plan gratis pausa el proyecto tras ~1 semana sin uso; se reactiva desde el panel sin perder datos.
 * Para volver a la BD local basta con dejar `DATABASE_URL` como en `.env.example` y `DB_SSL=false`.

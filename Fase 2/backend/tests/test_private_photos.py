@@ -144,3 +144,42 @@ class TestPrivatePhotos:
         response = await async_client.get(NEARBY, headers=auth_headers)
         assert response.status_code == 200
         assert next(r for r in response.json() if r["id"] == created.json()["id"])["photo_url"] is None
+
+
+class TestStorageClient:
+    """Llamadas a Supabase Storage (simulado con httpx.MockTransport, sin red)."""
+
+    @pytest.fixture
+    def supabase(self, monkeypatch):
+        import httpx
+
+        calls = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            if "/object/sign/" in request.url.path:
+                import json
+                paths = json.loads(request.content)["paths"]
+                return httpx.Response(200, json=[{"path": p, "signedURL": f"/object/sign/fotos/{p}?token=t"} for p in paths])
+            return httpx.Response(200, json={"Key": "fotos/x"})
+
+        real_client = httpx.AsyncClient
+        monkeypatch.setattr(storage.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+        monkeypatch.setattr(settings, "SUPABASE_URL", BASE)
+        monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", "sb_secret_prueba")
+        monkeypatch.setattr(storage, "_signed_cache", {})
+        return calls
+
+    async def test_upload_asks_cdn_to_cache_for_a_year(self, supabase):
+        assert await storage.upload_photo("a1.jpg", b"\xff\xd8\xff", "jpg") == "storage:a1.jpg"
+        assert supabase[0].headers["cache-control"] == "max-age=31536000"
+
+    async def test_signed_links_last_photo_link_hours_and_are_reused(self, supabase):
+        import json
+
+        first = await storage.signed_urls({"a1.jpg"})
+        assert json.loads(supabase[0].content)["expiresIn"] == settings.PHOTO_LINK_HOURS * 3600
+        # Mientras está vigente se entrega el mismo enlace, sin volver a pedirlo a Supabase
+        again = await storage.signed_urls({"a1.jpg"})
+        assert again == first
+        assert len(supabase) == 1

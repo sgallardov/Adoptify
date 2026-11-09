@@ -3,11 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from app.core.config import settings
 from app.api.api_router import api_router
 from app.api.v1.endpoints.health import router as health_router
+from app.db.database import keep_connections_warm
 from app.services.photo_access import sign_photo_urls
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +23,11 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Iniciando Adoptify API...")
     logger.info(f"Conectando a base de datos en: {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}")
+    # BD compartida: la conexión se abre ya y se mantiene viva, para que ninguna petición espere ~3 s
+    keep_warm = asyncio.create_task(keep_connections_warm()) if settings.uses_shared_db else None
     yield
+    if keep_warm:
+        keep_warm.cancel()
     logger.info("Apagando Adoptify API...")
 
 app = FastAPI(
