@@ -108,11 +108,12 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   y los reportes a 100 km de Santiago. Encima flotan:
   - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
     y al elegir una la muestra en el mapa; debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
-  - la tarjeta **"xN avisos cerca tuyo"**: mascotas reportadas a menos de 5 km de tu ubicación
+  - la tarjeta **"N avisos cerca tuyo"**: mascotas reportadas a menos de 5 km de tu ubicación
     (`GET /reports/nearby?radius_km=5`). La ubicación se pide sola al abrir el mapa; sin permiso, la tarjeta
     dice "Activa tu ubicación" y al tocarla la pide. Si falla la consulta, permite reintentar;
   - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas y reportes;
-  - **Usar mi ubicación**: busca con `GET /animals/nearby` y `GET /reports/nearby`;
+  - **Usar mi ubicación**: centra el mapa en ti con zoom de calles (16) y busca con `GET /animals/nearby` y
+    `GET /reports/nearby`; al cambiar el radio se encuadran los resultados;
   - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
   - la atribución "© OpenStreetMap" (obligatoria por la licencia de OSM), mínima, bajo el botón de reportar.
 - `OsmTileLayer` (`shared/map/map_style.dart`) crea la capa de mosaicos recién cuando el mapa tiene tamaño y

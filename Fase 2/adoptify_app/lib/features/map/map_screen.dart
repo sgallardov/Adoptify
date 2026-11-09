@@ -19,6 +19,8 @@ const _defaultReportsRadiusKm = 100;
 const _alertsRadiusKm = 5;
 // Espacio que ocupan el buscador (arriba) y el botón de reportar (abajo), para encuadrar los pines entre ellos
 const _fitPadding = EdgeInsets.fromLTRB(48, 150, 72, 120);
+// Zoom al tocar "Usar mi ubicación": se ven las calles alrededor de tu posición
+const _locateZoom = 16.0;
 
 // Mapa de mascotas disponibles y reportadas a pantalla completa: equivalente a la vista /usuario del portal.
 // Encima flotan el buscador, los botones de capas y ubicación, y el botón para reportar.
@@ -41,6 +43,9 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _origin;
   int _radiusKm = 10;
   bool _locating = false;
+  // Tras "Usar mi ubicación" el mapa queda centrado en ti en vez de encuadrar todos los pines,
+  // hasta que cambies el radio o vuelvas a ver todas
+  bool _centerOnOrigin = false;
   String? _geoError;
 
   List<Animal> _animals = [];
@@ -184,6 +189,11 @@ class _MapScreenState extends State<MapScreen> {
       if (attempt < 20) WidgetsBinding.instance.addPostFrameCallback((_) => _fitToPoints(attempt + 1));
       return;
     }
+    final origin = _origin;
+    if (_centerOnOrigin && origin != null) {
+      _mapController.move(origin, _locateZoom);
+      return;
+    }
     final points = [
       for (final animal in _animals)
         if (animal.position != null) animal.position!,
@@ -209,10 +219,13 @@ class _MapScreenState extends State<MapScreen> {
       _setUserPosition(position);
       setState(() {
         _origin = position;
+        _centerOnOrigin = true;
         _selectedAnimalId = null;
         _selectedReportId = null;
         _locating = false;
       });
+      // Se centra al tiro, sin esperar a que lleguen las mascotas y reportes del radio
+      _fitToPoints();
       _load();
     } on LocationException catch (error) {
       if (!mounted) return;
@@ -226,6 +239,7 @@ class _MapScreenState extends State<MapScreen> {
   void _clearLocation() {
     setState(() {
       _origin = null;
+      _centerOnOrigin = false;
       _selectedAnimalId = null;
       _selectedReportId = null;
     });
@@ -234,7 +248,11 @@ class _MapScreenState extends State<MapScreen> {
 
   void _changeRadius(int? km) {
     if (km == null || km == _radiusKm) return;
-    setState(() => _radiusKm = km);
+    // Con otro radio se encuadran los resultados para verlos todos
+    setState(() {
+      _radiusKm = km;
+      _centerOnOrigin = false;
+    });
     _load();
   }
 
@@ -576,7 +594,7 @@ class _AlertsCard extends StatelessWidget {
       lines = [const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))];
     } else if (hasLocation && count != null) {
       lines = [
-        Text('x$count ${count == 1 ? 'aviso' : 'avisos'}', style: textTheme.titleSmall),
+        Text('$count ${count == 1 ? 'aviso' : 'avisos'}', style: textTheme.titleSmall),
         Text('cerca tuyo', style: textTheme.bodySmall),
       ];
     } else if (hasLocation) {
@@ -597,7 +615,9 @@ class _AlertsCard extends StatelessWidget {
     return Semantics(
       container: true,
       button: onTap != null,
-      label: hasLocation && count != null ? '$count avisos a menos de $_alertsRadiusKm km' : null,
+      label: hasLocation && count != null
+          ? '$count ${count == 1 ? 'aviso' : 'avisos'} a menos de $_alertsRadiusKm km'
+          : null,
       child: Material(
         color: colors.surface,
         borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
