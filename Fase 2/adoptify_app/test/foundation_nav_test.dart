@@ -54,11 +54,12 @@ void main() {
     expect(screenTitle('Chat'), findsOneWidget);
     expect(find.text('Próximamente'), findsOneWidget);
 
+    // Perfil ya no es un placeholder: edita la foto y la descripción de la fundación
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
     expect(screenTitle('Perfil'), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
     expect(find.text('Fundación Patitas'), findsOneWidget);
+    expect(find.text('Guardar perfil'), findsOneWidget);
 
     await tester.tap(find.text('Agregar mascota').last);
     await tester.pumpAndSettle();

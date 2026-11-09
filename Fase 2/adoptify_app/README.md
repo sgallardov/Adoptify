@@ -64,7 +64,7 @@ diseño (`shared/widgets/app_shell.dart`).
 son placeholders "Próximamente"; cada módulo se desarrolla aparte):
 - **Chat** (`/fundacion/chat`): hablar con un adoptante cuando haya match.
 - **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca.
-- **Perfil** (`/fundacion/perfil`): por ahora muestra la cuenta, permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
+- **Perfil** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
 intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.
@@ -111,7 +111,10 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   - la tarjeta **"N avisos cerca tuyo"**: mascotas reportadas a menos de 5 km de tu ubicación
     (`GET /reports/nearby?radius_km=5`). La ubicación se pide sola al abrir el mapa; sin permiso, la tarjeta
     dice "Activa tu ubicación" y al tocarla la pide. Si falla la consulta, permite reintentar;
-  - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas y reportes;
+  - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
+  - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
+  - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
+  - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas, reportes y fundaciones;
   - **Usar mi ubicación**: centra el mapa en ti con zoom de calles (16) y busca con `GET /animals/nearby` y
     `GET /reports/nearby`; al cambiar el radio se encuadran los resultados;
   - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.

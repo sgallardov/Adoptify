@@ -8,6 +8,7 @@ import '../../core/location_service.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
+import '../../shared/widgets/foundation_avatar.dart';
 import '../auth/auth_controller.dart';
 import '../map/map_service.dart';
 import 'foundation_service.dart';
@@ -457,9 +458,6 @@ class _FoundationIdentity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final initial = foundation.name.trim().isEmpty
-        ? '?'
-        : foundation.name.trim()[0].toUpperCase();
     final textTheme = Theme.of(context).textTheme;
     // Centrado y apilado: inicial, nombre y ubicación (con la distancia si se conoce)
     return Container(
@@ -473,20 +471,8 @@ class _FoundationIdentity extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Cuadro claro en los dos modos: la inicial del color de la tarjeta siempre contrasta
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: colors.onAccent,
-              borderRadius: BorderRadius.circular(AdoptifyRadius.md),
-            ),
-            child: Text(
-              initial,
-              style: textTheme.titleLarge?.copyWith(color: accent),
-            ),
-          ),
+          // Foto de perfil o, sin ella, la inicial del color de la tarjeta sobre un cuadro claro
+          FoundationAvatar(name: foundation.name, photoUrl: foundation.photoUrl, size: 56, color: accent),
           const SizedBox(height: AdoptifySpacing.md),
           Text.rich(
             TextSpan(

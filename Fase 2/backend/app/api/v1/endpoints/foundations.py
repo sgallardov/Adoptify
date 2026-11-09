@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from geoalchemy2 import Geography
 from geoalchemy2.shape import to_shape
 from sqlalchemy import cast, func, literal, select
@@ -6,11 +6,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.v1.endpoints.auth import get_current_user
 from app.db.database import get_db
 from app.models.animal import Animal
 from app.models.foundation import Foundation
+from app.models.user import User
 from app.schemas.animal import PublicAnimalResponse
-from app.schemas.foundation import FoundationResponse
+from app.schemas.foundation import FoundationProfileUpdate, FoundationResponse
 
 router = APIRouter()
 
@@ -28,6 +30,7 @@ def _foundation_response(foundation: Foundation, distance_m: float | None = None
         phone=foundation.phone,
         email=foundation.email,
         is_verified=foundation.is_verified,
+        photo_url=foundation.photo_url,
         latitude=point.y if point else None,
         longitude=point.x if point else None,
         distance_km=round(distance_m / 1000, 1) if distance_m is not None else None,
@@ -72,3 +75,70 @@ async def list_foundations(
         return [_foundation_response(foundation, distance) for foundation, distance in result.all()]
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudo consultar las fundaciones.") from exc
+
+
+async def _own_foundation(current_user: User, db: AsyncSession) -> Foundation:
+    """La fundación ligada a la cuenta (users.foundation_id), con sus animales cargados."""
+    if current_user.role != "foundation" or current_user.foundation_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo una cuenta de fundación puede editar su perfil.",
+        )
+    statement = (
+        select(Foundation)
+        .options(selectinload(Foundation.animals).selectinload(Animal.foundation))
+        .where(Foundation.id == current_user.foundation_id)
+    )
+    try:
+        foundation = (await db.execute(statement)).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar tu fundación.") from exc
+    if foundation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No encontramos tu fundación.")
+    return foundation
+
+
+@router.get(
+    "/me",
+    response_model=FoundationResponse,
+    summary="Perfil de mi fundación",
+    responses={
+        401: {"description": "Se requiere iniciar sesión"},
+        403: {"description": "La cuenta no es de fundación"},
+    },
+)
+async def get_my_foundation(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return _foundation_response(await _own_foundation(current_user, db))
+
+
+@router.put(
+    "/me",
+    response_model=FoundationResponse,
+    summary="Editar la descripción y la foto de perfil de mi fundación",
+    description=(
+        "La descripción es obligatoria (al menos 20 caracteres) y se muestra en el mapa y en el perfil "
+        "público. `photo_url` es la URL que devuelve POST /uploads, o null para quitar la foto."
+    ),
+    responses={
+        401: {"description": "Se requiere iniciar sesión"},
+        403: {"description": "La cuenta no es de fundación"},
+        422: {"description": "Falta la descripción o es muy corta"},
+    },
+)
+async def update_my_foundation(
+    payload: FoundationProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    foundation = await _own_foundation(current_user, db)
+    foundation.description = payload.description
+    foundation.photo_url = payload.photo_url
+    try:
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar el perfil de tu fundación.") from exc
+    return _foundation_response(await _own_foundation(current_user, db))

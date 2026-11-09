@@ -7,8 +7,12 @@ from httpx import AsyncClient
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.models.animal import Animal
 from app.models.foundation import Foundation
+from app.models.user import User
+
+PASSWORD = "ClaveSegura123"
 
 
 @pytest.fixture
@@ -92,6 +96,83 @@ async def test_distancia_en_km(async_client: AsyncClient, foundation_with_animal
 
     found = next(item for item in data if item["id"] == foundation_with_animals.id)
     assert 95 < found["distance_km"] < 110
+
+
+@pytest.fixture
+async def foundation_account(async_client: AsyncClient, db_session: AsyncSession, foundation_with_animals):
+    """Cuenta de fundación ligada a foundation_with_animals y un adoptante, con sus encabezados de sesión."""
+    suffix = uuid.uuid4().hex[:8]
+
+    def user(label: str, role: str, foundation_id: int | None = None) -> User:
+        return User(
+            email=f"test_{label}_{suffix}@adoptify.cl",
+            rut=f"{random.randint(30_000_000, 99_999_999)}-{random.choice('0123456789K')}",
+            hashed_password=hash_password(PASSWORD), full_name=f"Test {label}", role=role,
+            foundation_id=foundation_id, preferences={},
+        )
+
+    users = {"foundation": user("perfil", "foundation", foundation_with_animals.id), "adopter": user("adop", "adopter")}
+    db_session.add_all(users.values())
+    await db_session.commit()
+
+    headers = {}
+    for key, account in users.items():
+        response = await async_client.post("/api/v1/auth/login", json={"email": account.email, "password": PASSWORD})
+        headers[key] = {"Authorization": f"Bearer {response.json()['access_token']}"}
+    yield headers
+
+    await db_session.execute(delete(User).where(User.id.in_([u.id for u in users.values()])))
+    await db_session.commit()
+
+
+async def test_fundacion_ve_su_perfil(async_client: AsyncClient, foundation_with_animals, foundation_account):
+    response = await async_client.get("/api/v1/foundations/me", headers=foundation_account["foundation"])
+
+    assert response.status_code == 200
+    assert response.json()["id"] == foundation_with_animals.id
+    assert response.json()["photo_url"] is None
+
+
+async def test_fundacion_edita_descripcion_y_foto(async_client: AsyncClient, foundation_with_animals, foundation_account):
+    photo = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b"
+    response = await async_client.put(
+        "/api/v1/foundations/me",
+        json={"description": "  Rescatamos perros y gatos en Ñuñoa desde 2015.  ", "photo_url": photo},
+        headers=foundation_account["foundation"],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["description"] == "Rescatamos perros y gatos en Ñuñoa desde 2015."
+    # Se ve en el listado público (mapa y directorio)
+    listed = next(
+        item for item in (await async_client.get("/api/v1/foundations")).json() if item["id"] == foundation_with_animals.id
+    )
+    assert listed["description"] == "Rescatamos perros y gatos en Ñuñoa desde 2015."
+    assert listed["photo_url"] == photo
+
+
+@pytest.mark.parametrize("body", [{}, {"description": "   "}, {"description": "Muy corta"}])
+async def test_descripcion_es_obligatoria(async_client: AsyncClient, foundation_account, body):
+    response = await async_client.put("/api/v1/foundations/me", json=body, headers=foundation_account["foundation"])
+
+    assert response.status_code == 422
+
+
+async def test_descripcion_corta_explica_el_minimo(async_client: AsyncClient, foundation_account):
+    response = await async_client.put(
+        "/api/v1/foundations/me", json={"description": "Muy corta"}, headers=foundation_account["foundation"]
+    )
+
+    assert "al menos 20 caracteres" in response.json()["detail"][0]["msg"]
+
+
+async def test_solo_la_fundacion_edita_su_perfil(async_client: AsyncClient, foundation_account):
+    body = {"description": "Una descripción suficientemente larga."}
+
+    assert (await async_client.put("/api/v1/foundations/me", json=body)).status_code == 401
+    response = await async_client.put("/api/v1/foundations/me", json=body, headers=foundation_account["adopter"])
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Solo una cuenta de fundación puede editar su perfil."
 
 
 async def test_cercania_exige_lat_y_lng(async_client: AsyncClient):

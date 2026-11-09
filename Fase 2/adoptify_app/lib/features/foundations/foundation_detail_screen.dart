@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/content_width.dart';
+import '../../shared/widgets/foundation_avatar.dart';
 import '../map/map_service.dart';
 import 'foundation_service.dart';
 
@@ -87,20 +88,27 @@ class _ProfileHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: colors.primarySoft,
-                  borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-                ),
-                child: Icon(
-                  Icons.volunteer_activism_outlined,
-                  size: 32,
-                  color: colors.primaryDark,
-                ),
-              ),
+              foundation.photoUrl != null
+                  ? FoundationAvatar(
+                      name: foundation.name,
+                      photoUrl: foundation.photoUrl,
+                      size: 64,
+                      color: colors.primaryStrong,
+                    )
+                  : Container(
+                      width: 64,
+                      height: 64,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: colors.primarySoft,
+                        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+                      ),
+                      child: Icon(
+                        Icons.volunteer_activism_outlined,
+                        size: 32,
+                        color: colors.primaryDark,
+                      ),
+                    ),
               const SizedBox(width: AdoptifySpacing.md),
               Expanded(
                 child: Column(

@@ -23,6 +23,8 @@ class Foundation(Base):
     commune: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     city: Mapped[str] = mapped_column(String(100), default="Santiago", nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Foto de perfil: referencia storage:<archivo> o enlace externo, igual que photo_url de animales
+    photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Ubicación geográfica de la sede de la fundación (SRID 4326: WGS84 GPS estándar)

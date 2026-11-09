@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/theme.dart';
 import '../../core/location_service.dart';
 import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/animal_photo.dart';
+import '../../shared/widgets/foundation_avatar.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
+import '../foundations/foundation_service.dart';
+import 'clinic_service.dart';
 import 'map_service.dart';
 
 const _radiusOptions = [5, 10, 25, 50, 100];
@@ -21,6 +25,8 @@ const _alertsRadiusKm = 5;
 const _fitPadding = EdgeInsets.fromLTRB(48, 150, 72, 120);
 // Zoom al tocar "Usar mi ubicación": se ven las calles alrededor de tu posición
 const _locateZoom = 16.0;
+// Las veterinarias son cientos: con el mapa más alejado que esto se amontonarían y taparían todo
+const _clinicsMinZoom = 13.0;
 
 // Mapa de mascotas disponibles y reportadas a pantalla completa: equivalente a la vista /usuario del portal.
 // Encima flotan el buscador, los botones de capas y ubicación, y el botón para reportar.
@@ -39,6 +45,8 @@ class _MapScreenState extends State<MapScreen> {
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
   late final MapService _service = MapService(AuthScope.of(context).api);
+  late final FoundationService _foundationService = FoundationService(AuthScope.of(context).api);
+  late final ClinicService _clinicService = ClinicService(AuthScope.of(context).api);
 
   LatLng? _origin;
   int _radiusKm = 10;
@@ -64,9 +72,20 @@ class _MapScreenState extends State<MapScreen> {
   // Capas visibles (botón de capas)
   bool _showAnimals = true;
   bool _showReports = true;
+  bool _showFoundations = true;
+  bool _showClinics = true;
 
   int? _selectedAnimalId;
   int? _selectedReportId;
+  int? _selectedFoundationId;
+  int? _selectedClinicId;
+
+  // Sedes de las fundaciones: pines fijos, no dependen del radio ni de tu ubicación
+  List<Foundation> _foundations = [];
+  // Veterinarias para emergencias (OpenStreetMap): también pines fijos
+  List<VetClinic> _clinics = [];
+  // Si el zoom actual alcanza para mostrar las veterinarias (ver _clinicsMinZoom)
+  bool _clinicsInView = false;
   bool _mapReady = false;
 
   @override
@@ -82,7 +101,25 @@ class _MapScreenState extends State<MapScreen> {
     if (_request == 0) {
       _load();
       _detectUser();
+      _loadFoundations();
+      _loadClinics();
     }
+  }
+
+  // Si falla, el mapa sigue funcionando sin los pines de fundaciones
+  Future<void> _loadFoundations() async {
+    try {
+      final foundations = await _foundationService.fetchFoundations();
+      if (mounted) setState(() => _foundations = foundations);
+    } catch (_) {}
+  }
+
+  // Igual que las fundaciones: si falla, el mapa funciona sin las veterinarias
+  Future<void> _loadClinics() async {
+    try {
+      final clinics = await _clinicService.fetchClinics();
+      if (mounted) setState(() => _clinics = clinics);
+    } catch (_) {}
   }
 
   // Ubicación para la tarjeta de avisos, sin mostrar errores: si falla, la tarjeta ofrece activarla
@@ -222,6 +259,8 @@ class _MapScreenState extends State<MapScreen> {
         _centerOnOrigin = true;
         _selectedAnimalId = null;
         _selectedReportId = null;
+        _selectedFoundationId = null;
+        _selectedClinicId = null;
         _locating = false;
       });
       // Se centra al tiro, sin esperar a que lleguen las mascotas y reportes del radio
@@ -242,6 +281,8 @@ class _MapScreenState extends State<MapScreen> {
       _centerOnOrigin = false;
       _selectedAnimalId = null;
       _selectedReportId = null;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
     });
     _load();
   }
@@ -260,6 +301,8 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedAnimalId = animal.id;
       _selectedReportId = null;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
       _showAnimals = true;
     });
     if (animal.position != null && _mapReady) {
@@ -278,7 +321,40 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedReportId = report.id;
       _selectedAnimalId = null;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
     });
+  }
+
+  void _selectFoundation(Foundation foundation) {
+    setState(() {
+      _selectedFoundationId = foundation.id;
+      _selectedAnimalId = null;
+      _selectedReportId = null;
+      _selectedClinicId = null;
+    });
+  }
+
+  void _selectClinic(VetClinic clinic) {
+    setState(() {
+      _selectedClinicId = clinic.id;
+      _selectedAnimalId = null;
+      _selectedReportId = null;
+      _selectedFoundationId = null;
+    });
+  }
+
+  // Abre Google Maps, el marcador del teléfono u otra app. Si no hay ninguna, avisa sin romper el mapa.
+  Future<void> _open(Uri url) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos abrir esa opción en este dispositivo.')),
+      );
+    }
   }
 
   void _clearSelection() {
@@ -286,6 +362,8 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedAnimalId = null;
       _selectedReportId = null;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
     });
   }
 
@@ -313,8 +391,13 @@ class _MapScreenState extends State<MapScreen> {
           return _LayersSheet(
             animalsCount: _animals.length,
             reportsCount: _reports.length,
+            foundationsCount: _foundations.where((f) => f.position != null).length,
             showAnimals: _showAnimals,
             showReports: _showReports,
+            showFoundations: _showFoundations,
+            clinicsCount: _clinics.length,
+            clinicsInView: _clinicsInView,
+            showClinics: _showClinics,
             showOrigin: _origin != null,
             onAnimals: (value) => update(() {
               _showAnimals = value;
@@ -323,6 +406,14 @@ class _MapScreenState extends State<MapScreen> {
             onReports: (value) => update(() {
               _showReports = value;
               if (!value) _selectedReportId = null;
+            }),
+            onFoundations: (value) => update(() {
+              _showFoundations = value;
+              if (!value) _selectedFoundationId = null;
+            }),
+            onClinics: (value) => update(() {
+              _showClinics = value;
+              if (!value) _selectedClinicId = null;
             }),
           );
         },
@@ -334,6 +425,10 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final selectedAnimal = _animals.where((animal) => animal.id == _selectedAnimalId).firstOrNull;
     final selectedReport = _reports.where((report) => report.id == _selectedReportId).firstOrNull;
+    final selectedFoundation = _foundations.where((f) => f.id == _selectedFoundationId).firstOrNull;
+    final selectedClinic = _clinics.where((c) => c.id == _selectedClinicId).firstOrNull;
+    final hasSelection =
+        selectedAnimal != null || selectedReport != null || selectedFoundation != null || selectedClinic != null;
     final searching = _searchFocus.hasFocus && _search.text.trim().isNotEmpty;
 
     return Scaffold(
@@ -393,7 +488,12 @@ class _MapScreenState extends State<MapScreen> {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
             right: AdoptifySpacing.lg,
-            bottom: selectedAnimal != null || selectedReport != null ? 260 : 96,
+            // Las fichas de fundación (foto arriba) y de veterinaria (botones) son más altas que las demás
+            bottom: selectedFoundation != null
+                ? 400
+                : selectedClinic != null
+                    ? 340
+                    : (hasSelection ? 260 : 96),
             child: Column(
               children: [
                 MapButton(icon: Icons.layers_outlined, tooltip: 'Capas', onPressed: _openLayers),
@@ -420,18 +520,35 @@ class _MapScreenState extends State<MapScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (selectedAnimal != null || selectedReport != null) ...[
-                      selectedAnimal != null
-                          ? _AnimalDetailCard(
-                              animal: selectedAnimal,
-                              onClose: _clearSelection,
-                              onOpen: () => context.push('/animales/${selectedAnimal.id}', extra: selectedAnimal),
-                            )
-                          : _ReportDetailCard(
-                              report: selectedReport!,
-                              onClose: _clearSelection,
-                              onOpen: () => context.push('/reportes/${selectedReport.id}', extra: selectedReport),
-                            ),
+                    if (selectedAnimal != null) ...[
+                      _AnimalDetailCard(
+                        animal: selectedAnimal,
+                        onClose: _clearSelection,
+                        onOpen: () => context.push('/animales/${selectedAnimal.id}', extra: selectedAnimal),
+                      ),
+                      const SizedBox(height: AdoptifySpacing.md),
+                    ] else if (selectedReport != null) ...[
+                      _ReportDetailCard(
+                        report: selectedReport,
+                        onClose: _clearSelection,
+                        onOpen: () => context.push('/reportes/${selectedReport.id}', extra: selectedReport),
+                      ),
+                      const SizedBox(height: AdoptifySpacing.md),
+                    ] else if (selectedFoundation != null) ...[
+                      // Misma vista que al tocar la fundación en la pestaña Fundaciones
+                      _FoundationDetailCard(
+                        foundation: selectedFoundation,
+                        onClose: _clearSelection,
+                        onOpen: () => context.push('/fundaciones/${selectedFoundation.id}', extra: selectedFoundation),
+                      ),
+                      const SizedBox(height: AdoptifySpacing.md),
+                    ] else if (selectedClinic != null) ...[
+                      _ClinicDetailCard(
+                        clinic: selectedClinic,
+                        onClose: _clearSelection,
+                        onDirections: () => _open(selectedClinic.directionsUrl),
+                        onCall: selectedClinic.phoneUrl == null ? null : () => _open(selectedClinic.phoneUrl!),
+                      ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
                     _ReportButton(onPressed: () => context.push('/reportar')),
@@ -510,6 +627,16 @@ class _MapScreenState extends State<MapScreen> {
         initialCenter: santiago,
         initialZoom: 11,
         onTap: (_, _) => _clearSelection(),
+        // Solo se redibuja al cruzar el zoom de las veterinarias, no en cada movimiento
+        onPositionChanged: (camera, _) {
+          final inView = camera.zoom >= _clinicsMinZoom;
+          if (inView != _clinicsInView) {
+            setState(() {
+              _clinicsInView = inView;
+              if (!inView) _selectedClinicId = null;
+            });
+          }
+        },
         onMapReady: () {
           _mapReady = true;
           _fitToPoints();
@@ -519,6 +646,23 @@ class _MapScreenState extends State<MapScreen> {
         const OsmTileLayer(),
         MarkerLayer(
           markers: [
+            if (_showClinics && _clinicsInView)
+              for (final clinic in _clinics)
+                dropMarker(
+                  clinic.position,
+                  clinic.id == _selectedClinicId ? MapPins.selectedClinic : MapPins.clinic,
+                  key: ValueKey('clinic-${clinic.id}'),
+                  onTap: () => _selectClinic(clinic),
+                ),
+            if (_showFoundations)
+              for (final foundation in _foundations)
+                if (foundation.position != null)
+                  dropMarker(
+                    foundation.position!,
+                    foundation.id == _selectedFoundationId ? MapPins.selectedFoundation : MapPins.foundation,
+                    key: ValueKey('foundation-${foundation.id}'),
+                    onTap: () => _selectFoundation(foundation),
+                  ),
             if (_origin != null) mapMarker(_origin!, MapPins.origin),
             if (_showAnimals) ...[
               for (final animal in _animals)
@@ -543,7 +687,7 @@ class _MapScreenState extends State<MapScreen> {
               for (final report in _reports)
                 mapMarker(
                   report.position,
-                  MapPins.report,
+                  MapPins.reportFor(report.species),
                   key: ValueKey('report-${report.id}'),
                   onTap: () => _selectReport(report),
                 ),
@@ -764,20 +908,34 @@ class _LayersSheet extends StatelessWidget {
   const _LayersSheet({
     required this.animalsCount,
     required this.reportsCount,
+    required this.foundationsCount,
     required this.showAnimals,
     required this.showReports,
+    required this.showFoundations,
+    required this.clinicsCount,
+    required this.showClinics,
+    required this.clinicsInView,
     required this.showOrigin,
     required this.onAnimals,
     required this.onReports,
+    required this.onFoundations,
+    required this.onClinics,
   });
 
   final int animalsCount;
   final int reportsCount;
+  final int foundationsCount;
   final bool showAnimals;
   final bool showReports;
+  final bool showFoundations;
+  final int clinicsCount;
+  final bool showClinics;
+  final bool clinicsInView;
   final bool showOrigin;
   final ValueChanged<bool> onAnimals;
   final ValueChanged<bool> onReports;
+  final ValueChanged<bool> onFoundations;
+  final ValueChanged<bool> onClinics;
 
   @override
   Widget build(BuildContext context) {
@@ -789,8 +947,9 @@ class _LayersSheet extends StatelessWidget {
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
 
+    // Con cinco capas no cabe en pantallas bajas: se desplaza en vez de cortarse
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AdoptifySpacing.sm, 0, AdoptifySpacing.sm, AdoptifySpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -811,6 +970,21 @@ class _LayersSheet extends StatelessWidget {
               onChanged: onReports,
               secondary: dot(colors.report),
               title: Text('Mascotas reportadas ($reportsCount)', style: textTheme.bodyMedium),
+            ),
+            SwitchListTile(
+              value: showFoundations,
+              onChanged: onFoundations,
+              secondary: dot(colors.foundation),
+              title: Text('Fundaciones ($foundationsCount)', style: textTheme.bodyMedium),
+            ),
+            SwitchListTile(
+              value: showClinics,
+              onChanged: onClinics,
+              secondary: Icon(Icons.local_hospital, size: 18, color: colors.report),
+              title: Text('Veterinarias ($clinicsCount)', style: textTheme.bodyMedium),
+              subtitle: showClinics && !clinicsInView
+                  ? Text('Acerca el mapa para verlas', style: textTheme.bodySmall)
+                  : null,
             ),
             if (showOrigin)
               ListTile(
@@ -916,6 +1090,174 @@ class _AnimalDetailCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// Ficha al tocar el pin de una fundación: foto de perfil, nombre y descripción
+class _FoundationDetailCard extends StatelessWidget {
+  const _FoundationDetailCard({required this.foundation, required this.onClose, required this.onOpen});
+
+  final Foundation foundation;
+  final VoidCallback onClose;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = Theme.of(context).textTheme;
+    // Centrada y apilada: la foto sobresale por arriba del rectángulo, luego nombre y descripción
+    const photoSize = 112.0;
+    const overhang = photoSize / 2;
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: overhang),
+          decoration: mapSurface(context),
+          child: Stack(
+            children: [
+              InkWell(
+                onTap: onOpen,
+                borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AdoptifySpacing.xl,
+                    overhang + AdoptifySpacing.md,
+                    AdoptifySpacing.xl,
+                    AdoptifySpacing.lg,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(foundation.name, style: textTheme.titleMedium, textAlign: TextAlign.center),
+                      Text(
+                        foundation.place,
+                        style: textTheme.bodySmall?.copyWith(color: colors.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AdoptifySpacing.sm),
+                      Text(
+                        foundation.description ?? 'Esta fundación aún no ha compartido una descripción de su labor.',
+                        style: textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: AdoptifySpacing.sm),
+                      Text('Ver fundación', style: textTheme.labelLarge?.copyWith(color: colors.primaryDark)),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: AdoptifySpacing.xs,
+                right: AdoptifySpacing.xs,
+                child: IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+              ),
+            ],
+          ),
+        ),
+        // Foto con borde del color de la ficha y sombra, para que se despegue del mapa
+        GestureDetector(
+          onTap: onOpen,
+          child: Container(
+            padding: const EdgeInsets.all(AdoptifySpacing.xs),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+              boxShadow: AdoptifyShadows.soft,
+            ),
+            child: FoundationAvatar(
+              name: foundation.name,
+              photoUrl: foundation.photoUrl,
+              size: photoSize,
+              color: colors.foundation,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Ficha al tocar una veterinaria: nombre, dirección, si atiende urgencias y cómo llegar o llamar
+class _ClinicDetailCard extends StatelessWidget {
+  const _ClinicDetailCard({required this.clinic, required this.onClose, required this.onDirections, this.onCall});
+
+  final VetClinic clinic;
+  final VoidCallback onClose;
+  final VoidCallback onDirections;
+  final VoidCallback? onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.md, AdoptifySpacing.xs, AdoptifySpacing.lg),
+      decoration: mapSurface(context),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.local_hospital, size: 20, color: colors.report),
+                    const SizedBox(width: AdoptifySpacing.xs),
+                    Text('Veterinaria', style: textTheme.labelLarge?.copyWith(color: colors.reportText)),
+                  ],
+                ),
+                const SizedBox(height: AdoptifySpacing.xs),
+                Text(clinic.name, style: textTheme.titleMedium),
+                if (clinic.place != null)
+                  Text(clinic.place!, style: textTheme.bodyMedium?.copyWith(color: colors.textMuted)),
+                if (clinic.emergency) ...[
+                  const SizedBox(height: AdoptifySpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.sm, vertical: AdoptifySpacing.xs),
+                    decoration: BoxDecoration(color: colors.reportStrong, borderRadius: BorderRadius.circular(99)),
+                    child: Text('Urgencias 24 h', style: textTheme.labelMedium?.copyWith(color: colors.onAccent)),
+                  ),
+                ] else if (clinic.openingHours != null) ...[
+                  const SizedBox(height: AdoptifySpacing.xs),
+                  Text('Horario: ${clinic.openingHours}', style: textTheme.bodySmall),
+                ],
+                const SizedBox(height: AdoptifySpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: onDirections,
+                        icon: const Icon(Icons.directions, size: 18),
+                        label: const Text('Cómo llegar'),
+                      ),
+                    ),
+                    if (onCall != null) ...[
+                      const SizedBox(width: AdoptifySpacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onCall,
+                          icon: const Icon(Icons.call_outlined, size: 18),
+                          label: const Text('Llamar'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AdoptifySpacing.sm),
+                // Datos de OpenStreetMap: pueden estar incompletos o desactualizados
+                Text('Datos de OpenStreetMap. Confirma por teléfono antes de ir.', style: textTheme.bodySmall),
+              ],
+            ),
+          ),
+          IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+        ],
+      ),
     );
   }
 }

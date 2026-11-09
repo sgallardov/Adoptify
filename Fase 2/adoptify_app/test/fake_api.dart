@@ -66,6 +66,9 @@ class FakeApi {
   bool offline = false;
   bool animalsFail = false;
   bool foundationsFail = false;
+  // Perfil que edita la fundación con sesión (GET y PUT /foundations/me)
+  String? foundationDescription = 'Rescatamos perros y gatos de la calle.';
+  String? foundationPhoto;
   // Formulario "Quiero adoptar": null hasta que se guarda, como en el backend
   Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
@@ -237,6 +240,37 @@ class FakeApi {
           return _json(401, {'detail': 'Not authenticated'});
         if (request.method == 'PUT') adoptionProfile = body;
         return _json(200, adoptionProfile);
+      case '/veterinary-clinics':
+        return _json(200, [
+          {
+            'id': 1, 'name': 'Clínica Urgencias Vet', 'address': 'Av. Grecia 100', 'commune': 'Ñuñoa',
+            'phone': '+56 2 2222 3333', 'opening_hours': '24/7', 'emergency': true,
+            'latitude': -33.455, 'longitude': -70.605,
+          },
+          {
+            'id': 2, 'name': 'Veterinaria del Barrio', 'address': null, 'commune': null,
+            'phone': null, 'opening_hours': 'Mo-Fr 09:00-19:00', 'emergency': false,
+            'latitude': -33.47, 'longitude': -70.63,
+          },
+        ]);
+      case '/foundations/me':
+        if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+          return _json(403, {'detail': 'Solo una cuenta de fundación puede editar su perfil.'});
+        }
+        if (request.method == 'PUT') {
+          final description = (body['description'] as String? ?? '').trim();
+          if (description.length < 20) {
+            return _json(422, {'detail': [{'msg': 'Value error, La descripción debe tener al menos 20 caracteres.'}]});
+          }
+          foundationDescription = description;
+          foundationPhoto = body['photo_url'] as String?;
+        }
+        return _json(200, {
+          'id': 1, 'name': 'Fundación Patitas', 'description': foundationDescription,
+          'address': 'Av. Siempre Viva 123', 'commune': 'Providencia', 'city': 'Santiago',
+          'phone': '+56 9 1111 2222', 'email': 'hola@patitas.cl', 'is_verified': true,
+          'photo_url': foundationPhoto, 'latitude': -33.43, 'longitude': -70.61, 'animals': [luna],
+        });
       case '/foundations':
         if (foundationsFail)
           return _json(503, {

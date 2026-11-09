@@ -20,6 +20,8 @@ List<http.Request> authRequests(FakeApi api) => api.requests.where((r) => r.url.
 
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
+  // Se dibuja el scroll antes de tocar: si no, el toque cae donde estaba el botón
+  await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
@@ -94,6 +96,8 @@ void main() {
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
     expect(find.text('Fundación Patitas'), findsOneWidget);
+    // El botón está al final del formulario de perfil
+    await tester.scrollUntilVisible(find.text('Cerrar sesión'), 200, scrollable: find.byType(Scrollable).first);
     await tapVisible(tester, find.text('Cerrar sesión'));
     expect(api.storage.token, isNull);
     expect(find.text('Hola de nuevo'), findsOneWidget);

@@ -244,7 +244,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                           ],
                           const SizedBox(height: AdoptifySpacing.xl),
                           const Text('Último avistamiento'),
-                          _LocationSection(position: report.position, pin: MapPins.report),
+                          _LocationSection(position: report.position, pin: MapPins.reportFor(report.species)),
                           const SizedBox(height: AdoptifySpacing.lg),
                           _CommentsSection(
                             key: _commentsKey,
