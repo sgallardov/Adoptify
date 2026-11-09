@@ -16,4 +16,6 @@ class FoundationResponse(BaseModel):
     is_verified: bool
     latitude: float | None
     longitude: float | None
+    # Solo con lat/lng en GET /foundations: distancia en km a quien busca
+    distance_km: float | None = None
     animals: list[PublicAnimalResponse]

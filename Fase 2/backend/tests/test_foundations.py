@@ -67,5 +67,35 @@ async def test_no_expone_rut_ni_geometria(async_client: AsyncClient, foundation_
 
 
 async def test_ordena_por_nombre(async_client: AsyncClient, foundation_with_animals):
-    names = [item["name"] for item in (await async_client.get("/api/v1/foundations")).json()]
+    data = (await async_client.get("/api/v1/foundations")).json()
+    names = [item["name"] for item in data]
     assert names == sorted(names)
+    assert all(item["distance_km"] is None for item in data)
+
+
+async def test_ordena_por_cercania(async_client: AsyncClient, foundation_with_animals):
+    # Desde Ñuñoa la fundación de prueba queda a 0 km y es la primera
+    data = (await async_client.get("/api/v1/foundations", params={"lat": -33.45, "lng": -70.6})).json()
+
+    assert data[0]["id"] == foundation_with_animals.id
+    assert data[0]["distance_km"] == pytest.approx(0)
+    distances = [item["distance_km"] for item in data]
+    measured = [d for d in distances if d is not None]
+    assert measured == sorted(measured)
+    # Las fundaciones sin ubicación van al final
+    assert distances == measured + [None] * (len(distances) - len(measured))
+
+
+async def test_distancia_en_km(async_client: AsyncClient, foundation_with_animals):
+    # Valparaíso queda a unos 100 km de Ñuñoa
+    data = (await async_client.get("/api/v1/foundations", params={"lat": -33.0472, "lng": -71.6127})).json()
+
+    found = next(item for item in data if item["id"] == foundation_with_animals.id)
+    assert 95 < found["distance_km"] < 110
+
+
+async def test_cercania_exige_lat_y_lng(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/foundations", params={"lat": -33.45})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Para ordenar por cercanía envía lat y lng juntos."

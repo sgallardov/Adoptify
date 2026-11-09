@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../core/location_service.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
@@ -27,6 +29,9 @@ class _FoundationsScreenState extends State<FoundationsScreen> {
   bool _loading = true;
   String? _error;
   bool _started = false;
+  // Tu ubicación: con ella las fundaciones vienen de la más cercana a la más lejana
+  LatLng? _origin;
+  int _request = 0;
 
   @override
   void didChangeDependencies() {
@@ -34,23 +39,36 @@ class _FoundationsScreenState extends State<FoundationsScreen> {
     if (!_started) {
       _started = true;
       _load();
+      _detectOrigin();
     }
   }
 
+  // Sin mostrar errores: si no hay ubicación, la lista queda por nombre
+  Future<void> _detectOrigin() async {
+    try {
+      final position = await LocationService.instance.current();
+      if (!mounted) return;
+      _origin = position;
+      _load();
+    } catch (_) {}
+  }
+
+  // Si llega una respuesta vieja (por ejemplo, la de antes de tener tu ubicación), se descarta
   Future<void> _load() async {
+    final request = ++_request;
     setState(() {
       _loading = _foundations.isEmpty;
       _error = null;
     });
     try {
-      final foundations = await _service.fetchFoundations();
-      if (!mounted) return;
+      final foundations = await _service.fetchFoundations(origin: _origin);
+      if (!mounted || request != _request) return;
       setState(() {
         _foundations = foundations;
         _loading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() {
         _error = errorMessage(error, 'No pudimos cargar las fundaciones.');
         _loading = false;
@@ -154,7 +172,9 @@ class _FoundationsScreenState extends State<FoundationsScreen> {
           const SizedBox(height: AdoptifySpacing.xs),
           ContentWidth(
             child: Text(
-              'Conoce su labor y a sus animales disponibles.',
+              _foundations.first.distanceKm != null
+                  ? 'De la más cercana a la más lejana de ti.'
+                  : 'Conoce su labor y a sus animales disponibles.',
               style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: context.colors.textMuted),
             ),
@@ -501,7 +521,9 @@ class _FoundationIdentity extends StatelessWidget {
                     const SizedBox(width: AdoptifySpacing.xs),
                     Expanded(
                       child: Text(
-                        foundation.place,
+                        foundation.distanceKm != null
+                            ? '${foundation.place} · a ${formatKm(foundation.distanceKm!)} km'
+                            : foundation.place,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
