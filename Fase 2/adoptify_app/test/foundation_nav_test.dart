@@ -101,6 +101,51 @@ void main() {
     expect(find.text('Perfil'), findsOneWidget);
   });
 
+  testWidgets('el Perfil de fundación cambia entre modo claro y oscuro con la luna y el sol', (tester) async {
+    await openFoundation(tester);
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+
+    Brightness brightness() => Theme.of(tester.element(screenTitle('Perfil'))).brightness;
+    Future<String?> saved() async => (await SharedPreferences.getInstance()).getString('theme_mode');
+
+    // Arriba a la derecha, después del título, con la luna en modo claro
+    expect(brightness(), Brightness.light);
+    final moon = find.byTooltip('Cambiar a modo oscuro');
+    expect(tester.getCenter(moon).dx, greaterThan(tester.getCenter(find.text('Perfil').first).dx));
+    expect(tester.getCenter(moon).dy, lessThan(tester.getCenter(find.text('Perfil').first).dy + 1));
+    expect(find.descendant(of: moon, matching: find.byIcon(Icons.dark_mode_outlined)), findsOneWidget);
+
+    await tester.tap(moon);
+    await tester.pumpAndSettle();
+    expect(brightness(), Brightness.dark);
+    expect(await saved(), 'dark');
+    // Ahora muestra el sol para volver al claro
+    expect(find.descendant(of: find.byTooltip('Cambiar a modo claro'), matching: find.byIcon(Icons.light_mode_outlined)),
+        findsOneWidget);
+
+    await tester.tap(find.byTooltip('Cambiar a modo claro'));
+    await tester.pumpAndSettle();
+    expect(brightness(), Brightness.light);
+    expect(await saved(), 'light');
+  });
+
+  testWidgets('la fundación recupera el modo oscuro guardado y el botón solo está en Perfil', (tester) async {
+    SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
+    await openFoundation(tester);
+
+    // Chat y Agregar mascota no llevan el botón
+    expect(find.byTooltip('Cambiar a modo claro'), findsNothing);
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Cambiar a modo claro'), findsOneWidget);
+    expect(find.byTooltip('Cambiar a modo oscuro'), findsNothing);
+
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Cambiar a modo claro'), findsNothing);
+  });
+
   testWidgets('la fundación no puede entrar a la vista de adoptante', (tester) async {
     await openFoundation(tester);
 
