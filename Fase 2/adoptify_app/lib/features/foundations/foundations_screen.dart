@@ -205,7 +205,7 @@ class _Metrics extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AdoptifySpacing.md),
       decoration: BoxDecoration(
-        color: colors.primary,
+        color: colors.primaryStrong,
         borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
         boxShadow: AdoptifyShadows.soft,
       ),
@@ -238,14 +238,14 @@ class _Metric extends StatelessWidget {
         Text(
           '$value',
           style: Theme.of(context).textTheme.titleLarge
-              ?.copyWith(color: Colors.white),
+              ?.copyWith(color: context.colors.onAccent),
         ),
         const SizedBox(height: 2),
         Text(
           label,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.88),
+            color: context.colors.onAccent.withValues(alpha: 0.88),
             letterSpacing: 0,
           ),
         ),
@@ -349,13 +349,13 @@ class _StoryCard extends StatelessWidget {
                               vertical: AdoptifySpacing.xs,
                             ),
                             decoration: BoxDecoration(
-                              color: colors.primary,
+                              color: colors.primaryStrong,
                               borderRadius: BorderRadius.circular(99),
                             ),
                             child: Text(
                               'Conocer',
                               style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(color: Colors.white),
+                                  ?.copyWith(color: colors.onAccent),
                             ),
                           ),
                         ],
@@ -381,7 +381,8 @@ class FoundationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final animals = foundation.animals;
-    final accent = foundation.id.isEven ? colors.primary : colors.success;
+    // Colores de fondo pensados para texto blanco: se leen igual en modo claro y oscuro
+    final accent = foundation.id.isEven ? colors.primaryStrong : colors.successStrong;
     return Semantics(
       button: true,
       label: 'Ver fundación ${foundation.name}',
@@ -459,7 +460,10 @@ class _FoundationIdentity extends StatelessWidget {
     final initial = foundation.name.trim().isEmpty
         ? '?'
         : foundation.name.trim()[0].toUpperCase();
+    final textTheme = Theme.of(context).textTheme;
+    // Centrado y apilado: inicial, nombre y ubicación (con la distancia si se conoce)
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AdoptifySpacing.lg),
       decoration: BoxDecoration(
         color: accent,
@@ -467,74 +471,66 @@ class _FoundationIdentity extends StatelessWidget {
           top: Radius.circular(AdoptifyRadius.lg),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
+          // Cuadro claro en los dos modos: la inicial del color de la tarjeta siempre contrasta
           Container(
-            width: 48,
-            height: 48,
+            width: 56,
+            height: 56,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: colors.surface,
+              color: colors.onAccent,
               borderRadius: BorderRadius.circular(AdoptifyRadius.md),
             ),
             child: Text(
               initial,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(color: accent),
+              style: textTheme.titleLarge?.copyWith(color: accent),
             ),
           ),
-          const SizedBox(width: AdoptifySpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: AdoptifySpacing.md),
+          Text.rich(
+            TextSpan(
+              text: foundation.name,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        foundation.name,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(color: Colors.white),
-                      ),
-                    ),
-                    if (foundation.isVerified) ...[
-                      const SizedBox(width: AdoptifySpacing.xs),
-                      Tooltip(
+                if (foundation.isVerified)
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AdoptifySpacing.xs),
+                      child: Tooltip(
                         message: 'Fundación verificada',
-                        child: Icon(
-                          Icons.verified,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: AdoptifySpacing.xs),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 15,
-                      color: Colors.white.withValues(alpha: 0.86),
-                    ),
-                    const SizedBox(width: AdoptifySpacing.xs),
-                    Expanded(
-                      child: Text(
-                        foundation.distanceKm != null
-                            ? '${foundation.place} · a ${formatKm(foundation.distanceKm!)} km'
-                            : foundation.place,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
+                        child: Icon(Icons.verified, size: 18, color: colors.onAccent),
                       ),
                     ),
-                  ],
-                ),
+                  ),
               ],
             ),
+            textAlign: TextAlign.center,
+            style: textTheme.titleMedium?.copyWith(color: colors.onAccent),
+          ),
+          const SizedBox(height: AdoptifySpacing.xs),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 15,
+                color: colors.onAccent.withValues(alpha: 0.86),
+              ),
+              const SizedBox(width: AdoptifySpacing.xs),
+              Flexible(
+                child: Text(
+                  foundation.distanceKm != null
+                      ? '${foundation.place} · a ${formatKm(foundation.distanceKm!)} km'
+                      : foundation.place,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colors.onAccent.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -614,7 +610,7 @@ class _AvailabilityBadge extends StatelessWidget {
     child: Text(
       '$count ${count == 1 ? 'animal disponible' : 'animales disponibles'}',
       style: Theme.of(context).textTheme.labelMedium
-          ?.copyWith(color: Colors.white),
+          ?.copyWith(color: context.colors.onAccent),
     ),
   );
 }

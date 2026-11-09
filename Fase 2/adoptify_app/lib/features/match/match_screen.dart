@@ -277,8 +277,8 @@ class _AnimalCard extends StatelessWidget {
                   right: AdoptifySpacing.md,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.xs),
-                    decoration: BoxDecoration(color: colors.primaryDark, borderRadius: BorderRadius.circular(99)),
-                    child: Text('${card.percent}% match', style: textTheme.labelLarge?.copyWith(color: Colors.white)),
+                    decoration: BoxDecoration(color: colors.primaryStrong, borderRadius: BorderRadius.circular(99)),
+                    child: Text('${card.percent}% match', style: textTheme.labelLarge?.copyWith(color: colors.onAccent)),
                   ),
                 ),
               ],
