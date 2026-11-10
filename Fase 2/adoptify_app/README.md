@@ -108,9 +108,14 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   y los reportes a 100 km de Santiago. Encima flotan:
   - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
     y al elegir una la muestra en el mapa; debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
-  - la tarjeta **"N avisos cerca tuyo"**: mascotas reportadas a menos de 5 km de tu ubicación
-    (`GET /reports/nearby?radius_km=5`). La ubicación se pide sola al abrir el mapa; sin permiso, la tarjeta
-    dice "Activa tu ubicación" y al tocarla la pide. Si falla la consulta, permite reintentar;
+  - el botón de **avisos** (HU-H): una píldora chica arriba a la derecha con la huella y el número de mascotas
+    reportadas a menos de 5 km de tu ubicación (`GET /reports/nearby?radius_km=5`). Al tocarla se despliega una
+    **lista** (alto máximo 40% de la pantalla) con foto, resumen, estado y distancia de cada aviso; tocar una fila
+    abre el detalle del reporte y la x o la píldora la cierran. La ubicación se pide sola al abrir el mapa; sin
+    permiso, la píldora dice "Activar ubicación" y al tocarla la pide. Si falla la consulta, dice "Reintentar".
+    *Decisión de diseño:* se eligió la lista desplegable (frente a una pantalla de avisos con filtros o a enfocar
+    el mapa) porque lleva del conteo al aviso en un toque, sin pantalla nueva y ocupando menos mapa que la
+    tarjeta anterior. El radio queda fijo en 5 km (`_alertsRadiusKm`); el mapa ya tiene su propio selector;
   - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
   - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
   - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
