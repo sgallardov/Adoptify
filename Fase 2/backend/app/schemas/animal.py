@@ -9,6 +9,7 @@ Species = Literal["perro", "gato"]
 Gender = Literal["macho", "hembra"]
 Size = Literal["pequeño", "mediano", "grande"]
 AnimalStatus = Literal["available", "adopted", "in_process"]
+KeepingPlaceType = Literal["refugio", "hogar_temporal"]
 
 
 class PublicAnimalResponse(BaseModel):
@@ -59,6 +60,14 @@ class AnimalResponse(PublicAnimalResponse):
     """Ficha privada, solo tras autorizar el acceso a la fundación."""
     latitude: float | None
     longitude: float | None
+    keeping_place_type: KeepingPlaceType | None = None
+    keeping_place_address: str | None = None
+
+
+class AnimalMutationResponse(PublicAnimalResponse):
+    """Respuesta de crear o editar: no reexpone el lugar privado de resguardo."""
+    latitude: float | None
+    longitude: float | None
 
 
 class CommuneInput(BaseModel):
@@ -84,6 +93,8 @@ class AnimalCreate(CommuneInput):
     description: str | None = Field(None, max_length=2000)
     status: AnimalStatus = "available"
     photo_url: str | None = Field(None, max_length=500)
+    keeping_place_type: KeepingPlaceType
+    keeping_place_address: str = Field(..., min_length=1, max_length=255)
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
     foundation_id: int | None = Field(None, description="Solo para administradores; las fundaciones usan la suya")
@@ -100,6 +111,14 @@ class AnimalCreate(CommuneInput):
         clean = value.strip()
         if not clean:
             raise ValueError("El nombre no puede estar vacío")
+        return clean
+
+    @field_validator("keeping_place_address")
+    @classmethod
+    def validate_keeping_place_address(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError("Indica el lugar donde se encuentra el animal")
         return clean
 
     @model_validator(mode="after")
@@ -121,6 +140,8 @@ class AnimalUpdate(CommuneInput):
     description: str | None = Field(None, max_length=2000)
     status: AnimalStatus | None = None
     photo_url: str | None = Field(None, max_length=500)
+    keeping_place_type: KeepingPlaceType | None = None
+    keeping_place_address: str | None = Field(None, min_length=1, max_length=255)
     latitude: float | None = Field(None, ge=-90, le=90)
     longitude: float | None = Field(None, ge=-180, le=180)
 
@@ -137,6 +158,22 @@ class AnimalUpdate(CommuneInput):
         if value is None:
             raise ValueError("Este campo no puede ser nulo")
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("keeping_place_type", "keeping_place_address", mode="before")
+    @classmethod
+    def reject_null_keeping_place(cls, value):
+        # Omitir el campo conserva animales antiguos sin información; enviarlo como null no lo borra.
+        if value is None:
+            raise ValueError("Este campo no puede ser nulo")
+        return value
+
+    @field_validator("keeping_place_address")
+    @classmethod
+    def validate_updated_keeping_place_address(cls, value: str | None) -> str | None:
+        clean = value.strip()
+        if not clean:
+            raise ValueError("Indica el lugar donde se encuentra el animal")
+        return clean
 
     @model_validator(mode="after")
     def validate_coordinates(self):

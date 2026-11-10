@@ -19,6 +19,8 @@ NEW_ANIMAL = {
     "gender": "macho",
     "size": "mediano",
     "energy_level": 4,
+    "keeping_place_type": "hogar_temporal",
+    "keeping_place_address": "Pasaje de resguardo 123, Ñuñoa",
     "latitude": -45.5712,
     "longitude": -72.0685,
 }
@@ -90,6 +92,8 @@ async def test_foundation_creates_animal_in_its_own_foundation(async_client, wor
     assert data["status"] == "available"
     assert data["latitude"] == pytest.approx(-45.5712)
     assert data["longitude"] == pytest.approx(-72.0685)
+    assert "keeping_place_type" not in data
+    assert "keeping_place_address" not in data
     assert "location" not in data
 
 
@@ -221,6 +225,9 @@ async def test_private_location_only_for_owner_or_admin(async_client, world):
         response = await async_client.get(url, headers=world["headers"][role])
         assert response.status_code == 200
         assert response.json()["latitude"] == pytest.approx(-45.5712)
+        # Animales existentes antes de HU-A pueden no tener esta información.
+        assert response.json()["keeping_place_type"] is None
+        assert response.json()["keeping_place_address"] is None
     for role in ("b", "adopter", "sin_fundacion"):
         assert (await async_client.get(url, headers=world["headers"][role])).status_code == 403
     assert (await async_client.get(url)).status_code in (401, 403)
@@ -228,6 +235,40 @@ async def test_private_location_only_for_owner_or_admin(async_client, world):
     assert [a["id"] for a in listed.json()] == [animal.id]
     assert (await async_client.get("/api/v1/animals/management", headers=world["headers"]["adopter"])).status_code == 403
     assert (await async_client.get("/api/v1/animals/management")).status_code in (401, 403)
+
+
+async def test_keeping_place_is_private_and_validated(async_client, world):
+    headers = world["headers"]["a"]
+    missing = {key: value for key, value in NEW_ANIMAL.items() if key != "keeping_place_type"}
+    assert (await async_client.post("/api/v1/animals", json=missing, headers=headers)).status_code == 422
+    bad_type = {**NEW_ANIMAL, "keeping_place_type": "casa"}
+    assert (await async_client.post("/api/v1/animals", json=bad_type, headers=headers)).status_code == 422
+    bad_address = {**NEW_ANIMAL, "keeping_place_address": "   "}
+    assert (await async_client.post("/api/v1/animals", json=bad_address, headers=headers)).status_code == 422
+
+    created = await async_client.post("/api/v1/animals", json=NEW_ANIMAL, headers=headers)
+    assert created.status_code == 201
+    animal_id = created.json()["id"]
+    private = await async_client.get(f"/api/v1/animals/management/{animal_id}", headers=headers)
+    assert private.json()["keeping_place_address"] == NEW_ANIMAL["keeping_place_address"]
+    updated = await async_client.patch(
+        f"/api/v1/animals/{animal_id}",
+        json={"keeping_place_type": "refugio", "keeping_place_address": "Refugio central"},
+        headers=headers,
+    )
+    assert updated.status_code == 200
+    assert "keeping_place_type" not in updated.json()
+    assert (await async_client.patch(f"/api/v1/animals/{animal_id}", json={"keeping_place_address": None}, headers=headers)).status_code == 422
+
+    for endpoint in [
+        "/api/v1/animals",
+        "/api/v1/animals/nearby?lat=-45.5712&lng=-72.0685&radius_km=1",
+        "/api/v1/foundations",
+    ]:
+        payload = (await async_client.get(endpoint)).json()
+        serialized = str(payload)
+        assert "keeping_place_type" not in serialized
+        assert "keeping_place_address" not in serialized
 
 
 async def test_commune_is_independent_of_private_point_on_create_and_update(async_client, world):

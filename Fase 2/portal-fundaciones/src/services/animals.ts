@@ -20,9 +20,14 @@ export type AnimalResponse = {
   description: string | null
   status: AnimalStatus
   photo_url: string | null
+  keeping_place_type: 'refugio' | 'hogar_temporal' | null
+  keeping_place_address: string | null
   latitude: number | null
   longitude: number | null
 }
+
+// POST y PATCH no devuelven el lugar de resguardo: se consulta solo desde /animals/management.
+export type AnimalMutationResponse = Omit<AnimalResponse, 'keeping_place_type' | 'keeping_place_address'>
 
 
 function formatAge(months: number | null): string {
@@ -72,13 +77,13 @@ export async function fetchAnimal(id: number, signal: AbortSignal): Promise<Anim
   }
 }
 
-export async function createAnimal(payload: AnimalInput): Promise<AnimalResponse> {
-  const { data } = await api.post<AnimalResponse>('/animals', payload)
+export async function createAnimal(payload: AnimalInput): Promise<AnimalMutationResponse> {
+  const { data } = await api.post<AnimalMutationResponse>('/animals', payload)
   return data
 }
 
-export async function updateAnimal(id: number, payload: Partial<Omit<AnimalInput, 'foundation_id'>>): Promise<AnimalResponse> {
-  const { data } = await api.patch<AnimalResponse>(`/animals/${id}`, payload)
+export async function updateAnimal(id: number, payload: Partial<Omit<AnimalInput, 'foundation_id'>>): Promise<AnimalMutationResponse> {
+  const { data } = await api.patch<AnimalMutationResponse>(`/animals/${id}`, payload)
   return data
 }
 

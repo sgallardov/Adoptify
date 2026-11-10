@@ -4,6 +4,7 @@ export type AnimalFields = {
   name: string; species: string; gender: string; size: string; breed: string
   age_months: string; energy_level: string; description: string; photo_url: string
   public_commune: string; latitude: string; longitude: string; foundation_id: string
+  keeping_place_type: string; keeping_place_address: string
 }
 export type FieldErrors = Partial<Record<keyof AnimalFields | 'status', string>>
 
@@ -14,6 +15,7 @@ export function animalFields(animal?: AnimalResponse): AnimalFields {
     energy_level: String(animal?.energy_level ?? 3), description: animal?.description ?? '',
     photo_url: animal?.photo_url ?? '', latitude: animal?.latitude?.toString() ?? '',
     public_commune: animal?.public_commune ?? '', longitude: animal?.longitude?.toString() ?? '', foundation_id: '',
+    keeping_place_type: animal?.keeping_place_type ?? '', keeping_place_address: animal?.keeping_place_address ?? '',
   }
 }
 
@@ -28,6 +30,9 @@ export function validateAnimal(fields: AnimalFields, adminCreate: boolean, hadLo
   if (fields.age_months.trim() && (!Number.isInteger(Number(fields.age_months)) || Number(fields.age_months) < 0 || Number(fields.age_months) > 360)) errors.age_months = 'Indica una edad entera entre 0 y 360 meses.'
   if (!Number.isInteger(Number(fields.energy_level)) || Number(fields.energy_level) < 1 || Number(fields.energy_level) > 5) errors.energy_level = 'Selecciona una energía entre 1 y 5.'
   if (fields.description.length > 2000) errors.description = 'La descripción admite hasta 2000 caracteres.'
+  if (!['refugio', 'hogar_temporal'].includes(fields.keeping_place_type)) errors.keeping_place_type = 'Selecciona si está en refugio u hogar temporal.'
+  if (!fields.keeping_place_address.trim()) errors.keeping_place_address = 'Indica el lugar donde se encuentra el animal.'
+  else if (fields.keeping_place_address.trim().length > 255) errors.keeping_place_address = 'El lugar admite hasta 255 caracteres.'
   if (fields.photo_url.trim()) {
     try {
       const url = new URL(fields.photo_url.trim())
@@ -49,6 +54,8 @@ export function animalPayload(fields: AnimalFields, adminCreate: boolean, status
     breed: fields.breed.trim() || null, age_months: fields.age_months.trim() ? Number(fields.age_months) : null,
     energy_level: Number(fields.energy_level), description: fields.description.trim() || null,
     photo_url: fields.photo_url.trim() || null, status,
+    keeping_place_type: fields.keeping_place_type as 'refugio' | 'hogar_temporal',
+    keeping_place_address: fields.keeping_place_address.trim(),
     ...(fields.latitude.trim() && fields.longitude.trim() ? { latitude: Number(fields.latitude), longitude: Number(fields.longitude) } : {}),
     ...(adminCreate ? { foundation_id: Number(fields.foundation_id) } : {}),
   }
@@ -59,6 +66,8 @@ const fieldMessages: Record<string, string> = {
   gender: 'Selecciona macho o hembra.', size: 'Selecciona pequeño, mediano o grande.',
   breed: 'La raza admite hasta 100 caracteres.', age_months: 'Indica una edad entera entre 0 y 360 meses.',
   energy_level: 'La energía debe estar entre 1 y 5.', description: 'La descripción admite hasta 2000 caracteres.',
+  keeping_place_type: 'Selecciona si está en refugio u hogar temporal.',
+  keeping_place_address: 'Indica el lugar donde se encuentra el animal (máximo 255 caracteres).',
   photo_url: 'Revisa el enlace de la foto (máximo 500 caracteres).', latitude: 'Revisa la latitud y la longitud.',
   longitude: 'Revisa la latitud y la longitud.', foundation_id: 'Revisa la fundación asignada.',
   status: 'Selecciona Disponible, En proceso o Adoptado.',

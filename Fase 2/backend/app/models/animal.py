@@ -25,6 +25,10 @@ class Animal(Base):
     )
 
     public_commune: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    # Datos privados de resguardo: nunca se incluyen en las respuestas públicas.
+    # location sigue siendo el punto privado ya existente; la dirección no se geocodifica.
+    keeping_place_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    keeping_place_address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     species: Mapped[str] = mapped_column(String(50), nullable=False)  # 'perro', 'gato'
     breed: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

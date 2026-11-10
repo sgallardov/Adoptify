@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { animalFields, animalPayload, animalValidationErrors, validateAnimal } from '../src/services/animalForm.ts'
 
-const valid = () => ({ ...animalFields(), name: ' Luna ', species: 'gato', gender: 'hembra', size: 'pequeño' })
+const valid = () => ({ ...animalFields(), name: ' Luna ', species: 'gato', gender: 'hembra', size: 'pequeño', keeping_place_type: 'refugio', keeping_place_address: 'Sede de prueba' })
 
 test('rechaza obligatorios vacíos o compuestos por espacios', () => {
   const errors = validateAnimal({ ...animalFields(), name: '   ' }, false, false)
-  assert.deepEqual(Object.keys(errors).sort(), ['gender', 'name', 'size', 'species'])
+  assert.deepEqual(Object.keys(errors).sort(), ['gender', 'keeping_place_address', 'keeping_place_type', 'name', 'size', 'species'])
   assert.match(errors.name, /nombre/)
 })
 test('normaliza los datos sin enviar una fundación para cuentas de fundación', () => {
@@ -40,6 +40,12 @@ test('administrador debe indicar una fundación existente por ID positivo', () =
   const fields = { ...valid(), foundation_id: '12' }
   assert.deepEqual(validateAnimal(fields, true, false), {})
   assert.equal(animalPayload(fields, true, 'available').foundation_id, 12)
+})
+test('exige y normaliza el lugar privado de resguardo', () => {
+  const fields = valid()
+  assert.equal(animalPayload(fields, false, 'available').keeping_place_address, 'Sede de prueba')
+  assert.ok(validateAnimal({ ...fields, keeping_place_type: '', keeping_place_address: '   ' }, false, false).keeping_place_type)
+  assert.ok(validateAnimal({ ...fields, keeping_place_address: 'a'.repeat(256) }, false, false).keeping_place_address)
 })
 test('edición conserva valores vacíos y coordenadas del backend sin usar los textos de presentación', () => {
   const fields = animalFields({ ...animalPayload(valid(), false, 'adopted'), id: 1, foundation_id: 2, foundation_name: 'Prueba', latitude: 0, longitude: 0 })

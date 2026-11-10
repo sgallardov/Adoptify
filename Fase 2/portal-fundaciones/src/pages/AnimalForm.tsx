@@ -120,6 +120,15 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
         </div>
       </fieldset>
       <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">
+        <legend className="px-2 text-lg font-bold">Lugar de resguardo</legend>
+        <p className="mb-5 text-sm text-base-600">Esta información es privada: solo la verá tu fundación y el administrador. No aparece en el mapa ni en las fichas públicas.</p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          {select('keeping_place_type', 'Tipo de lugar *', [['refugio', 'Refugio'], ['hogar_temporal', 'Hogar temporal']])}
+          {input('keeping_place_address', 'Lugar donde se encuentra *', { required: true, maxLength: 255, placeholder: 'Ej.: Sede principal, comuna y referencia interna' })}
+        </div>
+        {animal && !animal.keeping_place_type && <p className="mt-4 text-sm text-base-600">Sin información guardada. Completa estos datos para actualizar la ficha de este animal.</p>}
+      </fieldset>
+      <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">
         <legend className="px-2 text-lg font-bold">Ubicación del animal</legend>
         <p className="mb-4 text-sm text-base-600">Haz clic en el mapa o arrastra el marcador. También puedes escribir las coordenadas. {hasLocation ? 'Puedes mover la ubicación guardada a otro punto.' : 'Sin ubicación, el animal se publica pero no aparecerá en búsquedas por cercanía.'}</p>
         <Field id="public_commune" label="Comuna que verán los adoptantes">
