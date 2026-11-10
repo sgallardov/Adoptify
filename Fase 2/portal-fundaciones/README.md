@@ -39,7 +39,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL, búsqueda por nombre y filtros por especie y estado.
 - `/animales/:id`: ficha de cada animal; IDs desconocidos muestran página no encontrada.
-- `/fundacion`: perfil de la organización de ejemplo.
+- `/fundacion`: perfil de la organización de ejemplo y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
 - Sidebar en escritorio y menú desplegable en pantallas pequeñas.
 - Etiquetas accesibles, navegación por teclado y estados sin resultados.
 

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/api_client.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/foundation_avatar.dart';
+import '../auth/auth_controller.dart';
 import '../map/map_service.dart';
 import 'foundation_service.dart';
 
@@ -57,6 +59,8 @@ class FoundationDetailScreen extends StatelessWidget {
                 const SizedBox(height: AdoptifySpacing.lg),
               ],
             const SizedBox(height: AdoptifySpacing.sm),
+            ContentWidth(child: _PublicMembers(foundationId: foundation.id)),
+            const SizedBox(height: AdoptifySpacing.lg),
             const ContentWidth(child: _TrustNote()),
             const SizedBox(height: AdoptifySpacing.lg),
             const ContentWidth(child: _AdoptionProcess()),
@@ -292,6 +296,104 @@ class _NoCases extends StatelessWidget {
       ],
     ),
   );
+}
+
+// "Nuestros socios": solo nombre y fecha de ingreso de los socios que la fundación marcó como públicos.
+// Sin socios públicos se muestra un estado vacío en vez de ocultar la sección, para que se entienda que existe.
+class _PublicMembers extends StatefulWidget {
+  const _PublicMembers({required this.foundationId});
+  final int foundationId;
+
+  @override
+  State<_PublicMembers> createState() => _PublicMembersState();
+}
+
+class _PublicMembersState extends State<_PublicMembers> {
+  List<PublicMember>? _members;
+  String? _error;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final members = await FoundationService(AuthScope.of(context).api).fetchPublicMembers(widget.foundationId);
+      if (!mounted) return;
+      setState(() => _members = members);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = errorMessage(error, 'No pudimos cargar los socios de esta fundación.'));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = Theme.of(context).textTheme;
+    final members = _members;
+    return Container(
+      padding: const EdgeInsets.all(AdoptifySpacing.lg),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Nuestros socios', style: textTheme.titleLarge),
+          const SizedBox(height: AdoptifySpacing.xs),
+          Text('Personas que apoyan a esta fundación.', style: textTheme.bodySmall),
+          const SizedBox(height: AdoptifySpacing.md),
+          if (_error != null) ...[
+            Text(_error!, style: textTheme.bodyMedium),
+            TextButton(onPressed: _load, child: const Text('Reintentar')),
+          ] else if (members == null)
+            const Center(child: CircularProgressIndicator())
+          else if (members.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AdoptifySpacing.xl),
+              decoration: BoxDecoration(color: colors.muted, borderRadius: BorderRadius.circular(AdoptifyRadius.lg)),
+              child: Column(
+                children: [
+                  Icon(Icons.groups_outlined, size: 32, color: colors.placeholder),
+                  const SizedBox(height: AdoptifySpacing.sm),
+                  Text('Aún no hay socios públicos', style: textTheme.titleSmall),
+                  const SizedBox(height: AdoptifySpacing.xs),
+                  Text(
+                    'Esta fundación todavía no muestra a sus socios.',
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            )
+          else
+            for (final member in members)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AdoptifySpacing.sm),
+                child: Row(
+                  children: [
+                    Icon(Icons.favorite_outline, size: 18, color: colors.primaryDark),
+                    const SizedBox(width: AdoptifySpacing.sm),
+                    Expanded(child: Text(member.name, style: textTheme.bodyMedium)),
+                    Text('Desde ${dateToDisplay(member.joinedAt)}', style: textTheme.bodySmall),
+                  ],
+                ),
+              ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TrustNote extends StatelessWidget {

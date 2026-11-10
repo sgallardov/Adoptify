@@ -61,6 +61,50 @@ class Foundation {
   String get place => [?commune, city].join(', ');
 }
 
+// Fecha de ingreso como la maneja la API (yyyy-MM-dd) y como se muestra (dd/MM/yyyy)
+String dateToApi(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+String dateToDisplay(DateTime date) =>
+    '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+// Socio visto por la propia fundación (CRUD privado /foundations/me/members). El aporte es de uso interno.
+class Member {
+  const Member({
+    required this.id,
+    required this.name,
+    required this.joinedAt,
+    required this.isPublic,
+    this.contribution,
+  });
+
+  factory Member.fromJson(Map<String, dynamic> json) => Member(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        // La API manda el decimal como texto ("15000.50")
+        contribution: json['contribution'] == null ? null : num.parse('${json['contribution']}'),
+        joinedAt: DateTime.parse(json['joined_at'] as String),
+        isPublic: json['is_public'] as bool,
+      );
+
+  final int id;
+  final String name;
+  final num? contribution;
+  final DateTime joinedAt;
+  final bool isPublic;
+}
+
+// Socio en la ficha pública "Nuestros socios": solo nombre y fecha de ingreso, nunca el aporte
+class PublicMember {
+  const PublicMember({required this.name, required this.joinedAt});
+
+  factory PublicMember.fromJson(Map<String, dynamic> json) =>
+      PublicMember(name: json['name'] as String, joinedAt: DateTime.parse(json['joined_at'] as String));
+
+  final String name;
+  final DateTime joinedAt;
+}
+
 class FoundationService {
   FoundationService(this._api);
 
@@ -81,4 +125,39 @@ class FoundationService {
   Future<Foundation> updateMine({required String description, String? photoUrl}) async => Foundation.fromJson(
         await _api.put('/foundations/me', {'description': description, 'photo_url': photoUrl}) as Map<String, dynamic>,
       );
+
+  // Vista del adoptante: socios que la fundación marcó como públicos
+  Future<List<PublicMember>> fetchPublicMembers(int foundationId) async {
+    final data = await _api.get('/foundations/$foundationId/members/public') as List<dynamic>;
+    return [for (final item in data) PublicMember.fromJson(item as Map<String, dynamic>)];
+  }
+
+  // Vista de la fundación: CRUD privado de sus socios
+  Future<List<Member>> fetchMembers() async {
+    final data = await _api.get('/foundations/me/members') as List<dynamic>;
+    return [for (final item in data) Member.fromJson(item as Map<String, dynamic>)];
+  }
+
+  Future<Member> saveMember({
+    int? id,
+    required String name,
+    required DateTime joinedAt,
+    required bool isPublic,
+    String? contribution,
+  }) async {
+    final body = {
+      'name': name,
+      'contribution': contribution,
+      'joined_at': dateToApi(joinedAt),
+      'is_public': isPublic,
+    };
+    final data = id == null
+        ? await _api.post('/foundations/me/members', body)
+        : await _api.put('/foundations/me/members/$id', body);
+    return Member.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteMember(int id) async {
+    await _api.delete('/foundations/me/members/$id');
+  }
 }

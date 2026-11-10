@@ -69,6 +69,10 @@ class FakeApi {
   // Perfil que edita la fundación con sesión (GET y PUT /foundations/me)
   String? foundationDescription = 'Rescatamos perros y gatos de la calle.';
   String? foundationPhoto;
+  // Socios de las fundaciones (HU-F): el CRUD privado trabaja sobre la fundación 1, como /foundations/me.
+  // Cada uno: id, foundation_id, name, contribution (texto), joined_at, is_public.
+  final members = <Map<String, dynamic>>[];
+  bool membersFail = false;
   // Formulario "Quiero adoptar": null hasta que se guarda, como en el backend
   Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
@@ -168,6 +172,46 @@ class FakeApi {
         'count': (otherLikes[reportId] ?? 0) + (liked ? 1 : 0),
         'liked': liked,
       });
+    }
+
+    // Socios: público (solo nombre y fecha de los marcados) y CRUD privado de la fundación con sesión
+    final publicMembers = RegExp(r'^/foundations/(\d+)/members/public$').firstMatch(request.url.path);
+    if (publicMembers != null) {
+      final foundationId = int.parse(publicMembers.group(1)!);
+      return _json(200, [
+        for (final member in members)
+          if (member['foundation_id'] == foundationId && member['is_public'] == true)
+            {'name': member['name'], 'joined_at': member['joined_at']},
+      ]);
+    }
+    final privateMembers = RegExp(r'^/foundations/me/members(?:/(\d+))?$').firstMatch(request.url.path);
+    if (privateMembers != null) {
+      if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+        return _json(403, {'detail': 'Solo una cuenta de fundación puede gestionar sus socios.'});
+      }
+      if (membersFail) return _json(503, {'detail': 'No se pudo consultar los socios.'});
+      final id = privateMembers.group(1) == null ? null : int.parse(privateMembers.group(1)!);
+      Map<String, dynamic> fields() => {
+        'name': (body['name'] as String).trim(),
+        'contribution': body['contribution'],
+        'joined_at': body['joined_at'],
+        'is_public': body['is_public'],
+      };
+      switch (request.method) {
+        case 'POST':
+          final member = {'id': members.length + 100, 'foundation_id': 1, ...fields()};
+          members.insert(0, member);
+          return _json(201, member);
+        case 'PUT':
+          final index = members.indexWhere((m) => m['id'] == id);
+          if (index == -1) return _json(404, {'detail': 'No encontramos ese socio.'});
+          members[index] = {...members[index], ...fields()};
+          return _json(200, members[index]);
+        case 'DELETE':
+          members.removeWhere((m) => m['id'] == id);
+          return http.Response('', 204);
+      }
+      return _json(200, [for (final m in members) if (m['foundation_id'] == 1) m]);
     }
 
     final favorite = RegExp(r'^/animals/(\d+)/favorite$')
