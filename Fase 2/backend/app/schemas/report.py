@@ -75,6 +75,9 @@ class ReportResponse(BaseModel):
     description: str
     photo_url: str | None
     status: str
+    seen_at: datetime | None = None
+    taken_at: datetime | None = None
+    foundation_name: str | None = None
     latitude: float
     longitude: float
     created_at: datetime

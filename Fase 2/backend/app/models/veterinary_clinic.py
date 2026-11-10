@@ -17,8 +17,8 @@ class VeterinaryClinic(Base):
     __tablename__ = "veterinary_clinics"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # "node/123" o "way/456": identifica el elemento en OpenStreetMap
-    osm_id: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    # "node/123" o "way/456" para importaciones OSM. Las altas manuales no tienen este valor.
+    osm_id: Mapped[Optional[str]] = mapped_column(String(40), unique=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     commune: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -26,7 +26,11 @@ class VeterinaryClinic(Base):
     opening_hours: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Atiende urgencias o está abierta las 24 horas (emergency=yes u opening_hours=24/7)
     emergency: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Importada desde OSM, creada manualmente por administración o informada por una fundación.
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     location = mapped_column(Geometry(geometry_type="POINT", srid=4326), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

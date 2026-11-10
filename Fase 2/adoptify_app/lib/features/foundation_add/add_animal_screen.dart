@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../core/photo_service.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
+import '../map/map_service.dart';
 
 const _placeTypes = <String, String>{
   'refugio': 'Refugio',
@@ -29,6 +32,9 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   String? _gender;
   String? _placeType;
   int _energyLevel = 3;
+  String? _photoUrl;
+  bool _uploading = false;
+  String? _photoError;
   bool _saving = false;
   String? _error;
   String? _success;
@@ -46,6 +52,10 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
       _success = null;
     });
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_photoUrl == null || _photoUrl!.isEmpty) {
+      setState(() => _photoError = 'Debes subir una foto del animal antes de publicar.');
+      return;
+    }
     setState(() => _saving = true);
     try {
       await AuthScope.of(context).api.post('/animals', <String, dynamic>{
@@ -56,6 +66,7 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
         'energy_level': _energyLevel,
         'keeping_place_type': _placeType,
         'keeping_place_address': _placeAddress.text.trim(),
+        'photo_url': _photoUrl,
       });
       if (!mounted) return;
       _formKey.currentState?.reset();
@@ -65,6 +76,8 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
         _gender = null;
         _placeType = null;
         _energyLevel = 3;
+        _photoUrl = null;
+        _photoError = null;
         _success = 'Animal publicado. Su lugar de resguardo permanece privado.';
       });
     } catch (error) {
@@ -78,9 +91,43 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   String? _required(String? value, String label) =>
       value == null || value.isEmpty ? 'Selecciona $label.' : null;
 
+  Future<void> _pickPhoto(PhotoSource source) async {
+    final PickedPhoto? photo;
+    try {
+      photo = await PhotoService.instance.pick(source);
+    } on PlatformException {
+      if (!mounted) return;
+      setState(() => _photoError = source == PhotoSource.camera
+          ? 'No pudimos abrir la cámara. Revisa el permiso o elige una foto de la galería.'
+          : 'No pudimos abrir la galería. Inténtalo nuevamente.');
+      return;
+    }
+    if (photo == null || !mounted) return;
+    setState(() {
+      _uploading = true;
+      _photoError = null;
+      _error = null;
+      _success = null;
+    });
+    try {
+      final url = await MapService(AuthScope.of(context).api).uploadPhoto(photo);
+      if (!mounted) return;
+      setState(() {
+        _photoUrl = url;
+        _uploading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _uploading = false;
+        _photoError = errorMessage(error, 'No se pudo subir la foto. Inténtalo nuevamente.');
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final busy = _saving;
+    final busy = _saving || _uploading;
     return Scaffold(
       appBar: AppBar(title: const Text('Agregar mascota')),
       body: ContentWidth(
@@ -148,6 +195,50 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
                 onChanged: (value) => setState(() => _energyLevel = int.parse(value!)),
                 validator: (_) => null,
               ),
+              const SizedBox(height: AdoptifySpacing.xl),
+              Text('Foto del animal *', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: AdoptifySpacing.xs),
+              Text(
+                _photoUrl == null ? 'Sube una foto para poder publicar esta mascota.' : 'Foto cargada correctamente.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AdoptifySpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : () => _pickPhoto(PhotoSource.camera),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Cámara'),
+                    ),
+                  ),
+                  const SizedBox(width: AdoptifySpacing.md),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : () => _pickPhoto(PhotoSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Galería'),
+                    ),
+                  ),
+                ],
+              ),
+              if (_uploading) ...[
+                const SizedBox(height: AdoptifySpacing.sm),
+                const Center(child: CircularProgressIndicator()),
+              ],
+              if (_photoUrl != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: busy ? null : () => setState(() => _photoUrl = null),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Quitar foto'),
+                  ),
+                ),
+              if (_photoError != null) ...[
+                const SizedBox(height: AdoptifySpacing.sm),
+                MessageBox.error(message: _photoError!),
+              ],
               const SizedBox(height: AdoptifySpacing.xl),
               Text('Lugar de resguardo', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: AdoptifySpacing.xs),

@@ -21,3 +21,12 @@ export function dotIcon(className: string, size: number) {
     popupAnchor: [0, -size / 2],
   })
 }
+
+// Pin distinto para servicios veterinarios: cruz blanca sobre el rojo de emergencias.
+export const clinicIcon = L.divIcon({
+  className: '',
+  html: '<span class="flex h-9 w-9 items-center justify-center rounded-full border-[3px] border-on-accent bg-danger-600 text-xl font-bold text-on-accent shadow-md">+</span>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -18],
+})

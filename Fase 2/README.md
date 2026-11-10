@@ -198,11 +198,17 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * `PUT /api/v1/reports/{id}/likes` y `DELETE /api/v1/reports/{id}/likes` (requieren token): marcan o quitan tu "me enteré" (marcar dos veces cuenta una) y devuelven el total actualizado.
 * Reporte inexistente: `404`. En la app, el detalle del reporte muestra los contadores (♡ y 💬), la conversación ("Anónimo" o "Tú") y una barra fija para escribir; sin sesión invita a iniciarla.
 
+### Gestión de reportes por fundaciones (HU-C)
+* `POST /api/v1/reports/{id}/seen`: una cuenta `foundation` vinculada puede marcar un aviso como visto sin cambiar su estado.
+* `PUT /api/v1/reports/{id}/taken`: registra a su fundación como responsable y pasa el estado a `in_rescue`. Si otra fundación ya lo tomó, devuelve `409`.
+* `DELETE /api/v1/reports/{id}/taken`: solo la fundación que tomó el caso puede deshacerlo; vuelve el estado a `reported`.
+* Los reportes resueltos no admiten esas marcas (`409`). `GET /reports/nearby` y `GET /reports/{id}` incluyen `foundation_name`, `seen_at` y `taken_at`, pero nunca `reporter_id`.
+
 ### HU-12: Módulo de fundaciones (backend)
 Cada fundación gestiona solo sus propios animales.
 * **Vínculo cuenta–fundación (migración `0004`):** `users.foundation_id` (FK nullable a `foundations.id`, `ON DELETE SET NULL`). Solo se usa en cuentas `foundation`; `admin` y `adopter` lo dejan en `NULL`. Una cuenta `foundation` sin fundación asignada no puede gestionar animales (`403`) ni ve ninguno en el listado.
 * **Asignar la fundación a una cuenta:** `python -m app.db.create_user ... --role foundation --foundation-id 1`. El seed ya liga `fundacion@adoptify.cl` con "Fundación Garras y Patas". En una BD ya sembrada hay que asignarlo a mano: `UPDATE users SET foundation_id = 1 WHERE email = 'fundacion@adoptify.cl';`
-* `POST /api/v1/animals` (requiere token): la fundación del animal sale de la sesión. Una fundación que envíe otro `foundation_id` recibe `403`; un `admin` debe indicarlo (`422` si falta). Devuelve `201`.
+* `POST /api/v1/animals` (requiere token): la fundación del animal sale de la sesión. Una fundación que envíe otro `foundation_id` recibe `403`; un `admin` debe indicarlo (`422` si falta). La foto del animal (`photo_url`) y el lugar de resguardo privado (tipo y texto) son obligatorios para una publicación nueva. Devuelve `201`.
 * `PATCH /api/v1/animals/{id}` (requiere token): edición parcial, incluye el cambio de `status` y de ubicación (`latitude` y `longitude` siempre juntas). `404` si no existe y `403` si es de otra fundación.
 * `DELETE /api/v1/animals/{id}` (requiere token): `204`; mismos `403` y `404`.
 * `GET /api/v1/animals` sigue siendo público. Si el token es de una cuenta `foundation`, solo devuelve los animales de su fundación; visitantes, adoptantes y `admin` ven todos. Un token inválido se trata como visitante. `/animals/nearby` no cambia.
@@ -214,7 +220,10 @@ Cada fundación gestiona solo sus propios animales.
 ### Fundaciones
 * `GET /api/v1/foundations` (público): fundaciones ordenadas por nombre o, con `lat` y `lng` (opcionales, juntos; si llega solo uno, `422`), de la más cercana a la más lejana con `distance_km` (las sin ubicación al final), con `description`, `address`, `commune`, `city`, `phone`, `email`, `is_verified`, `photo_url` (foto de perfil), `latitude`/`longitude` y `animals` (solo los disponibles, con el mismo formato de `GET /animals`). No expone el RUT ni la geometría cruda. La usan la pestaña Fundaciones y los pines de fundaciones del mapa de la app.
 * `GET /api/v1/foundations/me` y `PUT /api/v1/foundations/me` (solo cuentas `foundation` ligadas a una fundación; si no, `403`): perfil de la propia fundación. El `PUT` recibe `description` **obligatoria** (al menos 20 caracteres, se guarda sin espacios sobrantes; si falta o es corta, `422`) y `photo_url` (la URL de `POST /uploads`, o `null` para quitarla). La columna `foundations.photo_url` llega con la migración `0010`.
-* `GET /api/v1/veterinary-clinics` (público): clínicas veterinarias para emergencias con `name`, `address`, `commune`, `phone`, `opening_hours`, `emergency` (urgencias o 24 horas) y `latitude`/`longitude`; primero las de urgencias y luego por nombre. Tabla `veterinary_clinics` (migración `0011`, con RLS). Los datos vienen de OpenStreetMap (`amenity=veterinary`, © colaboradores de OpenStreetMap, ODbL) y se cargan o actualizan con `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto la Región Metropolitana; `--region` cambia la región). Es idempotente: cada clínica se identifica por su `osm_id`.
+* **Veterinarias (HU-D):** `veterinary_clinics` (migraciones `0011` y `0014`, con RLS) conserva la carga idempotente de OpenStreetMap (`amenity=veterinary`) y permite altas manuales por administración. El origen queda definido como **importación de OpenStreetMap más alta manual administrativa**: `source` es `importacion`, `manual` o `fundacion`; las respuestas públicas no exponen ese dato ni `is_active`.
+  * `GET /api/v1/veterinaries?lat=-33.4489&lng=-70.6693&radius_km=10` es público: devuelve solo activas, en radio de hasta 100 km y ordenadas por distancia, con `name`, contacto, dirección y punto. `/api/v1/veterinary-clinics` se mantiene como alias compatible para clientes antiguos.
+  * `POST /api/v1/veterinaries` y `PATCH /api/v1/veterinaries/{id}` son exclusivos para `admin`; una fundación o adoptante recibe `403`.
+  * La app móvil y el portal las muestran con una cruz distinta de los pines de animales y reportes. Se conserva la atribución © OpenStreetMap, ODbL. Para importar o actualizar OSM: `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto Región Metropolitana; `--region` cambia la región).
 
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.

@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import Brand from './Brand'
 import ThemeToggle from './ThemeToggle'
-import { ChevronRight, Heart, House, LogOut, Menu, PawPrint, Users, X } from 'lucide-react'
+import { ChevronRight, Heart, House, LogOut, Menu, PawPrint, Siren, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/animales', label: 'Mis casos', icon: PawPrint },
+  { to: '/reportes', label: 'Reportes', icon: Siren },
   { to: '/fundacion', label: 'Mi fundación', icon: Users },
 ]
 
@@ -30,7 +31,8 @@ export default function Layout() {
   const { user, signOut } = useAuth()
   const initials = (user?.full_name ?? '').split(' ').filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const isAnimalsPage = location.pathname.startsWith('/animales')
-  const title = isAnimalsPage ? 'Mis casos' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
+  const isReportsPage = location.pathname.startsWith('/reportes')
+  const title = isAnimalsPage ? 'Mis casos' : isReportsPage ? 'Reportes' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
 
   return (
     <div className="min-h-screen lg:pl-64">

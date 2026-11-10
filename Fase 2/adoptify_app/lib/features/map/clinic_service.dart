@@ -2,7 +2,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/api_client.dart';
 
-// Clínica veterinaria para emergencias (GET /veterinary-clinics, datos de OpenStreetMap)
+// Clínica veterinaria para emergencias (GET /veterinaries, datos de OpenStreetMap o alta administrativa)
 class VetClinic {
   const VetClinic({
     required this.id,
@@ -56,8 +56,12 @@ class ClinicService {
 
   final ApiClient _api;
 
-  Future<List<VetClinic>> fetchClinics() async {
-    final data = await _api.get('/veterinary-clinics') as List<dynamic>;
+  Future<List<VetClinic>> fetchClinics(LatLng origin, int radiusKm) async {
+    final data = await _api.get('/veterinaries', query: {
+      'lat': origin.latitude,
+      'lng': origin.longitude,
+      'radius_km': radiusKm,
+    }) as List<dynamic>;
     return [for (final item in data) VetClinic.fromJson(item as Map<String, dynamic>)];
   }
 }

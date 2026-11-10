@@ -67,7 +67,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (inFlight.current || uploading) return
-    const validation = validateAnimal(fields, adminCreate, hasLocation)
+    const validation = validateAnimal(fields, adminCreate, hasLocation, !animal)
     if (Object.keys(validation).length) { showError('Revisa los campos indicados antes de guardar.', validation); return }
     inFlight.current = true
     setSaving(true)
@@ -116,7 +116,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
         {adminCreate && <p className="mt-3 text-sm text-base-500">Como administrador, indica el ID de una fundación ya registrada. Las cuentas de fundación publican directamente en su propia fundación.</p>}
         <div className="mt-5 space-y-5">
           <Field id="description" label="Su historia (opcional)" error={errors.description}><textarea {...props('description')} rows={4} maxLength={2000} /></Field>
-          <PhotoPicker label="Foto (opcional)" value={fields.photo_url || null} onChange={url => change('photo_url', url ?? '')} onUploadingChange={setUploading} error={errors.photo_url} />
+          <PhotoPicker label={animal ? 'Foto del animal (opcional al editar)' : 'Foto del animal *'} value={fields.photo_url || null} onChange={url => change('photo_url', url ?? '')} onUploadingChange={setUploading} error={errors.photo_url} />
         </div>
       </fieldset>
       <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">

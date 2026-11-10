@@ -102,7 +102,6 @@ class _MapScreenState extends State<MapScreen> {
       _load();
       _detectUser();
       _loadFoundations();
-      _loadClinics();
     }
   }
 
@@ -115,9 +114,9 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // Igual que las fundaciones: si falla, el mapa funciona sin las veterinarias
-  Future<void> _loadClinics() async {
+  Future<void> _loadClinics(LatLng origin, int radiusKm) async {
     try {
-      final clinics = await _clinicService.fetchClinics();
+      final clinics = await _clinicService.fetchClinics(origin, radiusKm);
       if (mounted) setState(() => _clinics = clinics);
     } catch (_) {}
   }
@@ -195,6 +194,10 @@ class _MapScreenState extends State<MapScreen> {
     }).catchError((_) {
       if (mounted && request == _request) setState(() => _reports = []);
     });
+
+    // Las veterinarias se consultan por cercanía igual que reportes y mascotas.
+    // Si fallan, el resto del mapa sigue funcionando.
+    _loadClinics(origin ?? santiago, origin != null ? _radiusKm : _defaultReportsRadiusKm);
 
     try {
       final animals = origin != null

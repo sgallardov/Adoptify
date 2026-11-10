@@ -21,6 +21,7 @@ NEW_ANIMAL = {
     "energy_level": 4,
     "keeping_place_type": "hogar_temporal",
     "keeping_place_address": "Pasaje de resguardo 123, Ñuñoa",
+    "photo_url": "https://example.com/test-animal.jpg",
     "latitude": -45.5712,
     "longitude": -72.0685,
 }
@@ -245,6 +246,10 @@ async def test_keeping_place_is_private_and_validated(async_client, world):
     assert (await async_client.post("/api/v1/animals", json=bad_type, headers=headers)).status_code == 422
     bad_address = {**NEW_ANIMAL, "keeping_place_address": "   "}
     assert (await async_client.post("/api/v1/animals", json=bad_address, headers=headers)).status_code == 422
+    missing_photo = {key: value for key, value in NEW_ANIMAL.items() if key != "photo_url"}
+    assert (await async_client.post("/api/v1/animals", json=missing_photo, headers=headers)).status_code == 422
+    blank_photo = {**NEW_ANIMAL, "photo_url": "   "}
+    assert (await async_client.post("/api/v1/animals", json=blank_photo, headers=headers)).status_code == 422
 
     created = await async_client.post("/api/v1/animals", json=NEW_ANIMAL, headers=headers)
     assert created.status_code == 201
