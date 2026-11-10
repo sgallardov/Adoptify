@@ -217,6 +217,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                           const SizedBox(height: AdoptifySpacing.sm),
                           _StatusChip(label: report.statusLabel, background: colors.primarySoft, foreground: colors.reportText),
                           const SizedBox(height: AdoptifySpacing.md),
+                          if (report.foundationName != null) ...[
+                            _IconLine(icon: Icons.volunteer_activism_outlined, text: '${report.foundationName} tomó este caso'),
+                            const SizedBox(height: AdoptifySpacing.sm),
+                          ] else if (report.seenAt != null) ...[
+                            _IconLine(icon: Icons.visibility_outlined, text: 'Una fundación ya vio este reporte'),
+                            const SizedBox(height: AdoptifySpacing.sm),
+                          ],
                           if (report.summary.isNotEmpty) Text(report.summary, style: textTheme.titleMedium),
                           if (report.conditionLabel.isNotEmpty) ...[
                             const SizedBox(height: AdoptifySpacing.xs),

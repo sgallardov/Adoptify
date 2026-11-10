@@ -5,6 +5,7 @@ from sqlalchemy import cast, delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.endpoints.auth import get_current_user, get_optional_user
 from app.db.database import get_db
@@ -45,6 +46,34 @@ async def create_report(
     return report
 
 
+def _require_foundation(current_user: User) -> None:
+    if current_user.role != "foundation" or current_user.foundation_id is None:
+        raise HTTPException(status_code=403, detail="Solo una fundación vinculada puede gestionar reportes.")
+
+
+async def _report_with_foundations(report_id: int, db: AsyncSession) -> AbandonedDogReport:
+    statement = (
+        select(AbandonedDogReport)
+        .options(
+            selectinload(AbandonedDogReport.seen_by_foundation),
+            selectinload(AbandonedDogReport.taken_by_foundation),
+        )
+        .where(AbandonedDogReport.id == report_id)
+    )
+    try:
+        report = (await db.execute(statement)).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar el reporte.") from exc
+    if report is None:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado.")
+    return report
+
+
+def _can_mark(report: AbandonedDogReport) -> None:
+    if report.status == "resolved":
+        raise HTTPException(status_code=409, detail="Un reporte resuelto no admite nuevas marcas.")
+
+
 @router.get(
     "/nearby",
     response_model=list[NearbyReportResponse],
@@ -68,6 +97,10 @@ async def list_nearby_reports(
 
     statement = (
         select(AbandonedDogReport, distance_m)
+        .options(
+            selectinload(AbandonedDogReport.seen_by_foundation),
+            selectinload(AbandonedDogReport.taken_by_foundation),
+        )
         .where(
             AbandonedDogReport.status != "resolved",
             func.ST_DWithin(report_location, origin, radius_km * 1000),
@@ -88,6 +121,64 @@ async def list_nearby_reports(
         )
         for report, distance in rows
     ]
+
+
+@router.get("/{report_id}", response_model=ReportResponse, summary="Ver un reporte")
+async def get_report(report_id: int, db: AsyncSession = Depends(get_db)):
+    return await _report_with_foundations(report_id, db)
+
+
+@router.post("/{report_id}/seen", response_model=ReportResponse, summary="Marcar reporte como visto")
+async def mark_seen(report_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_foundation(current_user)
+    report = await _report_with_foundations(report_id, db)
+    _can_mark(report)
+    if report.seen_by_foundation_id != current_user.foundation_id:
+        report.seen_by_foundation_id = current_user.foundation_id
+        report.seen_at = func.now()
+        try:
+            await db.commit()
+        except SQLAlchemyError as exc:
+            await db.rollback()
+            raise HTTPException(status_code=503, detail="No se pudo marcar el reporte como visto.") from exc
+    return await _report_with_foundations(report_id, db)
+
+
+@router.put("/{report_id}/taken", response_model=ReportResponse, summary="Tomar un reporte como caso")
+async def take_report(report_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_foundation(current_user)
+    report = await _report_with_foundations(report_id, db)
+    _can_mark(report)
+    if report.taken_by_foundation_id not in (None, current_user.foundation_id):
+        raise HTTPException(status_code=409, detail="Otra fundación ya tomó este reporte.")
+    if report.taken_by_foundation_id is None:
+        report.taken_by_foundation_id = current_user.foundation_id
+        report.taken_at = func.now()
+        report.status = "in_rescue"
+        try:
+            await db.commit()
+        except SQLAlchemyError as exc:
+            await db.rollback()
+            raise HTTPException(status_code=503, detail="No se pudo tomar el reporte.") from exc
+    return await _report_with_foundations(report_id, db)
+
+
+@router.delete("/{report_id}/taken", response_model=ReportResponse, summary="Deshacer toma de un reporte")
+async def untake_report(report_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_foundation(current_user)
+    report = await _report_with_foundations(report_id, db)
+    _can_mark(report)
+    if report.taken_by_foundation_id != current_user.foundation_id:
+        raise HTTPException(status_code=403, detail="Solo la fundación que tomó el caso puede deshacerlo.")
+    report.taken_by_foundation_id = None
+    report.taken_at = None
+    report.status = "reported"
+    try:
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo deshacer la toma del reporte.") from exc
+    return await _report_with_foundations(report_id, db)
 
 
 # --- Comentarios anónimos y "me enteré" de un reporte ---

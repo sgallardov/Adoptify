@@ -70,6 +70,9 @@ class DogReport {
     this.behaviors = const [],
     this.photoUrl,
     this.distanceKm,
+    this.foundationName,
+    this.seenAt,
+    this.takenAt,
   });
 
   factory DogReport.fromJson(Map<String, dynamic> json) => DogReport(
@@ -87,6 +90,9 @@ class DogReport {
         createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
         photoUrl: mediaUrl(json['photo_url'] as String?),
         distanceKm: (json['distance_km'] as num?)?.toDouble(),
+        foundationName: json['foundation_name'] as String?,
+        seenAt: json['seen_at'] == null ? null : DateTime.parse(json['seen_at'] as String).toLocal(),
+        takenAt: json['taken_at'] == null ? null : DateTime.parse(json['taken_at'] as String).toLocal(),
       );
 
   final int id;
@@ -103,6 +109,9 @@ class DogReport {
   final DateTime createdAt;
   final String? photoUrl;
   final double? distanceKm;
+  final String? foundationName;
+  final DateTime? seenAt;
+  final DateTime? takenAt;
 
   String get statusLabel => reportStatuses[status] ?? status;
 

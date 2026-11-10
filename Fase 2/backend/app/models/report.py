@@ -1,11 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, Integer, Float, Text, ForeignKey, DateTime, func
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import to_shape
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.foundation import Foundation
 
 
 class AbandonedDogReport(Base):
@@ -23,6 +26,14 @@ class AbandonedDogReport(Base):
         nullable=True,
         index=True
     )
+    seen_by_foundation_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("foundations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    taken_by_foundation_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("foundations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    taken_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Ficha del animal. Son opcionales en la BD porque los reportes anteriores no los tenían;
     # la API los exige al crear (ver ReportCreate)
@@ -49,6 +60,9 @@ class AbandonedDogReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    seen_by_foundation: Mapped[Optional["Foundation"]] = relationship("Foundation", foreign_keys=[seen_by_foundation_id])
+    taken_by_foundation: Mapped[Optional["Foundation"]] = relationship("Foundation", foreign_keys=[taken_by_foundation_id])
+
     # Coordenadas legibles para la API y el mapa (PostGIS guarda el punto como (longitud, latitud))
     @property
     def latitude(self) -> float:
@@ -57,6 +71,11 @@ class AbandonedDogReport(Base):
     @property
     def longitude(self) -> float:
         return to_shape(self.location).x
+
+    @property
+    def foundation_name(self) -> Optional[str]:
+        """Fundación que tomó el caso; se carga explícitamente en las consultas públicas."""
+        return self.taken_by_foundation.name if self.taken_by_foundation is not None else None
 
     def __repr__(self) -> str:
         return f"<AbandonedDogReport(id={self.id}, status='{self.status}')>"
