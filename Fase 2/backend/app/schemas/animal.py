@@ -92,7 +92,10 @@ class AnimalCreate(CommuneInput):
     energy_level: int = Field(3, ge=1, le=5, description="Escala de 1 (tranquilo) a 5 (muy activo)")
     description: str | None = Field(None, max_length=2000)
     status: AnimalStatus = "available"
-    photo_url: str | None = Field(None, max_length=500)
+    # Una publicación nueva debe tener una foto: es esencial para que los adoptantes
+    # puedan reconocer al animal. La columna sigue aceptando nulos por los registros
+    # históricos que se crearon antes de esta regla.
+    photo_url: str = Field(..., min_length=1, max_length=500)
     keeping_place_type: KeepingPlaceType
     keeping_place_address: str = Field(..., min_length=1, max_length=255)
     latitude: float | None = Field(None, ge=-90, le=90)
@@ -104,6 +107,13 @@ class AnimalCreate(CommuneInput):
     @classmethod
     def photo_as_reference(cls, value):
         return storage.to_reference(value) if isinstance(value, str) else value
+
+    @field_validator("photo_url")
+    @classmethod
+    def validate_photo_url(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Debes subir una foto del animal")
+        return value
 
     @field_validator("name")
     @classmethod

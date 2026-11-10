@@ -19,7 +19,7 @@ export function animalFields(animal?: AnimalResponse): AnimalFields {
   }
 }
 
-export function validateAnimal(fields: AnimalFields, adminCreate: boolean, hadLocation: boolean): FieldErrors {
+export function validateAnimal(fields: AnimalFields, adminCreate: boolean, hadLocation: boolean, photoRequired = true): FieldErrors {
   const errors: FieldErrors = {}
   if (!fields.name.trim()) errors.name = 'Escribe el nombre del animal.'
   else if (fields.name.trim().length > 100) errors.name = 'El nombre admite hasta 100 caracteres.'
@@ -33,7 +33,9 @@ export function validateAnimal(fields: AnimalFields, adminCreate: boolean, hadLo
   if (!['refugio', 'hogar_temporal'].includes(fields.keeping_place_type)) errors.keeping_place_type = 'Selecciona si está en refugio u hogar temporal.'
   if (!fields.keeping_place_address.trim()) errors.keeping_place_address = 'Indica el lugar donde se encuentra el animal.'
   else if (fields.keeping_place_address.trim().length > 255) errors.keeping_place_address = 'El lugar admite hasta 255 caracteres.'
-  if (fields.photo_url.trim()) {
+  if (photoRequired && !fields.photo_url.trim()) {
+    errors.photo_url = 'Sube una foto del animal antes de publicar.'
+  } else if (fields.photo_url.trim()) {
     try {
       const url = new URL(fields.photo_url.trim())
       if (!['http:', 'https:'].includes(url.protocol) || fields.photo_url.trim().length > 500) throw new Error()
@@ -68,7 +70,7 @@ const fieldMessages: Record<string, string> = {
   energy_level: 'La energía debe estar entre 1 y 5.', description: 'La descripción admite hasta 2000 caracteres.',
   keeping_place_type: 'Selecciona si está en refugio u hogar temporal.',
   keeping_place_address: 'Indica el lugar donde se encuentra el animal (máximo 255 caracteres).',
-  photo_url: 'Revisa el enlace de la foto (máximo 500 caracteres).', latitude: 'Revisa la latitud y la longitud.',
+  photo_url: 'Sube una foto válida del animal (máximo 500 caracteres).', latitude: 'Revisa la latitud y la longitud.',
   longitude: 'Revisa la latitud y la longitud.', foundation_id: 'Revisa la fundación asignada.',
   status: 'Selecciona Disponible, En proceso o Adoptado.',
 }
