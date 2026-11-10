@@ -136,7 +136,7 @@ el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
 - La ubicación es opcional al crear. Sin ella, el animal no aparece por cercanía.
   Una ubicación existente se puede mover, pero no borrar: HU-12 rechaza
   coordenadas nulas en PATCH. Siempre se envían latitud y longitud juntas.
-- Nombre, especie, tamaño y sexo son obligatorios (sexo lo exige HU-12).
+- Nombre, especie, tamaño, sexo, **foto del animal** y lugar de resguardo (tipo y texto) son obligatorios al publicar. El formulario y la API rechazan una publicación sin alguno de ellos.
   Se validan además edad (0–360 meses), energía (1–5), largos de texto y URL de foto.
   La foto se sube desde el computador (ver HU-16).
 - Los administradores indican el ID de la fundación al crear. HU-12 no incluye
@@ -167,7 +167,7 @@ fundaciones, en la de adoptantes (`AppHeader`) y en el login.
 ## HU-16: subir fotos
 
 `PhotoPicker` (`components/PhotoPicker.tsx`) reemplaza el campo de enlace de la foto en
-**Publicar / Editar animal** y agrega **Foto (opcional)**.
+**Publicar / Editar animal** y agrega **Foto del animal***. No se puede publicar un animal sin una foto; las fichas históricas sin foto se pueden editar para completarla.
 
 - Botón **Subir foto**: abre el selector de archivos del computador o recibe una imagen arrastrada.
   En el celular, el selector del navegador ofrece también la cámara y la galería.
