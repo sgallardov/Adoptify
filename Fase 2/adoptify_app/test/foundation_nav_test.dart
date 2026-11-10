@@ -43,7 +43,7 @@ void main() {
     await openFoundation(tester);
 
     expect(screenTitle('Agregar mascota'), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
+    expect(find.text('Publica una historia'), findsOneWidget);
   });
 
   testWidgets('cada pestaña abre su placeholder', (tester) async {
@@ -52,7 +52,7 @@ void main() {
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
     expect(screenTitle('Chat'), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
+    expect(find.text('Publica una historia'), findsOneWidget);
 
     // Perfil ya no es un placeholder: edita la foto y la descripción de la fundación
     await tester.tap(find.text('Perfil'));

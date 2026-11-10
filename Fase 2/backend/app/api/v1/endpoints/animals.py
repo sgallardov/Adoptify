@@ -14,6 +14,7 @@ from app.models.animal_favorite import AnimalFavorite
 from app.models.user import User
 from app.schemas.animal import (
     AnimalCreate,
+    AnimalMutationResponse,
     AnimalResponse,
     AnimalUpdate,
     MatchAnimalResponse,
@@ -256,7 +257,7 @@ async def list_nearby_animals(
 
 @router.post(
     "",
-    response_model=AnimalResponse,
+    response_model=AnimalMutationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Publicar un animal",
     responses={
@@ -301,7 +302,7 @@ async def create_animal(
 
 @router.patch(
     "/{animal_id}",
-    response_model=AnimalResponse,
+    response_model=AnimalMutationResponse,
     summary="Editar un animal o cambiar su estado",
     responses={
         401: {"description": "Se requiere iniciar sesión"},

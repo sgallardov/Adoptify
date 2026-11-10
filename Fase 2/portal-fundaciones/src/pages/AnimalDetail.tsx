@@ -28,7 +28,7 @@ function StatusEditor({ record, onUpdate }: { record: AnimalResponse; onUpdate: 
     inFlight.current = true
     setSaving(true)
     setError('')
-    try { onUpdate(await updateAnimal(record.id, { status })) }
+    try { onUpdate({ ...record, ...await updateAnimal(record.id, { status }) }) }
     catch (failure) { setError(animalError(failure).message) }
     finally { inFlight.current = false; setSaving(false) }
   }
@@ -49,6 +49,7 @@ function Detail({ record, onUpdate }: { record: AnimalResponse; onUpdate: (anima
   const location = useLocation()
   const [notice, setNotice] = useState<string>((location.state as { notice?: string } | null)?.notice ?? '')
   const animal = toAnimal(record)
+  const keepingType = record.keeping_place_type === 'refugio' ? 'Refugio' : record.keeping_place_type === 'hogar_temporal' ? 'Hogar temporal' : 'Sin información'
 
   return <>
     <Link to="/animales" className="mb-7 inline-flex items-center gap-2 text-sm text-base-600 hover:text-brand-700"><ArrowLeft size={17} />Volver a mis animales</Link>
@@ -64,6 +65,11 @@ function Detail({ record, onUpdate }: { record: AnimalResponse; onUpdate: (anima
         </dl>
         <p className="mt-5 text-sm text-base-500">{record.latitude != null && record.longitude != null ? `Punto privado: ${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}` : 'Ubicación no registrada'}</p>
         <p className="mt-1 text-sm text-base-500">Zona pública: {record.public_commune || 'Zona no informada'}</p>
+        <section className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
+          <h2 className="font-semibold">Lugar de resguardo privado</h2>
+          <p className="mt-1">{keepingType} · {record.keeping_place_address || 'Sin información'}</p>
+          <p className="mt-1 text-xs text-brand-700">Solo visible para tu fundación y el administrador.</p>
+        </section>
         <Link to={`/animales/${animal.id}/editar`} className="button-secondary mt-5">Editar animal</Link>
         <StatusEditor key={`${record.id}-${record.status}`} record={record} onUpdate={updated => { onUpdate(updated); setNotice('El estado del animal se actualizó correctamente.') }} />
       </div>
