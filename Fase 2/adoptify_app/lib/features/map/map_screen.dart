@@ -45,8 +45,12 @@ class _MapScreenState extends State<MapScreen> {
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
   late final MapService _service = MapService(AuthScope.of(context).api);
-  late final FoundationService _foundationService = FoundationService(AuthScope.of(context).api);
-  late final ClinicService _clinicService = ClinicService(AuthScope.of(context).api);
+  late final FoundationService _foundationService = FoundationService(
+    AuthScope.of(context).api,
+  );
+  late final ClinicService _clinicService = ClinicService(
+    AuthScope.of(context).api,
+  );
 
   LatLng? _origin;
   int _radiusKm = 10;
@@ -62,10 +66,11 @@ class _MapScreenState extends State<MapScreen> {
   bool _error = false;
   int _request = 0;
 
-  // Tarjeta de avisos: mascotas reportadas a menos de 5 km de tu ubicación.
-  // La ubicación se pide sola al abrir el mapa; si no se obtiene, la tarjeta invita a activarla.
+  // Botón de avisos: mascotas reportadas a menos de 5 km de tu ubicación; al tocarlo se despliega la lista.
+  // La ubicación se pide sola al abrir el mapa; si no se obtiene, el botón invita a activarla.
   LatLng? _userPosition;
-  int? _alertsNearby;
+  List<DogReport>? _alerts;
+  bool _alertsOpen = false;
   bool _detecting = true;
   bool _alertsLoading = false;
 
@@ -145,16 +150,19 @@ class _MapScreenState extends State<MapScreen> {
     if (position == null) return;
     setState(() => _alertsLoading = true);
     try {
-      final reports = await _service.fetchNearbyReports(position, _alertsRadiusKm);
+      final reports = await _service.fetchNearbyReports(
+        position,
+        _alertsRadiusKm,
+      );
       if (!mounted || position != _userPosition) return;
       setState(() {
-        _alertsNearby = reports.length;
+        _alerts = reports;
         _alertsLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _alertsNearby = null;
+        _alerts = null;
         _alertsLoading = false;
       });
     }
@@ -185,15 +193,19 @@ class _MapScreenState extends State<MapScreen> {
 
     // Si fallan los reportes, el mapa sigue funcionando sin ellos
     _service
-        .fetchNearbyReports(origin ?? santiago, origin != null ? _radiusKm : _defaultReportsRadiusKm)
+        .fetchNearbyReports(
+          origin ?? santiago,
+          origin != null ? _radiusKm : _defaultReportsRadiusKm,
+        )
         .then((reports) {
-      if (mounted && request == _request) {
-        setState(() => _reports = reports);
-        _fitToPoints();
-      }
-    }).catchError((_) {
-      if (mounted && request == _request) setState(() => _reports = []);
-    });
+          if (mounted && request == _request) {
+            setState(() => _reports = reports);
+            _fitToPoints();
+          }
+        })
+        .catchError((_) {
+          if (mounted && request == _request) setState(() => _reports = []);
+        });
 
     // Las veterinarias se consultan por cercanía igual que reportes y mascotas.
     // Si fallan, el resto del mapa sigue funcionando.
@@ -226,7 +238,10 @@ class _MapScreenState extends State<MapScreen> {
     // completo. Se reintenta en el siguiente cuadro (máximo 20 veces).
     final size = _mapController.camera.nonRotatedSize;
     if (size.width < 50 || size.height < 50) {
-      if (attempt < 20) WidgetsBinding.instance.addPostFrameCallback((_) => _fitToPoints(attempt + 1));
+      if (attempt < 20)
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _fitToPoints(attempt + 1),
+        );
       return;
     }
     final origin = _origin;
@@ -244,7 +259,13 @@ class _MapScreenState extends State<MapScreen> {
     if (points.length == 1) {
       _mapController.move(points.first, 14);
     } else {
-      _mapController.fitCamera(CameraFit.coordinates(coordinates: points, padding: _fitPadding, maxZoom: 16));
+      _mapController.fitCamera(
+        CameraFit.coordinates(
+          coordinates: points,
+          padding: _fitPadding,
+          maxZoom: 16,
+        ),
+      );
     }
   }
 
@@ -355,7 +376,9 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {}
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos abrir esa opción en este dispositivo.')),
+        const SnackBar(
+          content: Text('No pudimos abrir esa opción en este dispositivo.'),
+        ),
       );
     }
   }
@@ -374,7 +397,11 @@ class _MapScreenState extends State<MapScreen> {
     final query = _fold(_search.text.trim());
     if (query.isEmpty) return const [];
     return _animals
-        .where((animal) => _fold('${animal.name} ${animal.species} ${animal.foundationName ?? ''}').contains(query))
+        .where(
+          (animal) => _fold(
+            '${animal.name} ${animal.species} ${animal.foundationName ?? ''}',
+          ).contains(query),
+        )
         .take(5)
         .toList();
   }
@@ -394,7 +421,9 @@ class _MapScreenState extends State<MapScreen> {
           return _LayersSheet(
             animalsCount: _animals.length,
             reportsCount: _reports.length,
-            foundationsCount: _foundations.where((f) => f.position != null).length,
+            foundationsCount: _foundations
+                .where((f) => f.position != null)
+                .length,
             showAnimals: _showAnimals,
             showReports: _showReports,
             showFoundations: _showFoundations,
@@ -426,12 +455,23 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedAnimal = _animals.where((animal) => animal.id == _selectedAnimalId).firstOrNull;
-    final selectedReport = _reports.where((report) => report.id == _selectedReportId).firstOrNull;
-    final selectedFoundation = _foundations.where((f) => f.id == _selectedFoundationId).firstOrNull;
-    final selectedClinic = _clinics.where((c) => c.id == _selectedClinicId).firstOrNull;
+    final selectedAnimal = _animals
+        .where((animal) => animal.id == _selectedAnimalId)
+        .firstOrNull;
+    final selectedReport = _reports
+        .where((report) => report.id == _selectedReportId)
+        .firstOrNull;
+    final selectedFoundation = _foundations
+        .where((f) => f.id == _selectedFoundationId)
+        .firstOrNull;
+    final selectedClinic = _clinics
+        .where((c) => c.id == _selectedClinicId)
+        .firstOrNull;
     final hasSelection =
-        selectedAnimal != null || selectedReport != null || selectedFoundation != null || selectedClinic != null;
+        selectedAnimal != null ||
+        selectedReport != null ||
+        selectedFoundation != null ||
+        selectedClinic != null;
     final searching = _searchFocus.hasFocus && _search.text.trim().isNotEmpty;
 
     return Scaffold(
@@ -442,7 +482,12 @@ class _MapScreenState extends State<MapScreen> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.lg, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AdoptifySpacing.lg,
+                AdoptifySpacing.sm,
+                AdoptifySpacing.lg,
+                0,
+              ),
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
@@ -461,19 +506,34 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Expanded(child: _buildStatus()),
                             const SizedBox(width: AdoptifySpacing.sm),
-                            Column(
-                              children: [
-                                _AlertsCard(
-                                  count: _alertsNearby,
-                                  loading: _detecting || _alertsLoading,
-                                  hasLocation: _userPosition != null,
-                                  onActivate: _locating ? null : _locate,
-                                  onRetry: _loadAlerts,
-                                ),
-                              ],
+                            _AlertsButton(
+                              key: const ValueKey('alerts-button'),
+                              count: _alerts?.length,
+                              open: _alertsOpen,
+                              loading: _detecting || _alertsLoading,
+                              hasLocation: _userPosition != null,
+                              onToggle: () =>
+                                  setState(() => _alertsOpen = !_alertsOpen),
+                              onActivate: _locating ? null : _locate,
+                              onRetry: _loadAlerts,
                             ),
                           ],
                         ),
+                        if (_alertsOpen && _alerts != null) ...[
+                          const SizedBox(height: AdoptifySpacing.sm),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: _AlertsPanel(
+                              reports: _alerts!,
+                              onOpen: (report) => context.push(
+                                '/reportes/${report.id}',
+                                extra: report,
+                              ),
+                              onClose: () =>
+                                  setState(() => _alertsOpen = false),
+                            ),
+                          ),
+                        ],
                         if (_geoError != null) ...[
                           const SizedBox(height: AdoptifySpacing.sm),
                           MessageBox.error(message: _geoError!),
@@ -486,7 +546,11 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
           // Atribución de OSM, mínima, en la franja bajo el botón de reportar (las fichas quedan sobre el botón)
-          Positioned(right: AdoptifySpacing.md, bottom: 0, child: osmAttribution(context)),
+          Positioned(
+            right: AdoptifySpacing.md,
+            bottom: 0,
+            child: osmAttribution(context),
+          ),
           // Derecha: capas y ubicación. Suben cuando hay una ficha abierta, para no quedar debajo de ella.
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
@@ -495,14 +559,20 @@ class _MapScreenState extends State<MapScreen> {
             bottom: selectedFoundation != null
                 ? 400
                 : selectedClinic != null
-                    ? 340
-                    : (hasSelection ? 260 : 96),
+                ? 340
+                : (hasSelection ? 260 : 96),
             child: Column(
               children: [
-                MapButton(icon: Icons.layers_outlined, tooltip: 'Capas', onPressed: _openLayers),
+                MapButton(
+                  icon: Icons.layers_outlined,
+                  tooltip: 'Capas',
+                  onPressed: _openLayers,
+                ),
                 const SizedBox(height: AdoptifySpacing.md),
                 MapButton(
-                  icon: _origin != null ? Icons.my_location : Icons.near_me_outlined,
+                  icon: _origin != null
+                      ? Icons.my_location
+                      : Icons.near_me_outlined,
                   tooltip: 'Usar mi ubicación',
                   active: _origin != null,
                   loading: _locating,
@@ -527,14 +597,20 @@ class _MapScreenState extends State<MapScreen> {
                       _AnimalDetailCard(
                         animal: selectedAnimal,
                         onClose: _clearSelection,
-                        onOpen: () => context.push('/animales/${selectedAnimal.id}', extra: selectedAnimal),
+                        onOpen: () => context.push(
+                          '/animales/${selectedAnimal.id}',
+                          extra: selectedAnimal,
+                        ),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ] else if (selectedReport != null) ...[
                       _ReportDetailCard(
                         report: selectedReport,
                         onClose: _clearSelection,
-                        onOpen: () => context.push('/reportes/${selectedReport.id}', extra: selectedReport),
+                        onOpen: () => context.push(
+                          '/reportes/${selectedReport.id}',
+                          extra: selectedReport,
+                        ),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ] else if (selectedFoundation != null) ...[
@@ -542,7 +618,10 @@ class _MapScreenState extends State<MapScreen> {
                       _FoundationDetailCard(
                         foundation: selectedFoundation,
                         onClose: _clearSelection,
-                        onOpen: () => context.push('/fundaciones/${selectedFoundation.id}', extra: selectedFoundation),
+                        onOpen: () => context.push(
+                          '/fundaciones/${selectedFoundation.id}',
+                          extra: selectedFoundation,
+                        ),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ] else if (selectedClinic != null) ...[
@@ -550,7 +629,9 @@ class _MapScreenState extends State<MapScreen> {
                         clinic: selectedClinic,
                         onClose: _clearSelection,
                         onDirections: () => _open(selectedClinic.directionsUrl),
-                        onCall: selectedClinic.phoneUrl == null ? null : () => _open(selectedClinic.phoneUrl!),
+                        onCall: selectedClinic.phoneUrl == null
+                            ? null
+                            : () => _open(selectedClinic.phoneUrl!),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
@@ -574,7 +655,10 @@ class _MapScreenState extends State<MapScreen> {
       content = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox.square(dimension: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox.square(
+            dimension: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
           const SizedBox(width: AdoptifySpacing.sm),
           Text('Buscando mascotas…', style: muted),
         ],
@@ -583,7 +667,9 @@ class _MapScreenState extends State<MapScreen> {
       content = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(child: Text('No pudimos cargar las mascotas.', style: muted)),
+          Flexible(
+            child: Text('No pudimos cargar las mascotas.', style: muted),
+          ),
           TextButton(onPressed: _load, child: const Text('Reintentar')),
         ],
       );
@@ -614,7 +700,10 @@ class _MapScreenState extends State<MapScreen> {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.xs),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AdoptifySpacing.md,
+          vertical: AdoptifySpacing.xs,
+        ),
         constraints: const BoxConstraints(minHeight: 36),
         decoration: mapSurface(context, radius: 99),
         child: content,
@@ -653,7 +742,9 @@ class _MapScreenState extends State<MapScreen> {
               for (final clinic in _clinics)
                 dropMarker(
                   clinic.position,
-                  clinic.id == _selectedClinicId ? MapPins.selectedClinic : MapPins.clinic,
+                  clinic.id == _selectedClinicId
+                      ? MapPins.selectedClinic
+                      : MapPins.clinic,
                   key: ValueKey('clinic-${clinic.id}'),
                   onTap: () => _selectClinic(clinic),
                 ),
@@ -662,7 +753,9 @@ class _MapScreenState extends State<MapScreen> {
                 if (foundation.position != null)
                   dropMarker(
                     foundation.position!,
-                    foundation.id == _selectedFoundationId ? MapPins.selectedFoundation : MapPins.foundation,
+                    foundation.id == _selectedFoundationId
+                        ? MapPins.selectedFoundation
+                        : MapPins.foundation,
                     key: ValueKey('foundation-${foundation.id}'),
                     onTap: () => _selectFoundation(foundation),
                   ),
@@ -715,19 +808,24 @@ String _fold(String text) {
 }
 
 // Superficie común de lo que flota sobre el mapa: mismo borde y sombra sutil
-// Cuadrado con una huella y cuántas mascotas reportadas hay a menos de 5 km de ti
-class _AlertsCard extends StatelessWidget {
-  const _AlertsCard({
+// Botón chico con una huella y cuántas mascotas reportadas hay a menos de 5 km de ti. Al tocarlo se despliega la lista.
+class _AlertsButton extends StatelessWidget {
+  const _AlertsButton({
+    super.key,
     required this.count,
+    required this.open,
     required this.loading,
     required this.hasLocation,
+    required this.onToggle,
     required this.onActivate,
     required this.onRetry,
   });
 
   final int? count;
+  final bool open;
   final bool loading;
   final bool hasLocation;
+  final VoidCallback onToggle;
   final VoidCallback? onActivate;
   final VoidCallback onRetry;
 
@@ -735,65 +833,194 @@ class _AlertsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textTheme = Theme.of(context).textTheme;
-    final List<Widget> lines;
+    final Widget content;
     VoidCallback? onTap;
+    String? label;
     if (loading) {
-      lines = [const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))];
+      content = const SizedBox.square(
+        dimension: 16,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
     } else if (hasLocation && count != null) {
-      lines = [
-        Text('$count ${count == 1 ? 'aviso' : 'avisos'}', style: textTheme.titleSmall),
-        Text('cerca tuyo', style: textTheme.bodySmall),
-      ];
+      label =
+          '$count ${count == 1 ? 'aviso' : 'avisos'} a menos de $_alertsRadiusKm km';
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.pets, size: 18, color: colors.primaryDark),
+          const SizedBox(width: AdoptifySpacing.xs),
+          Text('$count', style: textTheme.titleSmall),
+          Icon(
+            open ? Icons.expand_less : Icons.expand_more,
+            size: 20,
+            color: colors.textMuted,
+          ),
+        ],
+      );
+      onTap = onToggle;
     } else if (hasLocation) {
-      // No se pudieron consultar los avisos: tocar la tarjeta reintenta
-      lines = [
-        Text('Sin conexión', style: textTheme.labelMedium),
-        Text('Reintentar', style: textTheme.bodySmall?.copyWith(color: colors.primaryDark)),
-      ];
+      // No se pudieron consultar los avisos: tocar el botón reintenta
+      content = Text(
+        'Reintentar',
+        style: textTheme.labelMedium?.copyWith(color: colors.primaryDark),
+      );
       onTap = onRetry;
     } else {
-      lines = [
-        Text('Activa tu', style: textTheme.labelMedium),
-        Text('ubicación', style: textTheme.labelMedium),
-      ];
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.my_location, size: 16, color: colors.primaryDark),
+          const SizedBox(width: AdoptifySpacing.xs),
+          Text('Activar ubicación', style: textTheme.labelMedium),
+        ],
+      );
       onTap = onActivate;
     }
 
     return Semantics(
       container: true,
       button: onTap != null,
-      label: hasLocation && count != null
-          ? '$count ${count == 1 ? 'aviso' : 'avisos'} a menos de $_alertsRadiusKm km'
-          : null,
+      label: label,
       child: Material(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+        borderRadius: BorderRadius.circular(99),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+          borderRadius: BorderRadius.circular(99),
           child: Container(
-            width: 104,
-            padding: const EdgeInsets.all(AdoptifySpacing.md),
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+              borderRadius: BorderRadius.circular(99),
               border: Border.all(color: colors.border),
               boxShadow: AdoptifyShadows.soft,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: content,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Lista desplegable de los avisos cercanos: cada fila abre el detalle del reporte. Alto limitado para no tapar el mapa.
+class _AlertsPanel extends StatelessWidget {
+  const _AlertsPanel({
+    required this.reports,
+    required this.onOpen,
+    required this.onClose,
+  });
+
+  final List<DogReport> reports;
+  final ValueChanged<DogReport> onOpen;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textTheme = Theme.of(context).textTheme;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.4;
+    return Container(
+      key: const ValueKey('alerts-panel'),
+      width: 320,
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      decoration: mapSurface(context, radius: AdoptifyRadius.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AdoptifySpacing.lg,
+              AdoptifySpacing.md,
+              AdoptifySpacing.sm,
+              0,
+            ),
+            child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(color: colors.primarySoft, shape: BoxShape.circle),
-                  child: Icon(Icons.pets, size: 20, color: colors.primaryDark),
+                Expanded(
+                  child: Text(
+                    'Avisos a menos de $_alertsRadiusKm km',
+                    style: textTheme.titleSmall,
+                  ),
                 ),
-                const SizedBox(height: AdoptifySpacing.xs),
-                ...lines,
+                IconButton(
+                  tooltip: 'Cerrar avisos',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: onClose,
+                ),
               ],
             ),
           ),
-        ),
+          if (reports.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AdoptifySpacing.lg,
+                0,
+                AdoptifySpacing.lg,
+                AdoptifySpacing.lg,
+              ),
+              child: Text(
+                'No hay mascotas reportadas cerca de ti.',
+                style: textTheme.bodyMedium?.copyWith(color: colors.textMuted),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: AdoptifySpacing.sm),
+                itemCount: reports.length,
+                itemBuilder: (context, index) {
+                  final report = reports[index];
+                  return InkWell(
+                    key: ValueKey('alert-${report.id}'),
+                    onTap: () => onOpen(report),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AdoptifySpacing.lg,
+                        vertical: AdoptifySpacing.sm,
+                      ),
+                      child: Row(
+                        children: [
+                          AnimalPhoto(url: report.photoUrl, size: 48),
+                          const SizedBox(width: AdoptifySpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  report.summary.isEmpty
+                                      ? 'Mascota reportada'
+                                      : report.summary,
+                                  style: textTheme.titleSmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  [
+                                    report.statusLabel,
+                                    if (report.distanceKm != null)
+                                      'a ${formatKm(report.distanceKm!)} km',
+                                  ].join(' · '),
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: colors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: colors.textMuted),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -850,7 +1077,10 @@ class _SearchResults extends StatelessWidget {
       child: results.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(AdoptifySpacing.lg),
-              child: Text('No encontramos mascotas con ese nombre.', style: textTheme.bodyMedium),
+              child: Text(
+                'No encontramos mascotas con ese nombre.',
+                style: textTheme.bodyMedium,
+              ),
             )
           : Material(
               type: MaterialType.transparency,
@@ -862,7 +1092,11 @@ class _SearchResults extends StatelessWidget {
                       leading: AnimalPhoto(url: animal.photoUrl, size: 40),
                       title: Text(animal.name, style: textTheme.titleSmall),
                       subtitle: Text(
-                        [animal.publicZone, animal.summary, ?animal.foundationName].join(' · '),
+                        [
+                          animal.publicZone,
+                          animal.summary,
+                          ?animal.foundationName,
+                        ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodySmall,
@@ -891,16 +1125,22 @@ class _ReportButton extends StatelessWidget {
       label: const Text('Reportar mascota'),
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.hovered) || states.contains(WidgetState.pressed)
+          (states) =>
+              states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.pressed)
               ? colors.reportStrong
               : colors.report,
         ),
         minimumSize: const WidgetStatePropertyAll(Size.fromHeight(56)),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AdoptifyRadius.lg)),
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+          ),
         ),
         elevation: const WidgetStatePropertyAll(3),
-        shadowColor: WidgetStatePropertyAll(colors.report.withValues(alpha: 0.4)),
+        shadowColor: WidgetStatePropertyAll(
+          colors.report.withValues(alpha: 0.4),
+        ),
       ),
     );
   }
@@ -953,40 +1193,66 @@ class _LayersSheet extends StatelessWidget {
     // Con cinco capas no cabe en pantallas bajas: se desplaza en vez de cortarse
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(AdoptifySpacing.sm, 0, AdoptifySpacing.sm, AdoptifySpacing.lg),
+        padding: const EdgeInsets.fromLTRB(
+          AdoptifySpacing.sm,
+          0,
+          AdoptifySpacing.sm,
+          AdoptifySpacing.lg,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AdoptifySpacing.lg,
+              ),
               child: Text('Capas del mapa', style: textTheme.titleMedium),
             ),
             SwitchListTile(
               value: showAnimals,
               onChanged: onAnimals,
               secondary: dot(colors.primary),
-              title: Text('Adopción · zonas aproximadas ($animalsCount)', style: textTheme.bodyMedium),
+              title: Text(
+                'Adopción · zonas aproximadas ($animalsCount)',
+                style: textTheme.bodyMedium,
+              ),
             ),
             SwitchListTile(
               value: showReports,
               onChanged: onReports,
               secondary: dot(colors.report),
-              title: Text('Mascotas reportadas ($reportsCount)', style: textTheme.bodyMedium),
+              title: Text(
+                'Mascotas reportadas ($reportsCount)',
+                style: textTheme.bodyMedium,
+              ),
             ),
             SwitchListTile(
               value: showFoundations,
               onChanged: onFoundations,
               secondary: dot(colors.foundation),
-              title: Text('Fundaciones ($foundationsCount)', style: textTheme.bodyMedium),
+              title: Text(
+                'Fundaciones ($foundationsCount)',
+                style: textTheme.bodyMedium,
+              ),
             ),
             SwitchListTile(
               value: showClinics,
               onChanged: onClinics,
-              secondary: Icon(Icons.local_hospital, size: 18, color: colors.report),
-              title: Text('Veterinarias ($clinicsCount)', style: textTheme.bodyMedium),
+              secondary: Icon(
+                Icons.local_hospital,
+                size: 18,
+                color: colors.report,
+              ),
+              title: Text(
+                'Veterinarias ($clinicsCount)',
+                style: textTheme.bodyMedium,
+              ),
               subtitle: showClinics && !clinicsInView
-                  ? Text('Acerca el mapa para verlas', style: textTheme.bodySmall)
+                  ? Text(
+                      'Acerca el mapa para verlas',
+                      style: textTheme.bodySmall,
+                    )
                   : null,
             ),
             if (showOrigin)
@@ -1018,7 +1284,10 @@ class _RadiusSelector extends StatelessWidget {
         style: textTheme.labelLarge,
         borderRadius: BorderRadius.circular(AdoptifyRadius.md),
         focusColor: Colors.transparent,
-        items: [for (final km in _radiusOptions) DropdownMenuItem(value: km, child: Text('Radio $km km'))],
+        items: [
+          for (final km in _radiusOptions)
+            DropdownMenuItem(value: km, child: Text('Radio $km km')),
+        ],
       ),
     );
   }
@@ -1027,7 +1296,12 @@ class _RadiusSelector extends StatelessWidget {
 // Ficha que aparece al tocar un pin: reemplaza los popups del mapa web.
 // Tocar la ficha (menos el botón de cerrar) abre la pantalla completa con la foto grande y todo el detalle.
 class _DetailCard extends StatelessWidget {
-  const _DetailCard({required this.children, required this.onClose, required this.onOpen, this.leading});
+  const _DetailCard({
+    required this.children,
+    required this.onClose,
+    required this.onOpen,
+    this.leading,
+  });
 
   final List<Widget> children;
   final VoidCallback onClose;
@@ -1037,7 +1311,12 @@ class _DetailCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.md, AdoptifySpacing.xs, AdoptifySpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        AdoptifySpacing.lg,
+        AdoptifySpacing.md,
+        AdoptifySpacing.xs,
+        AdoptifySpacing.lg,
+      ),
       decoration: mapSurface(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1049,15 +1328,25 @@ class _DetailCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: AdoptifySpacing.md)],
+                  if (leading != null) ...[
+                    leading!,
+                    const SizedBox(width: AdoptifySpacing.md),
+                  ],
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: children,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 20),
+            tooltip: 'Cerrar',
+          ),
         ],
       ),
     );
@@ -1065,7 +1354,11 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _AnimalDetailCard extends StatelessWidget {
-  const _AnimalDetailCard({required this.animal, required this.onClose, required this.onOpen});
+  const _AnimalDetailCard({
+    required this.animal,
+    required this.onClose,
+    required this.onOpen,
+  });
 
   final Animal animal;
   final VoidCallback onClose;
@@ -1083,13 +1376,20 @@ class _AnimalDetailCard extends StatelessWidget {
         const SizedBox(height: AdoptifySpacing.xs),
         Text(animal.summary, style: textTheme.bodyMedium),
         if (animal.foundationName != null)
-          Text(animal.foundationName!, style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted)),
+          Text(
+            animal.foundationName!,
+            style: textTheme.bodyMedium?.copyWith(
+              color: context.colors.textMuted,
+            ),
+          ),
         Text(animal.publicZone),
         if (animal.withinRadius) ...[
           const SizedBox(height: AdoptifySpacing.xs),
           Text(
             'Dentro de tu radio de búsqueda',
-            style: textTheme.labelLarge?.copyWith(color: context.colors.primaryDark),
+            style: textTheme.labelLarge?.copyWith(
+              color: context.colors.primaryDark,
+            ),
           ),
         ],
       ],
@@ -1099,7 +1399,11 @@ class _AnimalDetailCard extends StatelessWidget {
 
 // Ficha al tocar el pin de una fundación: foto de perfil, nombre y descripción
 class _FoundationDetailCard extends StatelessWidget {
-  const _FoundationDetailCard({required this.foundation, required this.onClose, required this.onOpen});
+  const _FoundationDetailCard({
+    required this.foundation,
+    required this.onClose,
+    required this.onOpen,
+  });
 
   final Foundation foundation;
   final VoidCallback onClose;
@@ -1134,10 +1438,16 @@ class _FoundationDetailCard extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(foundation.name, style: textTheme.titleMedium, textAlign: TextAlign.center),
+                      Text(
+                        foundation.name,
+                        style: textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
                       Text(
                         foundation.place,
-                        style: textTheme.bodySmall?.copyWith(color: colors.textMuted),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colors.textMuted,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AdoptifySpacing.sm),
@@ -1149,7 +1459,12 @@ class _FoundationDetailCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: AdoptifySpacing.sm),
-                      Text('Ver fundación', style: textTheme.labelLarge?.copyWith(color: colors.primaryDark)),
+                      Text(
+                        'Ver fundación',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: colors.primaryDark,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1157,7 +1472,11 @@ class _FoundationDetailCard extends StatelessWidget {
               Positioned(
                 top: AdoptifySpacing.xs,
                 right: AdoptifySpacing.xs,
-                child: IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+                child: IconButton(
+                  onPressed: onClose,
+                  icon: const Icon(Icons.close, size: 20),
+                  tooltip: 'Cerrar',
+                ),
               ),
             ],
           ),
@@ -1187,7 +1506,12 @@ class _FoundationDetailCard extends StatelessWidget {
 
 // Ficha al tocar una veterinaria: nombre, dirección, si atiende urgencias y cómo llegar o llamar
 class _ClinicDetailCard extends StatelessWidget {
-  const _ClinicDetailCard({required this.clinic, required this.onClose, required this.onDirections, this.onCall});
+  const _ClinicDetailCard({
+    required this.clinic,
+    required this.onClose,
+    required this.onDirections,
+    this.onCall,
+  });
 
   final VetClinic clinic;
   final VoidCallback onClose;
@@ -1199,7 +1523,12 @@ class _ClinicDetailCard extends StatelessWidget {
     final colors = context.colors;
     final textTheme = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.md, AdoptifySpacing.xs, AdoptifySpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        AdoptifySpacing.lg,
+        AdoptifySpacing.md,
+        AdoptifySpacing.xs,
+        AdoptifySpacing.lg,
+      ),
       decoration: mapSurface(context),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1212,23 +1541,47 @@ class _ClinicDetailCard extends StatelessWidget {
                   children: [
                     Icon(Icons.local_hospital, size: 20, color: colors.report),
                     const SizedBox(width: AdoptifySpacing.xs),
-                    Text('Veterinaria', style: textTheme.labelLarge?.copyWith(color: colors.reportText)),
+                    Text(
+                      'Veterinaria',
+                      style: textTheme.labelLarge?.copyWith(
+                        color: colors.reportText,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AdoptifySpacing.xs),
                 Text(clinic.name, style: textTheme.titleMedium),
                 if (clinic.place != null)
-                  Text(clinic.place!, style: textTheme.bodyMedium?.copyWith(color: colors.textMuted)),
+                  Text(
+                    clinic.place!,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colors.textMuted,
+                    ),
+                  ),
                 if (clinic.emergency) ...[
                   const SizedBox(height: AdoptifySpacing.sm),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.sm, vertical: AdoptifySpacing.xs),
-                    decoration: BoxDecoration(color: colors.reportStrong, borderRadius: BorderRadius.circular(99)),
-                    child: Text('Urgencias 24 h', style: textTheme.labelMedium?.copyWith(color: colors.onAccent)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AdoptifySpacing.sm,
+                      vertical: AdoptifySpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.reportStrong,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      'Urgencias 24 h',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: colors.onAccent,
+                      ),
+                    ),
                   ),
                 ] else if (clinic.openingHours != null) ...[
                   const SizedBox(height: AdoptifySpacing.xs),
-                  Text('Horario: ${clinic.openingHours}', style: textTheme.bodySmall),
+                  Text(
+                    'Horario: ${clinic.openingHours}',
+                    style: textTheme.bodySmall,
+                  ),
                 ],
                 const SizedBox(height: AdoptifySpacing.md),
                 Row(
@@ -1254,11 +1607,18 @@ class _ClinicDetailCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AdoptifySpacing.sm),
                 // Datos de OpenStreetMap: pueden estar incompletos o desactualizados
-                Text('Datos de OpenStreetMap. Confirma por teléfono antes de ir.', style: textTheme.bodySmall),
+                Text(
+                  'Datos de OpenStreetMap. Confirma por teléfono antes de ir.',
+                  style: textTheme.bodySmall,
+                ),
               ],
             ),
           ),
-          IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 20),
+            tooltip: 'Cerrar',
+          ),
         ],
       ),
     );
@@ -1266,7 +1626,11 @@ class _ClinicDetailCard extends StatelessWidget {
 }
 
 class _ReportDetailCard extends StatelessWidget {
-  const _ReportDetailCard({required this.report, required this.onClose, required this.onOpen});
+  const _ReportDetailCard({
+    required this.report,
+    required this.onClose,
+    required this.onOpen,
+  });
 
   final DogReport report;
   final VoidCallback onClose;
@@ -1278,14 +1642,28 @@ class _ReportDetailCard extends StatelessWidget {
     return _DetailCard(
       onClose: onClose,
       onOpen: onOpen,
-      leading: report.photoUrl == null ? null : AnimalPhoto(url: report.photoUrl, size: 72),
+      leading: report.photoUrl == null
+          ? null
+          : AnimalPhoto(url: report.photoUrl, size: 72),
       children: [
-        Text('Mascota reportada', style: textTheme.titleMedium?.copyWith(color: context.colors.reportText)),
+        Text(
+          'Mascota reportada',
+          style: textTheme.titleMedium?.copyWith(
+            color: context.colors.reportText,
+          ),
+        ),
         const SizedBox(height: AdoptifySpacing.xs),
-        if (report.summary.isNotEmpty) Text(report.summary, style: textTheme.titleSmall),
-        if (report.conditionLabel.isNotEmpty) Text('Estado: ${report.conditionLabel}', style: textTheme.bodyMedium),
+        if (report.summary.isNotEmpty)
+          Text(report.summary, style: textTheme.titleSmall),
+        if (report.conditionLabel.isNotEmpty)
+          Text('Estado: ${report.conditionLabel}', style: textTheme.bodyMedium),
         if (report.features != null)
-          Text(report.features!, style: textTheme.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(
+            report.features!,
+            style: textTheme.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         Text(
           '“${report.description}”',
           style: textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
@@ -1295,12 +1673,16 @@ class _ReportDetailCard extends StatelessWidget {
         const SizedBox(height: AdoptifySpacing.xs),
         Text(
           '${report.statusLabel} · ${formatDate(report.createdAt)}',
-          style: textTheme.bodyMedium?.copyWith(color: context.colors.textMuted),
+          style: textTheme.bodyMedium?.copyWith(
+            color: context.colors.textMuted,
+          ),
         ),
         if (report.distanceKm != null)
           Text(
             'A ${formatKm(report.distanceKm!)} km',
-            style: textTheme.labelLarge?.copyWith(color: context.colors.reportText),
+            style: textTheme.labelLarge?.copyWith(
+              color: context.colors.reportText,
+            ),
           ),
       ],
     );
