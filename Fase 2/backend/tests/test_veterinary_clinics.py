@@ -7,7 +7,9 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.import_vet_clinics import clinic_from_osm
+from app.core.security import hash_password
 from app.models.veterinary_clinic import VeterinaryClinic
+from app.models.user import User
 
 
 @pytest.fixture
@@ -51,6 +53,48 @@ async def test_urgencias_primero(async_client: AsyncClient, clinics):
     assert flags == sorted(flags, reverse=True)
     ids = [item["id"] for item in data]
     assert ids.index(clinics[1].id) < ids.index(clinics[0].id)
+
+
+async def test_busqueda_cercana_solo_activa_y_ordenada(async_client: AsyncClient, clinics, db_session: AsyncSession):
+    clinics[0].is_active = False
+    await db_session.commit()
+    response = await async_client.get("/api/v1/veterinaries", params={"lat": -33.43, "lng": -70.61, "radius_km": 10})
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()]
+    assert clinics[1].id in ids
+    assert clinics[0].id not in ids
+    assert all("osm_id" not in item and "source" not in item and "is_active" not in item for item in response.json())
+
+
+async def test_busqueda_rechaza_un_solo_punto(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/veterinaries", params={"lat": -33.43})
+    assert response.status_code == 422
+
+
+@pytest.fixture
+async def admin_headers(async_client: AsyncClient, db_session: AsyncSession):
+    tag = uuid.uuid4().hex[:8]
+    admin = User(
+        email=f"vet_admin_{tag}@adoptify.cl", rut=f"99{tag[:6]}-K",
+        hashed_password=hash_password("ClaveSegura123"), full_name="Admin veterinarias", role="admin", preferences={},
+    )
+    db_session.add(admin)
+    await db_session.commit()
+    login = await async_client.post("/api/v1/auth/login", json={"email": admin.email, "password": "ClaveSegura123", "account_type": "foundation"})
+    yield {"Authorization": f"Bearer {login.json()['access_token']}"}
+    await db_session.execute(delete(User).where(User.id == admin.id))
+    await db_session.commit()
+
+
+async def test_solo_admin_crea_y_edita(async_client: AsyncClient, admin_headers):
+    body = {"name": "Veterinaria Manual", "address": "Av. Prueba 12", "latitude": -33.45, "longitude": -70.66}
+    forbidden = await async_client.post("/api/v1/veterinaries", json=body)
+    assert forbidden.status_code in (401, 403)
+    created = await async_client.post("/api/v1/veterinaries", json=body, headers=admin_headers)
+    assert created.status_code == 201
+    clinic = created.json()
+    assert (await async_client.patch(f"/api/v1/veterinaries/{clinic['id']}", json={"is_active": False}, headers=admin_headers)).status_code == 200
 
 
 def test_convierte_nodo_de_openstreetmap():

@@ -50,6 +50,8 @@ def clinic_from_osm(element: dict) -> dict | None:
         "phone": (tags.get("phone") or tags.get("contact:phone") or None),
         "opening_hours": hours[:255] if hours else None,
         "emergency": tags.get("emergency") == "yes" or hours == "24/7",
+        "source": "importacion",
+        "is_active": True,
         "location": WKTElement(f"POINT({point['lon']} {point['lat']})", srid=4326),
     }
 
