@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, Dict, Any
-from sqlalchemy import String, Integer, DateTime, ForeignKey, func, JSON, Text
+from sqlalchemy import Boolean, String, Integer, DateTime, ForeignKey, func, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.rut_crypto import decrypt_rut, encrypt_rut, hash_rut
 from app.db.base import Base
@@ -29,6 +29,9 @@ class User(Base):
 
     # Preferencias del adoptante para el motor de match (HU-05)
     preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, default=dict)
+
+    # Verificación en dos pasos por correo (HU-I): opcional, se activa desde el Perfil confirmando un código
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

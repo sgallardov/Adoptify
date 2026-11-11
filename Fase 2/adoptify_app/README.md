@@ -96,6 +96,12 @@ Mismo formato y mismas cuentas que el login del portal web:
 - El token se guarda cifrado con `flutter_secure_storage` y `ApiClient` lo envía como `Authorization: Bearer` en cada petición.
 - Al abrir la app se recupera la sesión con `GET /auth/me`. Si la API responde 401 (token vencido), se cierra la sesión;
   sin conexión el token se conserva para el próximo intento.
+- **Verificación en dos pasos (HU-I):** si la cuenta la tiene activa, tras la contraseña la tarjeta pasa a
+  "Revisa tu correo": campo de 6 dígitos (teclado numérico y autocompletado del código), **Reenviar código** con
+  cuenta regresiva de 60 s y **Volver**. Un código incorrecto muestra los intentos que quedan; vencido o agotado,
+  vuelve a pedir la contraseña. Se activa en el Perfil (adoptante y fundación) con la tarjeta
+  **Verificación en dos pasos** (`features/auth/two_factor_card.dart`): llega un código al correo y queda activa al
+  ingresarlo; desactivarla pide la contraseña. Piezas compartidas en `features/auth/verification_code.dart`.
 - La pestaña **Cuenta** muestra el perfil (nombre, rol, correo, RUT) y permite cerrar sesión.
 
 Para probar con el backend local (desde `Fase 2`): `docker compose up -d` y `python -m app.db.seed`;

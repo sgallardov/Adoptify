@@ -56,6 +56,7 @@ class UserPublic(BaseModel):
     rut: str
     full_name: str
     role: str
+    two_factor_enabled: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -78,3 +79,32 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: str
+
+
+# Código de 6 dígitos que llega al correo (HU-I)
+VerificationCode = Annotated[str, Field(pattern=r"^\d{6}$", description="Código de 6 dígitos recibido por correo")]
+
+
+class ChallengeResponse(BaseModel):
+    """
+    Se envió un código al correo. Con la verificación en dos pasos activa, POST /auth/login responde esto
+    (202) en vez del token; el token llega después con POST /auth/verify-code.
+    """
+    challenge_id: str
+    email_hint: str = Field(..., description="Correo al que se envió, parcialmente oculto: m***r@gmail.com")
+    expires_in_minutes: int
+    resend_in_seconds: int
+
+
+class VerifyCodeRequest(BaseModel):
+    challenge_id: str = Field(..., max_length=36)
+    code: VerificationCode
+
+
+class ResendCodeRequest(BaseModel):
+    challenge_id: str = Field(..., max_length=36)
+
+
+class TwoFactorDisableRequest(BaseModel):
+    """Desactivar la verificación en dos pasos pide la contraseña actual."""
+    password: str

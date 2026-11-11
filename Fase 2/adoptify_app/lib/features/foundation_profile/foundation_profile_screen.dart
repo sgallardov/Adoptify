@@ -9,6 +9,7 @@ import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/foundation_avatar.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
+import '../auth/two_factor_card.dart';
 import '../foundations/foundation_service.dart';
 import 'members_section.dart';
 import '../map/map_service.dart';
@@ -256,6 +257,8 @@ class _FoundationProfileScreenState extends State<FoundationProfileScreen> {
         ),
         const SizedBox(height: AdoptifySpacing.xxl),
         MembersSection(service: _service),
+        const SizedBox(height: AdoptifySpacing.xl),
+        const TwoFactorCard(),
         const SizedBox(height: AdoptifySpacing.xl),
         const _SignOutButton(),
       ],

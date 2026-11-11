@@ -18,6 +18,7 @@ class AuthController extends ChangeNotifier {
   AppUser? get user => _user;
   bool get loading => _loading;
   ApiClient get api => _api;
+  AuthService get service => _service;
 
   // Al abrir la app: si hay un token guardado, recupera la sesión con /auth/me.
   // Solo se descarta el token si la API lo rechaza; sin conexión se conserva para el próximo intento.
@@ -34,17 +35,35 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<AppUser> signIn(String email, String password) async {
-    await _service.login(email, password);
-    final me = await _service.fetchMe();
-    _user = me;
-    notifyListeners();
-    return me;
+  // Sin verificación en dos pasos, la sesión queda iniciada y retorna null. Con ella, retorna el desafío
+  // del código enviado al correo y la sesión empieza recién con verifyCode.
+  Future<CodeChallenge?> signIn(String email, String password) async {
+    final challenge = await _service.login(email, password);
+    if (challenge != null) return challenge;
+    await _loadUser();
+    return null;
   }
 
-  Future<AppUser> signUp(String email, String rut, String password, String fullName) async {
+  Future<void> verifyCode(String challengeId, String code) async {
+    await _service.verifyCode(challengeId, code);
+    await _loadUser();
+  }
+
+  // Una cuenta nueva no tiene la verificación en dos pasos: entra directo
+  Future<void> signUp(String email, String rut, String password, String fullName) async {
     await _service.register(email, rut, password, fullName);
-    return signIn(email, password);
+    await signIn(email, password);
+  }
+
+  // Tras activar o desactivar la verificación en dos pasos, el Perfil muestra el estado nuevo
+  void updateUser(AppUser user) {
+    _user = user;
+    notifyListeners();
+  }
+
+  Future<void> _loadUser() async {
+    _user = await _service.fetchMe();
+    notifyListeners();
   }
 
   Future<void> signOut() async {

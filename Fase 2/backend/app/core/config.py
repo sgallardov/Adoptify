@@ -46,6 +46,21 @@ class Settings(BaseSettings):
     # más corto = un enlace copiado deja de servir antes.
     PHOTO_LINK_HOURS: int = 6
 
+    # Correo saliente (HU-I, código de verificación). SMTP estándar: con Gmail, smtp.gmail.com:587, la cuenta
+    # en SMTP_USER y una "contraseña de aplicación" en SMTP_PASSWORD. Solo en el .env, nunca en el repo.
+    # Sin SMTP_HOST, en development el correo se escribe en los logs del backend en vez de enviarse.
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAIL_FROM: Optional[str] = None  # Remitente; si falta, se usa SMTP_USER
+    EMAIL_FROM_NAME: str = "Adoptify"
+
+    # Verificación en dos pasos por correo
+    LOGIN_CODE_MINUTES: int = 10
+    LOGIN_CODE_MAX_ATTEMPTS: int = 5
+    LOGIN_CODE_RESEND_SECONDS: int = 60
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -78,6 +93,11 @@ class Settings(BaseSettings):
     def storage_enabled(self) -> bool:
         """Las fotos van a Supabase Storage solo si están la URL del proyecto y la llave secreta."""
         return bool(self.SUPABASE_URL and self.SUPABASE_SERVICE_KEY)
+
+    @property
+    def email_enabled(self) -> bool:
+        """Se envían correos de verdad solo si está el servidor SMTP con su cuenta y contraseña."""
+        return bool(self.SMTP_HOST and self.SMTP_USER and self.SMTP_PASSWORD)
 
     @property
     def uses_shared_db(self) -> bool:
