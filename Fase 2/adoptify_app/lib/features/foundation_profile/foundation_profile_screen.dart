@@ -10,6 +10,7 @@ import '../../shared/widgets/foundation_avatar.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
 import '../foundations/foundation_service.dart';
+import 'members_section.dart';
 import '../map/map_service.dart';
 
 // Mismo mínimo que el backend (schemas/foundation.py): la descripción se muestra en el mapa y en el perfil público
@@ -253,6 +254,8 @@ class _FoundationProfileScreenState extends State<FoundationProfileScreen> {
               : const Icon(Icons.save_outlined, size: 20),
           label: Text(_saving ? 'Guardando…' : 'Guardar perfil'),
         ),
+        const SizedBox(height: AdoptifySpacing.xxl),
+        MembersSection(service: _service),
         const SizedBox(height: AdoptifySpacing.xl),
         const _SignOutButton(),
       ],
