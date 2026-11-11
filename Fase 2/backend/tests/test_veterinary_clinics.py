@@ -76,7 +76,7 @@ async def test_busqueda_rechaza_un_solo_punto(async_client: AsyncClient):
 async def admin_headers(async_client: AsyncClient, db_session: AsyncSession):
     tag = uuid.uuid4().hex[:8]
     admin = User(
-        email=f"vet_admin_{tag}@adoptify.cl", rut=f"99{tag[:6]}-K",
+        email=f"vet_admin_{tag}@adoptify.cl", rut=f"99{int(tag[:6], 16) % 1_000_000:06d}-K",
         hashed_password=hash_password("ClaveSegura123"), full_name="Admin veterinarias", role="admin", preferences={},
     )
     db_session.add(admin)

@@ -4,6 +4,7 @@ import logging
 from sqlalchemy import select
 
 from app.core.rut import normalize_rut
+from app.core.rut_crypto import hash_rut
 from app.core.security import hash_password
 from app.db.database import AsyncSessionLocal
 from app.models.user import User
@@ -20,9 +21,10 @@ async def create_user(
     registrarse solas desde la web, como las de fundación o administrador.
     """
     async with AsyncSessionLocal() as session:
-        existing = await session.execute(select(User).where((User.email == email) | (User.rut == rut)))
+        existing = await session.execute(select(User).where((User.email == email) | (User.rut_hash == hash_rut(rut))))
         if existing.scalars().first() is not None:
-            logger.info(f"Ya existe un usuario con el correo {email} o el RUT {rut}. No se hicieron cambios.")
+            # El RUT no se escribe en el log: es un dato personal
+            logger.info(f"Ya existe un usuario con el correo {email} o con ese RUT. No se hicieron cambios.")
             return
 
         session.add(User(

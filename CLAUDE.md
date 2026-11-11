@@ -31,7 +31,7 @@ Las pruebas del backend usan la **BD real del contenedor** (no hay BD de test ai
 ```
 Fase 2/backend/app/
   main.py                  # FastAPI, CORS, /health en raíz, api_router en /api/v1
-  core/                    # config.py (Settings), security.py (bcrypt + JWT HS256), rut.py (normalize_rut)
+  core/                    # config.py (Settings), security.py (bcrypt + JWT HS256), rut.py (normalize_rut), rut_crypto.py (RUT cifrado y hash)
   db/                      # database.py (engine async, get_db), seed.py, create_user.py
   models/                  # user, foundation, animal, report (AbandonedDogReport: cualquier mascota, con ficha)
   schemas/                 # Pydantic v2 por recurso
@@ -59,7 +59,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - **Rutas portal:** foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
 - **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), y `map_service.dart` (app): mantener las dos iguales. En la interfaz se dice "mascota", no "perro".
-- **RUT:** obligatorio y único, no autentica. Solo se valida formato; se guarda sin puntos y con K mayúscula (`normalize_rut`).
+- **RUT:** obligatorio y único, no autentica. Solo se valida formato; se normaliza sin puntos y con K mayúscula (`normalize_rut`). En `users` va cifrado (HU-E): `rut_encrypted` (Fernet) + `rut_hash` (HMAC, único); `user.rut` es una propiedad que cifra/descifra y para buscar se usa `User.rut_hash == hash_rut(rut)`. Claves `RUT_ENCRYPTION_KEY`/`RUT_HASH_KEY` en `.env`; con la BD compartida no se aceptan las de desarrollo. El RUT de `foundations` sigue en texto.
 - **Contraseñas:** 8 caracteres mínimo, 72 bytes máximo (bcrypt). Correos en minúsculas.
 - **Verificación en dos pasos (HU-I):** opcional, por correo (Gmail SMTP, `services/email.py`; sin SMTP en development el código sale en los logs). Con ella activa, `/auth/login` responde 202 con `challenge_id` y el token llega con `/auth/verify-code`. Los endpoints con sesión iniciada nunca responden 401 por un dato mal ingresado (usar 400): la app y el portal cierran sesión ante cualquier 401.
 - **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.
