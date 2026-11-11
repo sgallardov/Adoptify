@@ -5,9 +5,12 @@ import '../../core/api_client.dart';
 import '../../shared/widgets/adoptify_logo.dart';
 import '../../shared/widgets/message_box.dart';
 import 'auth_controller.dart';
+import 'auth_service.dart';
+import 'verification_code.dart';
 
 // Inicio de sesión único: adoptantes y fundaciones entran por el mismo formulario.
 // Después, el router muestra la vista que corresponde al rol (ver sessionRedirect en router.dart).
+// Con la verificación en dos pasos activa (HU-I), tras la contraseña se pide el código que llega al correo.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -22,9 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
+  final _code = TextEditingController();
+
   bool _registering = false;
   bool _submitting = false;
   String? _error;
+  // Código enviado al correo: mientras exista, la tarjeta muestra el paso del código en vez del formulario
+  CodeChallenge? _challenge;
 
   bool get _isRegister => _registering;
 
@@ -34,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _rut.dispose();
     _email.dispose();
     _password.dispose();
+    _code.dispose();
     super.dispose();
   }
 
@@ -57,7 +65,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isRegister) {
         await auth.signUp(email, _rut.text.trim(), _password.text, _fullName.text.trim());
       } else {
-        await auth.signIn(email, _password.text);
+        final challenge = await auth.signIn(email, _password.text);
+        if (challenge != null) {
+          if (!mounted) return;
+          setState(() {
+            _challenge = challenge;
+            _submitting = false;
+          });
+          return;
+        }
       }
       // Con la sesión iniciada, el router lleva al mapa o a la vista de fundación según el rol
     } catch (error) {
@@ -69,13 +85,94 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _verify() async {
+    final challenge = _challenge;
+    if (challenge == null || _submitting) return;
+    if (_code.text.length != 6) {
+      setState(() => _error = 'Ingresa los 6 dígitos del código.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _error = null;
+      _submitting = true;
+    });
+    try {
+      await AuthScope.of(context).verifyCode(challenge.id, _code.text);
+      // Con la sesión iniciada, el router lleva a la vista que corresponde al rol
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = errorMessage(error, 'No pudimos verificar el código. Inténtalo nuevamente.');
+        _submitting = false;
+        _code.clear();
+        // Código vencido o agotado: de vuelta a la contraseña para recibir uno nuevo
+        if (mustRestart(error)) {
+          _challenge = null;
+          _password.clear();
+        }
+      });
+    }
+  }
+
+  void _backToPassword() => setState(() {
+        _challenge = null;
+        _error = null;
+        _code.clear();
+      });
+
+  // Segundo paso: el código que llegó al correo, reenviarlo o volver a la contraseña
+  List<Widget> _codeStep(CodeChallenge challenge) {
+    return [
+      VerificationCodeField(controller: _code, onCompleted: (_) => _verify()),
+      if (_error != null) ...[
+        const SizedBox(height: AdoptifySpacing.lg),
+        MessageBox.error(message: _error!),
+      ],
+      const SizedBox(height: AdoptifySpacing.lg),
+      FilledButton(
+        onPressed: _submitting ? null : _verify,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_submitting) ...[
+              SizedBox.square(
+                dimension: 17,
+                child: CircularProgressIndicator(strokeWidth: 2, color: context.colors.onAccent),
+              ),
+              const SizedBox(width: AdoptifySpacing.sm),
+            ],
+            const Text('Verificar'),
+          ],
+        ),
+      ),
+      const SizedBox(height: AdoptifySpacing.sm),
+      ResendCodeButton(
+        // La clave reinicia la cuenta regresiva si se vuelve a iniciar sesión con otro desafío
+        key: ValueKey(challenge.id),
+        challenge: challenge,
+        onResend: () => AuthScope.of(context).service.resendCode(challenge.id),
+        onResent: (fresh) => setState(() {
+          _challenge = fresh;
+          _error = null;
+          _code.clear();
+        }),
+        onError: (message) => setState(() => _error = message),
+      ),
+      TextButton(onPressed: _submitting ? null : _backToPassword, child: const Text('Volver')),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final title = _isRegister ? 'Crea tu cuenta' : 'Hola de nuevo';
-    final description = _isRegister
-        ? 'Regístrate para encontrar a tu próximo compañero.'
-        : 'Inicia sesión para encontrar a tu próximo compañero.';
+    final challenge = _challenge;
+    final title = challenge != null ? 'Revisa tu correo' : (_isRegister ? 'Crea tu cuenta' : 'Hola de nuevo');
+    final description = challenge != null
+        ? 'Enviamos un código de 6 dígitos a ${challenge.emailHint}. Vence en ${challenge.expiresInMinutes} minutos.'
+        : _isRegister
+            ? 'Regístrate para encontrar a tu próximo compañero.'
+            : 'Inicia sesión para encontrar a tu próximo compañero.';
 
     return Scaffold(
       appBar: AppBar(),
@@ -111,6 +208,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: AdoptifySpacing.xl),
+                          if (challenge != null)
+                            ..._codeStep(challenge)
+                          else ...[
                           if (_isRegister) ...[
                             _Field(
                               label: 'Nombre completo',
@@ -186,6 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Divider(color: context.colors.muted),
                           const SizedBox(height: AdoptifySpacing.lg),
                           _Footer(isRegister: _isRegister, onToggle: _toggleRegister),
+                          ],
                         ],
                       ),
                     ),

@@ -13,6 +13,8 @@ def local_storage(monkeypatch):
     """Las pruebas nunca suben fotos al bucket compartido de Supabase: usan la carpeta local."""
     monkeypatch.setattr(settings, "SUPABASE_URL", None)
     monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", None)
+    # Ni correos reales: aunque el .env tenga Gmail configurado, las pruebas no envían nada (HU-I)
+    monkeypatch.setattr(settings, "SMTP_HOST", None)
 
 
 @pytest.fixture

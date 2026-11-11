@@ -69,6 +69,9 @@ se muestran en años y meses. Una foto ausente o fallida muestra un icono altern
 El perfil de la organización sigue siendo una maqueta.
 La sesión usa el JWT de `POST /api/v1/auth/login`, guardado en `localStorage` y
 enviado en cada petición (`src/services/api.ts`); al recargar se recupera con `GET /auth/me`.
+Si la cuenta tiene la verificación en dos pasos activa (HU-I, se activa desde la app), el login pasa a
+"Revisa tu correo": código de 6 dígitos (`POST /auth/verify-code`), **Reenviar código** cada 60 s
+(`POST /auth/resend-code`) y **Volver**. Las reglas del campo están en `src/services/verificationCode.ts`.
 No hay creación, edición o eliminación de animales.
 La API lista animales de todas las fundaciones: falta vincular cada cuenta de fundación
 con su organización para filtrar por la fundación autenticada.

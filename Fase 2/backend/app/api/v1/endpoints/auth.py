@@ -1,13 +1,25 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, Response, status, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.db.database import get_db
+from app.models.login_challenge import LoginChallenge
 from app.models.user import User
-from app.schemas.user import LoginRequest, TokenResponse, UserCreate, UserPublic
+from app.schemas.user import (
+    ChallengeResponse,
+    LoginRequest,
+    ResendCodeRequest,
+    TokenResponse,
+    TwoFactorDisableRequest,
+    UserCreate,
+    UserPublic,
+    VerifyCodeRequest,
+)
+from app.services import two_factor
 
 router = APIRouter()
 bearer_scheme = HTTPBearer()
@@ -93,14 +105,21 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "/login",
-    response_model=TokenResponse,
+    response_model=TokenResponse | ChallengeResponse,
     summary="Iniciar sesión con correo y contraseña",
+    description=(
+        "Sin verificación en dos pasos, responde 200 con el token. Con ella activa, valida la contraseña, "
+        "envía un código de 6 dígitos al correo y responde **202** con `challenge_id`, sin token: el token "
+        "se obtiene con POST /auth/verify-code."
+    ),
     responses={
+        202: {"description": "Código enviado al correo (verificación en dos pasos activa)", "model": ChallengeResponse},
         401: {"description": "Correo o contraseña incorrectos"},
         403: {"description": "La cuenta no corresponde al tipo elegido (usuario o fundación)"},
+        503: {"description": "No se pudo enviar el código por correo"},
     },
 )
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(payload: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
@@ -115,7 +134,121 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail=f"Esta cuenta no es de este tipo. Inicia sesión en la pestaña {other_tab}.",
         )
 
+    # Verificación en dos pasos (HU-I): la contraseña sola no entrega token
+    if user.two_factor_enabled:
+        challenge = await two_factor.start_challenge(db, user, "login")
+        response.status_code = status.HTTP_202_ACCEPTED
+        return ChallengeResponse(**two_factor.challenge_info(challenge, user.email))
+
     return TokenResponse(access_token=create_access_token(user.email), role=user.role)
+
+
+@router.post(
+    "/verify-code",
+    response_model=TokenResponse,
+    summary="Ingresar el código del correo y obtener el token",
+    description=(
+        f"Segundo paso del login con verificación en dos pasos. El código vence a los "
+        f"{settings.LOGIN_CODE_MINUTES} minutos y tras {settings.LOGIN_CODE_MAX_ATTEMPTS} intentos fallidos "
+        "hay que volver a iniciar sesión."
+    ),
+    responses={401: {"description": "Código incorrecto, vencido o agotado: el detalle dice qué hacer"}},
+)
+async def verify_login_code(payload: VerifyCodeRequest, db: AsyncSession = Depends(get_db)):
+    user = await two_factor.verify_code(db, payload.challenge_id, payload.code, "login")
+    return TokenResponse(access_token=create_access_token(user.email), role=user.role)
+
+
+@router.post(
+    "/resend-code",
+    response_model=ChallengeResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Reenviar el código de verificación",
+    description=(
+        f"Envía un código nuevo para el mismo desafío (el anterior deja de servir), como máximo uno cada "
+        f"{settings.LOGIN_CODE_RESEND_SECONDS} segundos. Sirve para el login y para activar la verificación."
+    ),
+    responses={
+        401: {"description": "El desafío venció o ya no existe: hay que empezar de nuevo"},
+        429: {"description": "Todavía no se puede pedir otro código"},
+    },
+)
+async def resend_code(payload: ResendCodeRequest, db: AsyncSession = Depends(get_db)):
+    challenge, user = await two_factor.resend_code(db, payload.challenge_id)
+    return ChallengeResponse(**two_factor.challenge_info(challenge, user.email))
+
+
+@router.post(
+    "/two-factor/enable",
+    response_model=ChallengeResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Empezar a activar la verificación en dos pasos",
+    description=(
+        "Envía un código al correo de la cuenta. La verificación queda activa solo al confirmarlo con "
+        "POST /auth/two-factor/confirm, así nadie se bloquea con un correo que no recibe."
+    ),
+    responses={409: {"description": "Ya está activa"}},
+)
+async def start_two_factor(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user.two_factor_enabled:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="La verificación en dos pasos ya está activa.")
+    challenge = await two_factor.start_challenge(db, current_user, "enable")
+    return ChallengeResponse(**two_factor.challenge_info(challenge, current_user.email))
+
+
+@router.post(
+    "/two-factor/confirm",
+    response_model=UserPublic,
+    summary="Confirmar el código y activar la verificación en dos pasos",
+    description=(
+        "Los errores del código responden **400**, no 401: con la sesión iniciada, la app y el portal "
+        "cierran sesión ante un 401, y equivocarse en el código no debe sacar a nadie de su cuenta."
+    ),
+    responses={400: {"description": "Código incorrecto, vencido o de otra cuenta"}},
+)
+async def confirm_two_factor(
+    payload: VerifyCodeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # El desafío debe ser de esta misma cuenta: no se puede activar con el código de otra persona
+    challenge = await db.get(LoginChallenge, payload.challenge_id)
+    if challenge is None or challenge.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El código ya no es válido. Pide uno nuevo.")
+    try:
+        await two_factor.verify_code(db, payload.challenge_id, payload.code, "enable")
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_401_UNAUTHORIZED:
+            raise
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.detail) from exc
+    return await _set_two_factor(db, current_user, True)
+
+
+@router.post(
+    "/two-factor/disable",
+    response_model=UserPublic,
+    summary="Desactivar la verificación en dos pasos",
+    responses={400: {"description": "Contraseña incorrecta (400 y no 401, para no cerrar la sesión)"}},
+)
+async def disable_two_factor(
+    payload: TwoFactorDisableRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(payload.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña no es correcta.")
+    return await _set_two_factor(db, current_user, False)
+
+
+async def _set_two_factor(db: AsyncSession, user: User, enabled: bool) -> User:
+    user.two_factor_enabled = enabled
+    try:
+        await db.commit()
+        await db.refresh(user)
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar la verificación en dos pasos.") from exc
+    return user
 
 
 @router.get(

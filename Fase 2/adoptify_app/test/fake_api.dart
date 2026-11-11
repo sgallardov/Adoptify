@@ -66,6 +66,8 @@ class FakeApi {
   bool offline = false;
   bool animalsFail = false;
   bool foundationsFail = false;
+  // Verificación en dos pasos de Matías (HU-I). El código bueno es 123456; 999999 simula uno vencido.
+  bool twoFactor = false;
   // Perfil que edita la fundación con sesión (GET y PUT /foundations/me)
   String? foundationDescription = 'Rescatamos perros y gatos de la calle.';
   String? foundationPhoto;
@@ -228,6 +230,7 @@ class FakeApi {
       case '/auth/login':
         if (body['email'] == matias['email'] &&
             body['password'] == 'Adoptante2026') {
+          if (twoFactor) return _json(202, _challenge('login-1'));
           return _json(200, {
             'access_token': validToken,
             'token_type': 'bearer',
@@ -243,6 +246,28 @@ class FakeApi {
           });
         }
         return _json(401, {'detail': 'Correo o contraseña incorrectos'});
+      case '/auth/verify-code':
+        return switch (body['code']) {
+          '123456' => _json(200, {'access_token': validToken, 'token_type': 'bearer', 'role': 'adopter'}),
+          '999999' => _json(401, {'detail': 'El código venció. Inicia sesión otra vez para recibir un código nuevo.'}),
+          _ => _json(401, {'detail': 'El código no es correcto. Te quedan 4 intentos.'}),
+        };
+      case '/auth/resend-code':
+        return _json(202, _challenge('${body['challenge_id']}-nuevo'));
+      case '/auth/two-factor/enable':
+        return _json(202, _challenge('enable-1'));
+      case '/auth/two-factor/confirm':
+        if (body['code'] != '123456') {
+          return _json(400, {'detail': 'El código no es correcto. Te quedan 4 intentos.'});
+        }
+        twoFactor = true;
+        return _json(200, {...matias, 'two_factor_enabled': true});
+      case '/auth/two-factor/disable':
+        if (body['password'] != 'Adoptante2026') {
+          return _json(400, {'detail': 'La contraseña no es correcta.'});
+        }
+        twoFactor = false;
+        return _json(200, {...matias, 'two_factor_enabled': false});
       case '/auth/register':
         if (body['email'] == matias['email'])
           return _json(409, {'detail': 'Ya existe un usuario con ese correo'});
@@ -253,7 +278,7 @@ class FakeApi {
         });
       case '/auth/me':
         final authorization = request.headers['Authorization'];
-        if (authorization == 'Bearer $validToken') return _json(200, matias);
+        if (authorization == 'Bearer $validToken') return _json(200, {...matias, 'two_factor_enabled': twoFactor});
         if (authorization == 'Bearer $foundationToken')
           return _json(200, patitas);
         return _json(401, {'detail': 'Token inválido o expirado'});
@@ -630,6 +655,14 @@ List<Map<String, dynamic>> _nearestFirst(Map<String, String> query, List<Map<Str
       return da.compareTo(db);
     });
 }
+
+// Respuesta 202 de la API: el código se envió a m***s@gmail.com y se puede reenviar en 60 s
+Map<String, dynamic> _challenge(String id) => {
+      'challenge_id': id,
+      'email_hint': 'm***r@gmail.com',
+      'expires_in_minutes': 10,
+      'resend_in_seconds': 60,
+    };
 
 // Ubicación simulada: devuelve un punto fijo o falla con el mensaje indicado
 class FakeLocation extends LocationService {

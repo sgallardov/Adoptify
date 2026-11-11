@@ -6,5 +6,6 @@ from app.models.report_social import ReportComment, ReportLike
 from app.models.animal_favorite import AnimalFavorite
 from app.models.veterinary_clinic import VeterinaryClinic
 from app.models.foundation_member import FoundationMember
+from app.models.login_challenge import LoginChallenge
 
-__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember"]
+__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember", "LoginChallenge"]

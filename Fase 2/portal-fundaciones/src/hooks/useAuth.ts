@@ -1,10 +1,12 @@
 import { createContext, useContext } from 'react'
-import type { AccountType, User } from '../services/auth'
+import type { AccountType, CodeChallenge, User } from '../services/auth'
 
 export type AuthState = {
   user: User | null
   loading: boolean
-  signIn: (email: string, password: string, accountType: AccountType) => Promise<User>
+  // null si la sesión quedó iniciada; el desafío si hay que ingresar el código del correo (HU-I)
+  signIn: (email: string, password: string, accountType: AccountType) => Promise<CodeChallenge | null>
+  verifyCode: (challengeId: string, code: string) => Promise<void>
   signOut: () => void
 }
 

@@ -157,7 +157,20 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 | --- | --- |
 | `POST /api/v1/auth/register` | Registra un **adoptante** (`email`, `rut`, `password`, `full_name`). `201`, o `409` si el correo o el RUT ya existen. |
 | `POST /api/v1/auth/login` | Recibe `email`, `password` y, opcional, `account_type` (`"user"` o `"foundation"`). Sin `account_type` entra cualquier cuenta (login único de la app, que muestra la vista según el `role`); con él, solo ese tipo (el portal manda `"foundation"`). Devuelve `access_token` (JWT) y `role`. `401` si las credenciales son incorrectas; `403` si la cuenta no corresponde al `account_type` pedido. |
-| `GET /api/v1/auth/me` | Devuelve el usuario del token enviado en `Authorization: Bearer <token>`. `401` sin token o con token inválido/expirado. |
+| `GET /api/v1/auth/me` | Devuelve el usuario del token enviado en `Authorization: Bearer <token>` (incluye `two_factor_enabled`). `401` sin token o con token inválido/expirado. |
+| `POST /api/v1/auth/verify-code` | Segundo paso del login con verificación en dos pasos: `challenge_id` y `code` (6 dígitos). Devuelve `access_token` y `role`. `401` si el código es incorrecto (dice cuántos intentos quedan), venció o se agotaron los intentos. |
+| `POST /api/v1/auth/resend-code` | `challenge_id`: envía un código nuevo y anula el anterior. `429` si no ha pasado 1 minuto desde el último envío. |
+| `POST /api/v1/auth/two-factor/enable` | Con sesión: envía un código al correo para activar la verificación (`202` con `challenge_id`). `409` si ya está activa. |
+| `POST /api/v1/auth/two-factor/confirm` | Con sesión: `challenge_id` y `code`; recién ahí queda activa. Errores con `400` (no `401`, para no cerrar la sesión). |
+| `POST /api/v1/auth/two-factor/disable` | Con sesión: `password`. `400` si la contraseña es incorrecta. |
+
+#### Verificación en dos pasos por correo (HU-I)
+* **Opcional:** cada cuenta la activa desde el Perfil de la app (adoptante o fundación) confirmando un código, así nadie se bloquea con un correo que no recibe. Desactivarla pide la contraseña. El portal recibe la pantalla del código al iniciar sesión, pero se activa desde la app.
+* **Login:** con la verificación activa, `POST /auth/login` valida la contraseña, envía un código de 6 dígitos al correo y responde **`202`** con `challenge_id`, `email_hint` (`m***r@gmail.com`), `expires_in_minutes` y `resend_in_seconds`, **sin token**. El token llega con `POST /auth/verify-code`.
+* **Reglas:** el código vence a los `LOGIN_CODE_MINUTES` (10), tras `LOGIN_CODE_MAX_ATTEMPTS` (5) intentos fallidos hay que volver a iniciar sesión, se puede reenviar cada `LOGIN_CODE_RESEND_SECONDS` (60) y sirve una sola vez.
+* **Almacenamiento:** tabla `login_challenges` (migración `0016`, con RLS) con `user_id`, `purpose` (`login` o `enable`), `code_hash`, `expires_at`, `attempts` y `last_sent_at`. El código nunca se guarda: solo su HMAC-SHA256 con `SECRET_KEY` y el id del desafío. Columna nueva `users.two_factor_enabled`.
+* **Diseño del correo:** HTML con los colores de la app, el logo incrustado como imagen en línea (`app/assets/email_logo.png`, CID `adoptify-logo`), saludo con el nombre, el código en recuadros y un aviso de seguridad distinto para el login y la activación; también lleva una versión en texto plano.
+* **Correo:** `services/email.py` envía por SMTP (Gmail con contraseña de aplicación; variables `SMTP_*` en `.env`, ver `.env.example`). **Sin SMTP configurado y con `ENVIRONMENT=development`, el correo se escribe en `docker compose logs backend`**, así se puede probar sin las credenciales; en otro ambiente el login con verificación responde `503`. Las pruebas nunca envían correos (`conftest.py`).
 
 * **Roles por pestaña:** `user` → `adopter`; `foundation` → `foundation` o `admin`.
 * **Contraseñas:** se guardan con bcrypt. Mínimo 8 caracteres y máximo 72 bytes (la `ñ` y las tildes cuentan doble).
