@@ -13,6 +13,9 @@ def local_storage(monkeypatch):
     """Las pruebas nunca suben fotos al bucket compartido de Supabase: usan la carpeta local."""
     monkeypatch.setattr(settings, "SUPABASE_URL", None)
     monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", None)
+    # Las pruebas siempre usan el Postgres local, así que pueden cifrar el RUT con las claves de
+    # desarrollo aunque el .env apunte a la BD compartida (ver core/rut_crypto.py)
+    monkeypatch.setattr(settings, "DATABASE_URL", None)
 
 
 @pytest.fixture

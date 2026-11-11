@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rut_crypto import hash_rut
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.db.database import get_db
 from app.models.user import User
@@ -68,7 +69,7 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe un usuario con ese correo")
 
-    existing = await db.execute(select(User).where(User.rut == payload.rut))
+    existing = await db.execute(select(User).where(User.rut_hash == hash_rut(payload.rut)))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe un usuario con ese RUT")
 
