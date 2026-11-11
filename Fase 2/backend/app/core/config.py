@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "cambiar-esta-clave-en-produccion"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # RUT cifrado (HU-E). RUT_ENCRYPTION_KEY es una clave Fernet (cifra y descifra el RUT);
+    # RUT_HASH_KEY firma el hash con el que se busca y se evita repetir un RUT.
+    # Los valores por defecto solo sirven en el Postgres local: con DATABASE_URL (BD compartida)
+    # el backend se niega a usarlos (ver core/rut_crypto.py). Si se pierden las claves reales,
+    # los RUT guardados no se pueden recuperar: respaldarlas fuera del repositorio.
+    RUT_ENCRYPTION_KEY: str = "YWRvcHRpZnktZGV2LXNvbG8tbG9jYWwtcnV0LWtleSE="
+    RUT_HASH_KEY: str = "adoptify-dev-solo-local-rut-hash"
+
     # Fotos subidas (HU-16): carpeta local servida en /uploads y tamaño máximo por archivo
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_MB: int = 5
