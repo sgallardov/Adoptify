@@ -9,6 +9,7 @@ Revises: 0016
 from alembic import op
 import sqlalchemy as sa
 
+from app.core.rut import normalize_rut
 from app.core.rut_crypto import decrypt_rut
 
 revision = "0017"
@@ -18,6 +19,22 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Candado: solo se borra el RUT en texto si cada usuario ya lo tiene cifrado y se descifra igual.
+    # Protege la BD compartida si la versión dice 0016 sin haber corrido el cifrado (por ejemplo,
+    # si otra migración usó el mismo número): en ese caso no cambia nada y avisa.
+    bind = op.get_bind()
+    columns = set(bind.execute(sa.text(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users'"
+    )).scalars())
+    if not {"rut", "rut_hash", "rut_encrypted"} <= columns:
+        raise RuntimeError(
+            "No se borra users.rut: faltan rut_hash o rut_encrypted, así que el cifrado (0016) no se aplicó. "
+            "Revisar alembic_version antes de seguir."
+        )
+    for user_id, rut, encrypted in bind.execute(sa.text("SELECT id, rut, rut_encrypted FROM users")).all():
+        if encrypted is None or (rut is not None and decrypt_rut(encrypted) != normalize_rut(rut)):
+            raise RuntimeError(f"No se borra users.rut: el usuario {user_id} no tiene su RUT cifrado correctamente")
+
     op.drop_index(op.f("ix_users_rut"), table_name="users")
     op.drop_column("users", "rut")
 
