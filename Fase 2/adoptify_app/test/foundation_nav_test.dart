@@ -46,13 +46,14 @@ void main() {
     expect(find.text('Publica una historia'), findsNothing);
   });
 
-  testWidgets('cada pestaña abre su placeholder', (tester) async {
+  testWidgets('cada pestaña abre su pantalla', (tester) async {
     await openFoundation(tester);
 
+    // Chat sigue como placeholder hasta HU-G2
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
     expect(screenTitle('Chat'), findsOneWidget);
-    expect(find.text('Publica una historia'), findsOneWidget);
+    expect(find.text('Próximamente'), findsOneWidget);
 
     // Perfil ya no es un placeholder: edita la foto y la descripción de la fundación
     await tester.tap(find.text('Perfil'));

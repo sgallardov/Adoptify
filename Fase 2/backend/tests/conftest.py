@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import NullPool
 
 from app.main import app
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.db.database import get_db
 
 @pytest.fixture(autouse=True)
@@ -15,9 +15,11 @@ def local_storage(monkeypatch):
     monkeypatch.setattr(settings, "SUPABASE_SERVICE_KEY", None)
     # Ni correos reales: aunque el .env tenga Gmail configurado, las pruebas no envían nada (HU-I)
     monkeypatch.setattr(settings, "SMTP_HOST", None)
-    # Las pruebas siempre usan el Postgres local, así que pueden cifrar el RUT con las claves de
-    # desarrollo aunque el .env apunte a la BD compartida (ver core/rut_crypto.py)
+    # Las pruebas siempre usan el Postgres local, así que cifran el RUT con las claves de desarrollo
+    # aunque el .env apunte a la BD compartida y tenga las claves reales del equipo (ver core/rut_crypto.py)
     monkeypatch.setattr(settings, "DATABASE_URL", None)
+    monkeypatch.setattr(settings, "RUT_ENCRYPTION_KEY", Settings.model_fields["RUT_ENCRYPTION_KEY"].default)
+    monkeypatch.setattr(settings, "RUT_HASH_KEY", Settings.model_fields["RUT_HASH_KEY"].default)
 
 
 @pytest.fixture
