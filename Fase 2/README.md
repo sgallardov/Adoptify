@@ -252,12 +252,14 @@ Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `fo
 | `POST /api/v1/foster-applications` | Solo rol `adopter` (`403` para otros). Crea la postulación (`201`); `409` si la cuenta ya tiene una. |
 | `PUT /api/v1/foster-applications/me` | Edita la postulación mientras está `pending`; `409` si ya fue revisada, `404` si no existe. |
 | `DELETE /api/v1/foster-applications/me` | Retira la postulación (`204`); después puede volver a postular. |
+| `GET /api/v1/foster-applications` | Solo cuentas `foundation` vinculadas (un adoptante recibe `403`). Lista con el contacto completo: `full_name` y `email` de la cuenta, `phone` y `address`. Primero las pendientes y, en cada estado, de la más antigua a la más nueva; `?status=` filtra. Cada una trae `decided_by_foundation_name` y `can_decide`. |
+| `PATCH /api/v1/foster-applications/{id}` | `{"status": "approved" \| "rejected" \| "pending"}`. Una pendiente la decide cualquier fundación; ya decidida, solo la fundación que decidió puede cambiarla o volverla a `pending` (`403` para las demás). `404` si la retiraron. |
 
 * **Campos, todos obligatorios:** `species` (`perro` \| `gato` \| `ambos`), `sizes` (uno o más de `pequeño`, `mediano`, `grande`), `space` (`casa_patio` \| `casa_sin_patio` \| `departamento`), `max_animals` (cuántos puede cuidar a la vez, 1 a 10), `max_days` (días máximos, 1 a 365), `availability` (texto corto, hasta 120), `phone` y `address` (privada, hasta 255). Nombre y correo no se guardan en la postulación: se toman de la cuenta (`users`), así no quedan dos versiones distintas.
 * **General:** no lleva `foundation_id`; la ven todas las fundaciones. **Una por cuenta** (`user_id` único): se edita mientras está en revisión y se puede retirar.
 * **Decisión: estado global.** Si dos fundaciones contactan a la misma persona, la postulación tiene un solo estado (`pending`, `approved` o `rejected`), y se registra qué fundación decidió (`decided_by_foundation_id`, `decided_at`). Se eligió por simple de mostrar al adoptante y porque la postulación es general. Si más adelante se necesita una decisión por fundación, se agrega la tabla `foster_decisions(application_id, foundation_id, status)` sin cambiar esta.
-* **Privacidad:** la dirección y el teléfono solo los verá el adoptante dueño y las fundaciones (listado del portal, parte 2 de la HU). El contacto por chat depende de HU-G2.
-* **Pendiente (parte 2):** `GET /api/v1/foster-applications` y `PATCH /api/v1/foster-applications/{id}` para fundaciones, y el listado con aprobar y rechazar en el portal.
+* **Quién decide:** el estado es global, pero una decisión ya tomada solo la cambia la fundación que la tomó; las demás ven "Aprobada por Fundación X". Los administradores pueden ver la API, pero no deciden (no tienen fundación).
+* **Privacidad:** la dirección y el teléfono solo los ven el adoptante dueño y las fundaciones (portal, página **Hogares temporales**). El botón "Abrir chat" está listo en el portal detrás de `CHAT_ENABLED` y se activa cuando exista HU-G2.
 
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.

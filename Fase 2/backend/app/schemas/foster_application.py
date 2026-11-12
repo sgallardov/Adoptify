@@ -72,3 +72,32 @@ class FosterApplicationOut(BaseModel):
     status: FosterStatus
     created_at: datetime
     updated_at: datetime
+
+
+class FosterApplicationForFoundation(BaseModel):
+    """
+    Postulación vista por una fundación (GET /foster-applications): incluye el contacto completo del postulante
+    (nombre y correo de su cuenta, teléfono y dirección), que el adoptante no muestra a nadie más.
+    """
+    id: int
+    full_name: str
+    email: str
+    phone: str
+    address: str
+    species: FosterSpecies
+    sizes: list[Size]
+    space: Housing
+    max_animals: int
+    max_days: int
+    availability: str
+    status: FosterStatus
+    decided_by_foundation_name: str | None
+    decided_at: datetime | None
+    # La fundación que consulta puede aprobar, rechazar o volver a pendiente: solo si está pendiente o la decidió ella
+    can_decide: bool
+    created_at: datetime
+
+
+class FosterDecision(BaseModel):
+    """Decisión de una fundación. 'pending' deshace una decisión propia."""
+    status: FosterStatus

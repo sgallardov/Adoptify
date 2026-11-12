@@ -1,11 +1,15 @@
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.foundation import Foundation
+    from app.models.user import User
 
 
 class FosterApplication(Base):
@@ -41,6 +45,10 @@ class FosterApplication(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+    # Para el listado de las fundaciones: nombre y correo del postulante, y quién decidió
+    user: Mapped["User"] = relationship("User")
+    decided_by_foundation: Mapped[Optional["Foundation"]] = relationship("Foundation")
 
     def __repr__(self) -> str:
         return f"<FosterApplication(id={self.id}, user_id={self.user_id}, status='{self.status}')>"
