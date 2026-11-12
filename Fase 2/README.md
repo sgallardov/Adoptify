@@ -243,6 +243,22 @@ Cada fundación gestiona solo sus propios animales.
 * **Socios de la fundación (HU-F, migración `0015`, tabla `foundation_members` con RLS):** registro interno y privado. CRUD en `GET/POST /api/v1/foundations/me/members` y `PUT/DELETE /api/v1/foundations/me/members/{id}` (campos `name`, `contribution` opcional, `joined_at`, `is_public` por defecto `false`). Solo la fundación dueña edita sus socios (otra recibe `403`, uno inexistente `404`); el administrador ve y edita todos (`?foundation_id=` filtra el listado y al crear debe indicar `foundation_id`). Público: `GET /api/v1/foundations/{id}/members/public` devuelve solo `name` y `joined_at` de los socios con `is_public=true`, nunca el aporte. No hay pasarela ni cobros: el aporte es solo informativo.
 * `GET /api/v1/veterinary-clinics` (público): clínicas veterinarias para emergencias con `name`, `address`, `commune`, `phone`, `opening_hours`, `emergency` (urgencias o 24 horas) y `latitude`/`longitude`; primero las de urgencias y luego por nombre. Tabla `veterinary_clinics` (migración `0011`, con RLS). Los datos vienen de OpenStreetMap (`amenity=veterinary`, © colaboradores de OpenStreetMap, ODbL) y se cargan o actualizan con `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto la Región Metropolitana; `--region` cambia la región). Es idempotente: cada clínica se identifica por su `osm_id`.
 
+### Hogares temporales: postulación (HU-B)
+Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `foster_applications` (migración `0019`, con RLS).
+
+| Endpoint | Descripción |
+| --- | --- |
+| `GET /api/v1/foster-applications/me` | La postulación de la sesión, o `null` si todavía no postula. |
+| `POST /api/v1/foster-applications` | Solo rol `adopter` (`403` para otros). Crea la postulación (`201`); `409` si la cuenta ya tiene una. |
+| `PUT /api/v1/foster-applications/me` | Edita la postulación mientras está `pending`; `409` si ya fue revisada, `404` si no existe. |
+| `DELETE /api/v1/foster-applications/me` | Retira la postulación (`204`); después puede volver a postular. |
+
+* **Campos, todos obligatorios:** `species` (`perro` \| `gato` \| `ambos`), `sizes` (uno o más de `pequeño`, `mediano`, `grande`), `space` (`casa_patio` \| `casa_sin_patio` \| `departamento`), `max_animals` (cuántos puede cuidar a la vez, 1 a 10), `max_days` (días máximos, 1 a 365), `availability` (texto corto, hasta 120), `phone` y `address` (privada, hasta 255). Nombre y correo no se guardan en la postulación: se toman de la cuenta (`users`), así no quedan dos versiones distintas.
+* **General:** no lleva `foundation_id`; la ven todas las fundaciones. **Una por cuenta** (`user_id` único): se edita mientras está en revisión y se puede retirar.
+* **Decisión: estado global.** Si dos fundaciones contactan a la misma persona, la postulación tiene un solo estado (`pending`, `approved` o `rejected`), y se registra qué fundación decidió (`decided_by_foundation_id`, `decided_at`). Se eligió por simple de mostrar al adoptante y porque la postulación es general. Si más adelante se necesita una decisión por fundación, se agrega la tabla `foster_decisions(application_id, foundation_id, status)` sin cambiar esta.
+* **Privacidad:** la dirección y el teléfono solo los verá el adoptante dueño y las fundaciones (listado del portal, parte 2 de la HU). El contacto por chat depende de HU-G2.
+* **Pendiente (parte 2):** `GET /api/v1/foster-applications` y `PATCH /api/v1/foster-applications/{id}` para fundaciones, y el listado con aprobar y rechazar en el portal.
+
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
 * **Validación:** solo JPG y PNG, reconocidos por el contenido del archivo (no por el nombre ni el `Content-Type`). Otro formato: `415`. Más de 5 MB (`MAX_UPLOAD_MB`): `413`. Sin sesión: `401`. Sin archivo: `422`.

@@ -68,6 +68,8 @@ class FakeApi {
   bool foundationsFail = false;
   // Verificación en dos pasos de Matías (HU-I). El código bueno es 123456; 999999 simula uno vencido.
   bool twoFactor = false;
+  // Postulación a hogar temporal de Matías (HU-B): null hasta que postula, como en el backend
+  Map<String, dynamic>? fosterApplication;
   // Perfil que edita la fundación con sesión (GET y PUT /foundations/me)
   String? foundationDescription = 'Rescatamos perros y gatos de la calle.';
   String? foundationPhoto;
@@ -246,6 +248,30 @@ class FakeApi {
           });
         }
         return _json(401, {'detail': 'Correo o contraseña incorrectos'});
+      case '/foster-applications':
+        if (request.headers['Authorization'] != 'Bearer $validToken') {
+          return _json(403, {'detail': 'Solo las cuentas de adoptante pueden postular como hogar temporal.'});
+        }
+        if (fosterApplication != null) {
+          return _json(409, {'detail': 'Ya tienes una postulación. Puedes editarla.'});
+        }
+        fosterApplication = {'id': 1, ...body, 'status': 'pending'};
+        return _json(201, fosterApplication);
+      case '/foster-applications/me':
+        if (request.headers['Authorization'] != 'Bearer $validToken') {
+          return _json(401, {'detail': 'Token inválido o expirado'});
+        }
+        if (request.method == 'DELETE') {
+          fosterApplication = null;
+          return http.Response('', 204);
+        }
+        if (request.method == 'PUT') {
+          if (fosterApplication?['status'] != 'pending') {
+            return _json(409, {'detail': 'Tu postulación ya fue revisada por una fundación y no se puede editar.'});
+          }
+          fosterApplication = {...fosterApplication!, ...body};
+        }
+        return _json(200, fosterApplication);
       case '/auth/verify-code':
         return switch (body['code']) {
           '123456' => _json(200, {'access_token': validToken, 'token_type': 'bearer', 'role': 'adopter'}),

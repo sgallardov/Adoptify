@@ -10,6 +10,7 @@ import '../features/foundation_profile/foundation_profile_screen.dart';
 import '../features/foundations/foundation_detail_screen.dart';
 import '../features/foundations/foundation_service.dart';
 import '../features/foundations/foundations_screen.dart';
+import '../features/foster/foster_screen.dart';
 import '../features/map/detail_screen.dart';
 import '../features/map/map_screen.dart';
 import '../features/map/map_service.dart';
@@ -135,6 +136,11 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/favoritos',
       builder: (context, state) => const FavoritesScreen(),
+    ),
+    // Postulación a hogar temporal (HU-B), desde la tarjeta del Perfil del adoptante
+    GoRoute(
+      path: '/hogar-temporal',
+      builder: (context, state) => const FosterScreen(),
     ),
     // Perfil público de una organización. El objeto llega desde el directorio y evita otra petición.
     GoRoute(
