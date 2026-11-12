@@ -158,6 +158,15 @@ correo y dirección, seleccionables) y una fila con sus mascotas en adopción. S
 Si el teléfono entrega tu ubicación, las pide con `lat`/`lng` y quedan de la más cercana a la más lejana, con la distancia en cada tarjeta ("a 4,2 km"); sin permiso, quedan por nombre y sin mostrar errores.
 La versión web de esta vista queda pendiente.
 
+## Hogar temporal (HU-B)
+En el Perfil del adoptante, la tarjeta **Hogar temporal** invita a postular o muestra el estado de su postulación
+(En revisión, Aprobada o No aprobada) con un resumen. Al tocarla se abre `/hogar-temporal` a pantalla completa
+(`features/foster/`): nombre y correo vienen de la cuenta; se piden teléfono, dirección (privada, solo la ven las
+fundaciones), tipo de mascota (perros, gatos o ambos), tamaños, cuántos a la vez, días máximos, espacio y
+disponibilidad, todos obligatorios. Junto al botón se listan los campos pendientes, porque los errores de arriba
+pueden quedar fuera de la pantalla. Mientras está en revisión se edita; ya revisada queda solo para leer y se puede
+retirar. Usa `GET/POST/PUT/DELETE /foster-applications`.
+
 ## Foto de la mascota (HU-16)
 En "Reportar mascota", la sección **5. Foto (opcional)** tiene dos botones:
 **Tomar foto** (cámara) y **Galería**. Usa `image_picker`.
