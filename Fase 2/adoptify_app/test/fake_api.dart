@@ -335,6 +335,8 @@ class FakeApi {
           return _json(401, {'detail': 'Not authenticated'});
         if (request.method == 'PUT') adoptionProfile = body;
         return _json(200, adoptionProfile);
+      // El mapa pide las cercanas a /veterinaries; /veterinary-clinics sigue como alias, igual que en el backend
+      case '/veterinaries':
       case '/veterinary-clinics':
         return _json(200, [
           {
