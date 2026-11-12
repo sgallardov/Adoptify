@@ -352,10 +352,15 @@ Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 | `GET` | `/favorites` | Animales marcados con el corazón por el usuario. |
 | `PUT` | `/{animal_id}/favorite` | Marca un favorito (`204`). |
 | `DELETE` | `/{animal_id}/favorite` | Quita un favorito (`204`). |
+| `GET` | `/interested` | Solo fundación dueña o administrador: devuelve por cada animal los interesados (`user_id`, `full_name`, `favorited_at`), sin correo, teléfono ni RUT. |
 
 Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
 En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha
 guarda el favorito) y el corazón de la barra abre la lista de favoritos.
+
+### Interesados por animal (HU-G1)
+
+Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales en el detalle del portal y en el acceso **Personas interesadas** de la app. Cada respuesta contiene únicamente el ID interno, nombre y fecha del favorito; no expone correo, teléfono ni RUT. La fundación decide de forma explícita cuándo usar “Iniciar conversación”. Mientras HU-G2 no esté implementada, esa acción solo prepara el destino de chat y no envía mensajes ni crea conversaciones.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 

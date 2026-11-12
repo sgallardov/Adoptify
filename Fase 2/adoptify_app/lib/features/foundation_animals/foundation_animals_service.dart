@@ -55,6 +55,43 @@ class ManagedAnimal {
   String get summary => '${_capitalize(species)} · ${_capitalize(size)}';
 }
 
+class InterestedPerson {
+  const InterestedPerson({required this.userId, required this.fullName, required this.favoritedAt});
+
+  factory InterestedPerson.fromJson(Map<String, dynamic> json) => InterestedPerson(
+        userId: json['user_id'] as int,
+        fullName: json['full_name'] as String,
+        favoritedAt: DateTime.parse(json['favorited_at'] as String).toLocal(),
+      );
+
+  final int userId;
+  final String fullName;
+  final DateTime favoritedAt;
+}
+
+class AnimalInterested {
+  const AnimalInterested({
+    required this.animalId,
+    required this.animalName,
+    required this.animalStatus,
+    required this.interested,
+  });
+
+  factory AnimalInterested.fromJson(Map<String, dynamic> json) => AnimalInterested(
+        animalId: json['animal_id'] as int,
+        animalName: json['animal_name'] as String,
+        animalStatus: json['animal_status'] as String,
+        interested: (json['interested'] as List<dynamic>)
+            .map((item) => InterestedPerson.fromJson(item as Map<String, dynamic>))
+            .toList(),
+      );
+
+  final int animalId;
+  final String animalName;
+  final String animalStatus;
+  final List<InterestedPerson> interested;
+}
+
 class FoundationAnimalsService {
   const FoundationAnimalsService(this._api);
 
@@ -69,6 +106,11 @@ class FoundationAnimalsService {
 
   Future<void> updateStatus(int animalId, String status) =>
       _api.patch('/animals/$animalId', <String, dynamic>{'status': status});
+
+  Future<List<AnimalInterested>> interested() async {
+    final response = await _api.get('/animals/interested') as List<dynamic>;
+    return response.map((item) => AnimalInterested.fromJson(item as Map<String, dynamic>)).toList();
+  }
 }
 
 String _capitalize(String value) => value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';

@@ -14,6 +14,8 @@ from app.models.animal_favorite import AnimalFavorite
 from app.models.user import User
 from app.schemas.animal import (
     AnimalCreate,
+    AnimalInterestedResponse,
+    InterestedUserResponse,
     AnimalMutationResponse,
     AnimalResponse,
     AnimalUpdate,
@@ -102,6 +104,48 @@ async def list_communes():
 async def managed_animals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     _require_foundation_staff(current_user)
     return await _animals_for_account(current_user, db)
+
+
+@router.get("/interested", response_model=list[AnimalInterestedResponse])
+async def interested_animals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Lista los likes recibidos por los animales gestionables, sin revelar datos de contacto."""
+    _require_foundation_staff(current_user)
+    statement = (
+        select(
+            Animal.id,
+            Animal.name,
+            Animal.status,
+            AnimalFavorite.user_id,
+            AnimalFavorite.created_at,
+            User.full_name,
+            User.role,
+        )
+        .outerjoin(AnimalFavorite, AnimalFavorite.animal_id == Animal.id)
+        .outerjoin(User, User.id == AnimalFavorite.user_id)
+        .order_by(Animal.id, AnimalFavorite.created_at.desc())
+    )
+    if current_user.role != "admin":
+        statement = statement.where(Animal.foundation_id == current_user.foundation_id)
+    try:
+        rows = (await db.execute(statement)).all()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudieron consultar las personas interesadas.") from exc
+
+    grouped: dict[int, AnimalInterestedResponse] = {}
+    for row in rows:
+        if row.id not in grouped:
+            grouped[row.id] = AnimalInterestedResponse(
+                animal_id=row.id,
+                animal_name=row.name,
+                animal_status=row.status,
+                interested=[],
+            )
+        # Solo los adoptantes son posibles candidatos. No se agrega ningún dato adicional de User.
+        if row.user_id is not None and row.role == "adopter":
+            grouped[row.id].interested.append(
+                InterestedUserResponse(user_id=row.user_id, full_name=row.full_name, favorited_at=row.created_at)
+            )
+    return list(grouped.values())
 
 
 @router.get("/management/{animal_id}", response_model=AnimalResponse)

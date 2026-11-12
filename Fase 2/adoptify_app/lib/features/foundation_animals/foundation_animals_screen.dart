@@ -16,7 +16,7 @@ class FoundationAnimalsScreen extends StatefulWidget {
 }
 
 class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
-  Future<List<ManagedAnimal>>? _animals;
+  Future<_AnimalsOverview>? _animals;
   String? _updatingId;
 
   @override
@@ -26,9 +26,17 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
     _animals ??= _load();
   }
 
-  Future<List<ManagedAnimal>> _load() => FoundationAnimalsService(AuthScope.of(context).api).list();
+  Future<_AnimalsOverview> _load() async {
+    final service = FoundationAnimalsService(AuthScope.of(context).api);
+    final animals = await service.list();
+    final interested = await service.interested();
+    return _AnimalsOverview(animals: animals, interested: interested);
+  }
 
-  void _reload() => setState(() => _animals = _load());
+  Future<void> _reload() async {
+    setState(() => _animals = _load());
+    await _animals;
+  }
 
   Future<void> _changeStatus(ManagedAnimal animal) async {
     final status = await showModalBottomSheet<String>(
@@ -77,7 +85,7 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Mis animales')),
         body: ContentWidth(
-          child: FutureBuilder<List<ManagedAnimal>>(
+          child: FutureBuilder<_AnimalsOverview>(
             future: _animals,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
@@ -93,10 +101,11 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
                   ],
                 );
               }
-              final animals = snapshot.data ?? const <ManagedAnimal>[];
+              final overview = snapshot.data;
+              final animals = overview?.animals ?? const <ManagedAnimal>[];
               if (animals.isEmpty) return _EmptyAnimals(onPublish: () => context.push('/fundacion/agregar'));
               return RefreshIndicator(
-                onRefresh: () async => _reload(),
+                onRefresh: _reload,
                 child: ListView(
                   padding: const EdgeInsets.all(AdoptifySpacing.xl),
                   children: [
@@ -110,6 +119,8 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
                         updating: _updatingId == '${animal.id}',
                         onEdit: () => context.push('/fundacion/mis-animales/${animal.id}/editar', extra: animal),
                         onStatus: () => _changeStatus(animal),
+                        interestCount: overview?.interestCount(animal.id) ?? 0,
+                        onInterested: () => context.push('/fundacion/interesados?animal_id=${animal.id}'),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
@@ -154,12 +165,21 @@ class _EmptyAnimals extends StatelessWidget {
 }
 
 class _AnimalCard extends StatelessWidget {
-  const _AnimalCard({required this.animal, required this.updating, required this.onEdit, required this.onStatus});
+  const _AnimalCard({
+    required this.animal,
+    required this.updating,
+    required this.onEdit,
+    required this.onStatus,
+    required this.interestCount,
+    required this.onInterested,
+  });
 
   final ManagedAnimal animal;
   final bool updating;
   final VoidCallback onEdit;
   final VoidCallback onStatus;
+  final int interestCount;
+  final VoidCallback onInterested;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -185,6 +205,12 @@ class _AnimalCard extends StatelessWidget {
                     Text(animal.summary, style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: AdoptifySpacing.sm),
                     _StatusChip(label: animal.statusLabel),
+                    const SizedBox(height: AdoptifySpacing.xs),
+                    TextButton.icon(
+                      onPressed: onInterested,
+                      icon: const Icon(Icons.favorite_outline, size: 18),
+                      label: Text(interestCount == 0 ? 'Aún sin interesados' : '$interestCount interesado${interestCount == 1 ? '' : 's'}'),
+                    ),
                     const SizedBox(height: AdoptifySpacing.md),
                     Row(
                       children: [
@@ -200,6 +226,20 @@ class _AnimalCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _AnimalsOverview {
+  const _AnimalsOverview({required this.animals, required this.interested});
+
+  final List<ManagedAnimal> animals;
+  final List<AnimalInterested> interested;
+
+  int interestCount(int animalId) {
+    for (final group in interested) {
+      if (group.animalId == animalId) return group.interested.length;
+    }
+    return 0;
+  }
 }
 
 class _StatusChip extends StatelessWidget {

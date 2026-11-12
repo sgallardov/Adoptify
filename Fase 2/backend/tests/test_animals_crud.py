@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.models.animal import Animal
+from app.models.animal_favorite import AnimalFavorite
 from app.models.foundation import Foundation
 from app.models.user import User
 
@@ -77,7 +78,7 @@ async def world(async_client: AsyncClient, db_session: AsyncSession):
         key: await login_headers(async_client, u.email, "user" if key == "adopter" else "foundation")
         for key, u in users.items()
     }
-    yield {"foundations": foundations, "animals": animals, "headers": headers}
+    yield {"foundations": foundations, "animals": animals, "users": users, "headers": headers}
 
     await db_session.execute(delete(Animal).where(Animal.foundation_id.in_([f.id for f in foundations])))
     await db_session.execute(delete(User).where(User.id.in_([u.id for u in users.values()])))
@@ -236,6 +237,29 @@ async def test_private_location_only_for_owner_or_admin(async_client, world):
     assert [a["id"] for a in listed.json()] == [animal.id]
     assert (await async_client.get("/api/v1/animals/management", headers=world["headers"]["adopter"])).status_code == 403
     assert (await async_client.get("/api/v1/animals/management")).status_code in (401, 403)
+
+
+async def test_foundation_sees_only_safe_interested_users_for_its_animals(async_client, db_session, world):
+    own, other = world["animals"]
+    adopter = world["users"]["adopter"]
+    db_session.add_all([
+        AnimalFavorite(user_id=adopter.id, animal_id=own.id),
+        AnimalFavorite(user_id=adopter.id, animal_id=other.id),
+    ])
+    await db_session.commit()
+
+    response = await async_client.get("/api/v1/animals/interested", headers=world["headers"]["a"])
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["animal_id"] for item in payload] == [own.id]
+    interested = payload[0]["interested"]
+    assert interested == [{"user_id": adopter.id, "full_name": adopter.full_name, "favorited_at": interested[0]["favorited_at"]}]
+    assert not {"email", "rut", "phone"}.intersection(interested[0])
+
+    # La otra fundación solo ve su propio animal, nunca los interesados del primero.
+    other_response = await async_client.get("/api/v1/animals/interested", headers=world["headers"]["b"])
+    assert [item["animal_id"] for item in other_response.json()] == [other.id]
+    assert (await async_client.get("/api/v1/animals/interested", headers=world["headers"]["adopter"])).status_code == 403
 
 
 async def test_keeping_place_is_private_and_validated(async_client, world):

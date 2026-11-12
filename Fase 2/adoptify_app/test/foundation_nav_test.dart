@@ -46,6 +46,21 @@ void main() {
     expect(find.text('Publica una historia'), findsNothing);
   });
 
+  testWidgets('la fundación ve los interesados desde la card de cada animal sin crear un chat automático', (tester) async {
+    await openFoundation(tester);
+
+    await tester.tap(find.text('Mis animales'));
+    await tester.pumpAndSettle();
+    expect(screenTitle('Mis animales'), findsOneWidget);
+    await tester.tap(find.text('1 interesado'));
+    await tester.pumpAndSettle();
+
+    expect(screenTitle('Personas interesadas'), findsOneWidget);
+    expect(find.text('Luna'), findsOneWidget);
+    expect(find.text('Matías Adoptante'), findsOneWidget);
+    expect(find.text('Iniciar conversación'), findsOneWidget);
+  });
+
   testWidgets('cada pestaña abre su placeholder', (tester) async {
     await openFoundation(tester);
 

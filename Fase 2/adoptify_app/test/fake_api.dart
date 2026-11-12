@@ -65,6 +65,7 @@ class FakeApi {
   final MemoryTokenStorage storage;
   bool offline = false;
   bool animalsFail = false;
+  bool interestedFail = false;
   bool foundationsFail = false;
   // Verificación en dos pasos de Matías (HU-I). El código bueno es 123456; 999999 simula uno vencido.
   bool twoFactor = false;
@@ -81,6 +82,22 @@ class FakeApi {
   int? uploadStatus;
   // Ids marcados con el corazón en el match
   final favorites = <int>{};
+  final interestedAnimals = <Map<String, dynamic>>[
+    {
+      'animal_id': 7,
+      'animal_name': 'Luna',
+      'animal_status': 'available',
+      'interested': [
+        {'user_id': 1, 'full_name': 'Matías Adoptante', 'favorited_at': '2026-11-10T15:30:00Z'},
+      ],
+    },
+    {
+      'animal_id': 8,
+      'animal_name': 'Rocky',
+      'animal_status': 'adopted',
+      'interested': <Map<String, dynamic>[],
+    },
+  ];
   final reports = <Map<String, dynamic>>[
     {
       'id': 1,
@@ -286,6 +303,17 @@ class FakeApi {
         if (animalsFail)
           return _json(503, {'detail': 'No se pudo consultar los animales.'});
         return _json(200, [luna, rocky]);
+      case '/animals/management':
+        if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+          return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
+        }
+        return _json(200, [luna, rocky]);
+      case '/animals/interested':
+        if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+          return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
+        }
+        if (interestedFail) return _json(503, {'detail': 'No se pudieron consultar las personas interesadas.'});
+        return _json(200, interestedAnimals);
       case '/animals/match':
         if (!loggedIn) return _json(401, {'detail': 'Not authenticated'});
         if (adoptionProfile == null)
