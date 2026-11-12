@@ -29,20 +29,14 @@ const _userItems = [
   NavItem(label: 'Perfil', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 
-// Vista de fundación: Chat, Agregar mascota (destacada, al centro) y Perfil
+// Vista de fundación: Inicio, Chat y Perfil. Publicar un animal vive en su propio flujo desde Inicio.
 const _foundationItems = [
+  NavItem(label: 'Inicio', icon: Icons.home_outlined, activeIcon: Icons.home),
   NavItem(
     label: 'Chat',
     icon: Icons.chat_bubble_outline,
     activeIcon: Icons.chat_bubble,
     tooltip: 'Chat con adoptantes',
-  ),
-  NavItem(
-    label: 'Agregar mascota',
-    icon: Icons.add,
-    activeIcon: Icons.add,
-    tooltip: 'Agregar una mascota en adopción',
-    highlighted: true,
   ),
   NavItem(
     label: 'Perfil',

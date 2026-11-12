@@ -6,6 +6,9 @@ import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
 import '../features/foundation_add/add_animal_screen.dart';
 import '../features/foundation_chat/foundation_chat_screen.dart';
+import '../features/foundation_animals/foundation_animals_screen.dart';
+import '../features/foundation_animals/foundation_animals_service.dart';
+import '../features/foundation_home/foundation_home_screen.dart';
 import '../features/foundation_profile/foundation_profile_screen.dart';
 import '../features/foundations/foundation_detail_screen.dart';
 import '../features/foundations/foundation_service.dart';
@@ -21,8 +24,9 @@ import '../shared/widgets/app_shell.dart';
 const _loading = '/cargando';
 const _login = '/login';
 const _foundation = '/fundacion';
-// Pestaña central y principal: a donde cae una fundación al iniciar sesión
-const _foundationHome = '/fundacion/agregar';
+// Inicio de la fundación: no se fuerza el formulario de alta al entrar.
+const _foundationHome = '/fundacion';
+const _foundationAddAnimal = '/fundacion/agregar';
 
 // Login obligatorio y único: sin sesión, cualquier ruta lleva al login. Con sesión, la vista depende del
 // rol: los adoptantes usan la app normal (mapa y pestañas) y las fundaciones solo su vista /fundacion/...
@@ -54,24 +58,23 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
       path: _loading,
       builder: (context, state) => const SessionLoadingScreen(),
     ),
-    // Vista de las cuentas de fundación (y admin): su propia barra con Chat, Agregar mascota y Perfil.
-    // Los tres módulos son placeholders hasta que se desarrollen.
+    // Vista de las cuentas de fundación (y admin): inicia en un panel propio, sin forzar el alta de una mascota.
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => FoundationShell(shell: shell),
       branches: [
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/fundacion/chat',
-              builder: (context, state) => const FoundationChatScreen(),
+              path: _foundationHome,
+              builder: (context, state) => const FoundationHomeScreen(),
             ),
           ],
         ),
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: _foundationHome,
-              builder: (context, state) => const AddAnimalScreen(),
+              path: '/fundacion/chat',
+              builder: (context, state) => const FoundationChatScreen(),
             ),
           ],
         ),
@@ -84,6 +87,19 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
           ],
         ),
       ],
+    ),
+    // Flujo de publicación fuera de la barra: se abre desde el botón principal del Inicio de fundación.
+    GoRoute(
+      path: _foundationAddAnimal,
+      builder: (context, state) => const AddAnimalScreen(),
+    ),
+    GoRoute(
+      path: '/fundacion/mis-animales',
+      builder: (context, state) => const FoundationAnimalsScreen(),
+    ),
+    GoRoute(
+      path: '/fundacion/mis-animales/:id/editar',
+      builder: (context, state) => AddAnimalScreen(animal: state.extra as ManagedAnimal),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),

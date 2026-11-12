@@ -87,8 +87,8 @@ void main() {
     expect(login.body, isNot(contains('account_type')));
     expect(api.storage.token, foundationToken);
 
-    // Cae en la pestaña central, sin barra ni mapa de adoptante
-    expect(find.widgetWithText(AppBar, 'Agregar mascota'), findsOneWidget);
+    // Cae en el inicio de fundación, sin barra ni mapa de adoptante
+    expect(find.widgetWithText(AppBar, 'Inicio'), findsOneWidget);
     expect(find.text('Mapa'), findsNothing);
     expect(find.text('Match'), findsNothing);
 

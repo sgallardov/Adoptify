@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adoptify_app/app/app.dart';
-import 'package:adoptify_app/app/theme.dart';
 import 'package:adoptify_app/features/auth/auth_service.dart';
 
 import 'fake_api.dart';
@@ -24,14 +23,14 @@ GoRouter routerOf(WidgetTester tester) =>
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('la fundación ve Chat, Agregar mascota y Perfil, en ese orden', (tester) async {
+  testWidgets('la fundación ve Inicio, Chat y Perfil, en ese orden', (tester) async {
     await openFoundation(tester);
 
+    final home = tester.getCenter(find.text('Inicio').last).dx;
     final chat = tester.getCenter(find.text('Chat')).dx;
-    final add = tester.getCenter(find.text('Agregar mascota').last).dx;
     final profile = tester.getCenter(find.text('Perfil')).dx;
-    expect(chat, lessThan(add));
-    expect(add, lessThan(profile));
+    expect(home, lessThan(chat));
+    expect(chat, lessThan(profile));
 
     // Nada de la barra de adoptante
     expect(find.text('Fundaciones'), findsNothing);
@@ -39,11 +38,12 @@ void main() {
     expect(find.text('Match'), findsNothing);
   });
 
-  testWidgets('al iniciar sesión cae en Agregar mascota, la pestaña central', (tester) async {
+  testWidgets('al iniciar sesión cae en Inicio sin forzar el formulario de mascotas', (tester) async {
     await openFoundation(tester);
 
-    expect(screenTitle('Agregar mascota'), findsOneWidget);
-    expect(find.text('Publica una historia'), findsOneWidget);
+    expect(screenTitle('Inicio'), findsOneWidget);
+    expect(find.text('Cada historia importa.'), findsOneWidget);
+    expect(find.text('Publica una historia'), findsNothing);
   });
 
   testWidgets('cada pestaña abre su placeholder', (tester) async {
@@ -61,16 +61,18 @@ void main() {
     expect(find.text('Fundación Patitas'), findsOneWidget);
     expect(find.text('Guardar perfil'), findsOneWidget);
 
-    await tester.tap(find.text('Agregar mascota').last);
+    await tester.tap(find.text('Inicio').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Publicar animal'));
     await tester.pumpAndSettle();
     expect(screenTitle('Agregar mascota'), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
+    expect(find.text('Publica una historia'), findsOneWidget);
   });
 
   testWidgets('cada pestaña tiene su tooltip y un área táctil suficiente', (tester) async {
     await openFoundation(tester);
 
-    for (final tooltip in ['Chat con adoptantes', 'Agregar una mascota en adopción', 'Perfil de la fundación']) {
+    for (final tooltip in ['Chat con adoptantes', 'Perfil de la fundación']) {
       final tab = find.byTooltip(tooltip);
       expect(tab, findsOneWidget);
       final size = tester.getSize(tab);
@@ -79,26 +81,15 @@ void main() {
     }
   });
 
-  testWidgets('la pestaña central va destacada con el relleno de la marca', (tester) async {
-    await openFoundation(tester);
-
-    Color? pillColor(String tooltip) {
-      final pill = find.descendant(of: find.byTooltip(tooltip), matching: find.byType(AnimatedContainer));
-      return ((tester.widget<AnimatedContainer>(pill).decoration) as BoxDecoration).color;
-    }
-
-    expect(pillColor('Agregar una mascota en adopción'), AdoptifyColors.light.primary);
-    expect(pillColor('Chat con adoptantes'), Colors.transparent);
-  });
-
   testWidgets('la barra de fundación también funciona en modo oscuro', (tester) async {
     SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
     await openFoundation(tester);
 
     final context = tester.element(find.byType(Scaffold).first);
     expect(Theme.of(context).brightness, Brightness.dark);
+    expect(find.text('Inicio'), findsWidgets);
     expect(find.text('Chat'), findsOneWidget);
-    expect(find.text('Agregar mascota'), findsWidgets);
+    expect(find.text('Agregar mascota'), findsNothing);
     expect(find.text('Perfil'), findsOneWidget);
   });
 
@@ -135,7 +126,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
     await openFoundation(tester);
 
-    // Chat y Agregar mascota no llevan el botón
+    // Inicio y Chat no llevan el botón
     expect(find.byTooltip('Cambiar a modo claro'), findsNothing);
     await tester.tap(find.text('Perfil'));
     await tester.pumpAndSettle();
@@ -152,13 +143,13 @@ void main() {
 
     routerOf(tester).go('/mapa');
     await tester.pumpAndSettle();
-    expect(screenTitle('Agregar mascota'), findsOneWidget);
+    expect(screenTitle('Inicio'), findsOneWidget);
     expect(find.text('Mapa'), findsNothing);
 
     // /fundaciones es la pestaña de adoptante, no parte del área de fundación
     routerOf(tester).go('/fundaciones');
     await tester.pumpAndSettle();
-    expect(screenTitle('Agregar mascota'), findsOneWidget);
+    expect(screenTitle('Inicio'), findsOneWidget);
   });
 
   testWidgets('el adoptante mantiene su barra y no puede entrar a la de fundación', (tester) async {

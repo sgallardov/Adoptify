@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
@@ -7,6 +8,7 @@ import '../../core/photo_service.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
+import '../foundation_animals/foundation_animals_service.dart';
 import '../map/map_service.dart';
 
 const _placeTypes = <String, String>{
@@ -17,7 +19,9 @@ const _placeTypes = <String, String>{
 // location conserva su función de punto privado de HU-04. El lugar de resguardo
 // se guarda como texto interno y no se geocodifica automáticamente.
 class AddAnimalScreen extends StatefulWidget {
-  const AddAnimalScreen({super.key});
+  const AddAnimalScreen({super.key, this.animal});
+
+  final ManagedAnimal? animal;
 
   @override
   State<AddAnimalScreen> createState() => _AddAnimalScreenState();
@@ -25,8 +29,8 @@ class AddAnimalScreen extends StatefulWidget {
 
 class _AddAnimalScreenState extends State<AddAnimalScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _placeAddress = TextEditingController();
+  late final TextEditingController _name;
+  late final TextEditingController _placeAddress;
   String? _species;
   String? _size;
   String? _gender;
@@ -37,7 +41,22 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   String? _photoError;
   bool _saving = false;
   String? _error;
-  String? _success;
+
+  bool get _editing => widget.animal != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final animal = widget.animal;
+    _name = TextEditingController(text: animal?.name ?? '');
+    _placeAddress = TextEditingController(text: animal?.keepingPlaceAddress ?? '');
+    _species = animal?.species;
+    _size = animal?.size;
+    _gender = animal?.gender;
+    _placeType = animal?.keepingPlaceType;
+    _energyLevel = animal?.energyLevel ?? 3;
+    _photoUrl = animal?.photoUrl;
+  }
 
   @override
   void dispose() {
@@ -49,16 +68,15 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   Future<void> _submit() async {
     setState(() {
       _error = null;
-      _success = null;
     });
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_photoUrl == null || _photoUrl!.isEmpty) {
+    if (!_editing && (_photoUrl == null || _photoUrl!.isEmpty)) {
       setState(() => _photoError = 'Debes subir una foto del animal antes de publicar.');
       return;
     }
     setState(() => _saving = true);
     try {
-      await AuthScope.of(context).api.post('/animals', <String, dynamic>{
+      final payload = <String, dynamic>{
         'name': _name.text.trim(),
         'species': _species,
         'size': _size,
@@ -66,20 +84,20 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
         'energy_level': _energyLevel,
         'keeping_place_type': _placeType,
         'keeping_place_address': _placeAddress.text.trim(),
-        'photo_url': _photoUrl,
-      });
+        // Al editar, omitir la foto conserva la que ya tenía el registro (incluidos casos históricos sin foto).
+        if (!_editing || _photoUrl != null) 'photo_url': _photoUrl,
+      };
+      if (_editing) {
+        await AuthScope.of(context).api.patch('/animals/${widget.animal!.id}', payload);
+      } else {
+        await AuthScope.of(context).api.post('/animals', payload);
+      }
       if (!mounted) return;
-      _formKey.currentState?.reset();
-      setState(() {
-        _species = null;
-        _size = null;
-        _gender = null;
-        _placeType = null;
-        _energyLevel = 3;
-        _photoUrl = null;
-        _photoError = null;
-        _success = 'Animal publicado. Su lugar de resguardo permanece privado.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_editing ? 'Animal actualizado correctamente.' : 'Animal publicado correctamente.')),
+      );
+      // Tras publicar o editar, la fundación ve de inmediato el resultado en su listado privado.
+      context.go('/fundacion/mis-animales');
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = errorMessage(error, 'No pudimos publicar el animal. Inténtalo nuevamente.'));
@@ -107,7 +125,6 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
       _uploading = true;
       _photoError = null;
       _error = null;
-      _success = null;
     });
     try {
       final url = await MapService(AuthScope.of(context).api).uploadPhoto(photo);
@@ -129,14 +146,14 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   Widget build(BuildContext context) {
     final busy = _saving || _uploading;
     return Scaffold(
-      appBar: AppBar(title: const Text('Agregar mascota')),
+      appBar: AppBar(title: Text(_editing ? 'Editar mascota' : 'Agregar mascota')),
       body: ContentWidth(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(AdoptifySpacing.xl),
             children: [
-              Text('Publica una historia', style: Theme.of(context).textTheme.headlineSmall),
+              Text(_editing ? 'Actualiza su historia' : 'Publica una historia', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AdoptifySpacing.sm),
               Text(
                 'Los datos de resguardo solo se comparten con tu fundación y el administrador.',
@@ -199,7 +216,9 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
               Text('Foto del animal *', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: AdoptifySpacing.xs),
               Text(
-                _photoUrl == null ? 'Sube una foto para poder publicar esta mascota.' : 'Foto cargada correctamente.',
+                _photoUrl == null
+                    ? (_editing ? 'Puedes cargar una foto si deseas actualizarla.' : 'Sube una foto para poder publicar esta mascota.')
+                    : 'Foto cargada correctamente.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: AdoptifySpacing.md),
@@ -267,7 +286,6 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
                     : null,
               ),
               if (_error != null) ...[const SizedBox(height: AdoptifySpacing.md), MessageBox.error(message: _error!)],
-              if (_success != null) ...[const SizedBox(height: AdoptifySpacing.md), MessageBox.success(message: _success!)],
               const SizedBox(height: AdoptifySpacing.lg),
               FilledButton.icon(
                 onPressed: busy ? null : _submit,
@@ -280,7 +298,7 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
                         ),
                       )
                     : const Icon(Icons.publish_outlined),
-                label: Text(busy ? 'Publicando…' : 'Publicar animal'),
+                label: Text(busy ? (_editing ? 'Guardando…' : 'Publicando…') : (_editing ? 'Guardar cambios' : 'Publicar animal')),
               ),
             ],
           ),
