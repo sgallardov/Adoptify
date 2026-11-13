@@ -25,6 +25,8 @@ const _alertsRadiusKm = 5;
 const _fitPadding = EdgeInsets.fromLTRB(48, 150, 72, 120);
 // Zoom al tocar "Usar mi ubicación": se ven las calles alrededor de tu posición
 const _locateZoom = 16.0;
+// Zoom al abrir el mapa centrado en tu ubicación: se ve tu barrio y los pines cercanos
+const _userZoom = 14.0;
 // Las veterinarias son cientos: con el mapa más alejado que esto se amontonarían y taparían todo
 const _clinicsMinZoom = 13.0;
 
@@ -58,6 +60,10 @@ class _MapScreenState extends State<MapScreen> {
   // Tras "Usar mi ubicación" el mapa queda centrado en ti en vez de encuadrar todos los pines,
   // hasta que cambies el radio o vuelvas a ver todas
   bool _centerOnOrigin = false;
+  // Al abrir, el mapa se centra en tu ubicación (sin filtrar por radio) en vez de encuadrar todo el país
+  bool _centerOnUser = false;
+  // Si moviste el mapa con el dedo, deja de reencuadrarse solo cuando llegan datos nuevos
+  bool _autoFit = true;
   String? _geoError;
 
   List<Animal> _animals = [];
@@ -131,9 +137,14 @@ class _MapScreenState extends State<MapScreen> {
     try {
       final position = await LocationService.instance.current();
       if (!mounted) return;
+      _centerOnUser = true;
       _setUserPosition(position);
+      _fitToPoints();
     } catch (_) {
-      if (mounted) setState(() => _detecting = false);
+      if (!mounted) return;
+      setState(() => _detecting = false);
+      // Sin ubicación se encuadran las mascotas y reportes, como antes
+      _fitToPoints();
     }
   }
 
@@ -233,7 +244,9 @@ class _MapScreenState extends State<MapScreen> {
 
   // Encuadra el mapa para que se vean todas las mascotas y tu ubicación
   void _fitToPoints([int attempt = 0]) {
-    if (!_mapReady || !mounted) return;
+    if (!_mapReady || !mounted || !_autoFit) return;
+    // Mientras se espera la ubicación no se encuadra el país entero: el mapa saltaría al llegar
+    if (_detecting && _origin == null) return;
     // Al abrir la app el mapa puede no tener tamaño todavía: encuadrar así lo alejaría hasta el planeta
     // completo. Se reintenta en el siguiente cuadro (máximo 20 veces).
     final size = _mapController.camera.nonRotatedSize;
@@ -247,6 +260,11 @@ class _MapScreenState extends State<MapScreen> {
     final origin = _origin;
     if (_centerOnOrigin && origin != null) {
       _mapController.move(origin, _locateZoom);
+      return;
+    }
+    final user = _userPosition;
+    if (_centerOnUser && _origin == null && user != null) {
+      _mapController.move(user, _userZoom);
       return;
     }
     final points = [
@@ -281,6 +299,7 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _origin = position;
         _centerOnOrigin = true;
+        _autoFit = true;
         _selectedAnimalId = null;
         _selectedReportId = null;
         _selectedFoundationId = null;
@@ -303,6 +322,9 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _origin = null;
       _centerOnOrigin = false;
+      // "Ver todas": se encuadran todas las mascotas y reportes
+      _centerOnUser = false;
+      _autoFit = true;
       _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
@@ -317,6 +339,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _radiusKm = km;
       _centerOnOrigin = false;
+      _autoFit = true;
     });
     _load();
   }
@@ -720,7 +743,8 @@ class _MapScreenState extends State<MapScreen> {
         initialZoom: 11,
         onTap: (_, _) => _clearSelection(),
         // Solo se redibuja al cruzar el zoom de las veterinarias, no en cada movimiento
-        onPositionChanged: (camera, _) {
+        onPositionChanged: (camera, hasGesture) {
+          if (hasGesture) _autoFit = false;
           final inView = camera.zoom >= _clinicsMinZoom;
           if (inView != _clinicsInView) {
             setState(() {
@@ -759,7 +783,8 @@ class _MapScreenState extends State<MapScreen> {
                     key: ValueKey('foundation-${foundation.id}'),
                     onTap: () => _selectFoundation(foundation),
                   ),
-            if (_origin != null) mapMarker(_origin!, MapPins.origin),
+            // Tu ubicación: la del botón o la detectada al abrir el mapa
+            if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
             if (_showAnimals) ...[
               for (final animal in _animals)
                 if (animal.position != null && animal.id != _selectedAnimalId)
