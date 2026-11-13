@@ -126,6 +126,9 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
   - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
   - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas, reportes y fundaciones;
+  - **Al abrir el mapa** (por ejemplo, después de iniciar sesión) se pide la ubicación y la cámara se centra en ti a nivel de
+    barrio (zoom 14), con tu punto azul y sin filtrar por radio. Mientras llega no se encuadra todo el país (evita el salto);
+    sin permiso, se encuadran las mascotas y reportes. Si mueves el mapa con el dedo, deja de reencuadrarse solo;
   - **Usar mi ubicación**: centra el mapa en ti con zoom de calles (16) y busca con `GET /animals/nearby` y
     `GET /reports/nearby`; al cambiar el radio se encuadran los resultados;
   - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
