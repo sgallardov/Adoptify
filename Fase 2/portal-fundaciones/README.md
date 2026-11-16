@@ -154,6 +154,15 @@ sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
 envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 `status`, para no sobrescribir un cambio de estado hecho desde otra sesión.
 
+## Hogares temporales (HU-B)
+`/hogares-temporales` (ítem del menú) lista las postulaciones de adoptantes que ofrecen su hogar
+(`GET /foster-applications`): nombre, correo y teléfono enlazados, dirección privada, qué pueden recibir
+(especie, tamaños, cuántos a la vez, días máximos), espacio y disponibilidad. Filtros Pendientes, Aprobadas,
+No aprobadas y Todas, con conteo. **Aprobar** y **Rechazar** en las pendientes; **Volver a pendiente** solo en las que
+decidió la propia fundación (`PATCH /foster-applications/{id}`). El estado es compartido entre fundaciones: si otra ya
+decidió, se muestra quién y no hay botones. "Abrir chat" espera HU-G2 (`CHAT_ENABLED` en
+`pages/FosterApplications.tsx`). Textos en `services/fosterLabels.ts`.
+
 ## Modo oscuro
 
 El botón de luna/sol (`ThemeToggle`) cambia entre modo claro y oscuro. Está en la cabecera del portal de

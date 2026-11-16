@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import Brand from './Brand'
 import ThemeToggle from './ThemeToggle'
-import { ChevronRight, Heart, House, LogOut, Menu, PawPrint, Siren, Users, X } from 'lucide-react'
+import { ChevronRight, Heart, House, HousePlus, LogOut, Menu, PawPrint, Siren, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/animales', label: 'Mis casos', icon: PawPrint },
   { to: '/reportes', label: 'Reportes', icon: Siren },
+  { to: '/hogares-temporales', label: 'Hogares temporales', icon: HousePlus },
   { to: '/fundacion', label: 'Mi fundación', icon: Users },
 ]
 

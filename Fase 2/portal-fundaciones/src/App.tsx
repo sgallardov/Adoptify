@@ -9,6 +9,7 @@ import AnimalDetail from './pages/AnimalDetail'
 import AnimalForm from './pages/AnimalForm'
 import Foundation from './pages/Foundation'
 import Reports from './pages/Reports'
+import FosterApplications from './pages/FosterApplications'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="animales/:id" element={<AnimalDetail />} />
               <Route path="fundacion" element={<Foundation />} />
               <Route path="reportes" element={<Reports />} />
+              <Route path="hogares-temporales" element={<FosterApplications />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

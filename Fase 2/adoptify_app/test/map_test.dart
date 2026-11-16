@@ -32,6 +32,8 @@ void main() {
   testWidgets(
     'sin ubicación muestra solo las mascotas disponibles y los reportes',
     (tester) async {
+    // Sin permiso de ubicación el mapa encuadra todas las mascotas y reportes (con ubicación se centra en ti)
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
       final api = FakeApi();
       await openMap(tester, api);
 
@@ -131,31 +133,6 @@ void main() {
   });
 
   testWidgets(
-    'con permiso de ubicación el mapa busca lo cercano a tu posición al abrir',
-    (tester) async {
-      final api = FakeApi();
-      await openMap(tester, api);
-
-      final nearby = api.requests.lastWhere(
-        (r) => r.url.path == '/animals/nearby',
-      );
-      expect(nearby.url.queryParameters, {
-        'lat': '-33.4378',
-        'lng': '-70.6505',
-        'radius_km': '10',
-      });
-      // Encuadra tu posición junto con lo cercano, sin tapar el resto del mapa (a diferencia
-      // del zoom de calles de "Usar mi ubicación")
-      final markers = tester
-          .widget<MarkerLayer>(find.byType(MarkerLayer))
-          .markers;
-      expect(markers.any((m) => m.key == const ValueKey('animal-7')), isTrue);
-      expect(find.text('Radio 10 km'), findsOneWidget);
-      expect(find.text('No diste permiso para usar tu ubicación.'), findsNothing);
-    },
-  );
-
-  testWidgets(
     'sin señal al abrir el mapa queda como siempre, con aviso para reintentar',
     (tester) async {
       LocationService.instance = FakeLocation(
@@ -190,6 +167,8 @@ void main() {
   testWidgets('tocar una mascota o un reporte muestra su ficha', (
     tester,
   ) async {
+    // Sin permiso de ubicación el mapa encuadra todas las mascotas y reportes (con ubicación se centra en ti)
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
     final api = FakeApi();
     await openMap(tester, api);
 
@@ -317,6 +296,8 @@ void main() {
   testWidgets(
     'tocar la ficha de una mascota abre el detalle a pantalla completa',
     (tester) async {
+    // Sin permiso de ubicación el mapa encuadra todas las mascotas y reportes (con ubicación se centra en ti)
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
       final api = FakeApi();
       await openMap(tester, api);
 
@@ -386,6 +367,8 @@ void main() {
   testWidgets('las capas muestran la leyenda y permiten ocultar los reportes', (
     tester,
   ) async {
+    // Sin permiso de ubicación el mapa encuadra todas las mascotas y reportes (con ubicación se centra en ti)
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
     final api = FakeApi();
     await openMap(tester, api);
 
@@ -427,6 +410,19 @@ void main() {
     await tapAndSettle(tester, find.text('Ver todas'));
     expect(find.text('Ver todas'), findsNothing);
     expect(api.requests.last.url.path, isNot('/animals/nearby'));
+  });
+
+  testWidgets('al abrir el mapa se centra en tu ubicación con tu punto azul', (tester) async {
+    await openMap(tester, FakeApi());
+    final camera = tester.widget<FlutterMap>(find.byType(FlutterMap)).mapController!.camera;
+
+    // FakeLocation parte en Santiago centro: el mapa queda ahí, a nivel de barrio, sin filtrar por radio
+    expect(camera.center.latitude, closeTo(-33.4378, 0.0001));
+    expect(camera.center.longitude, closeTo(-70.6505, 0.0001));
+    expect(camera.zoom, 14);
+    expect(find.text('Ver todas'), findsNothing);
+    final markers = tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers;
+    expect(markers.where((m) => m.point == const LatLng(-33.4378, -70.6505)), isNotEmpty);
   });
 
   testWidgets('usar mi ubicación centra el mapa en ti con zoom de calles', (
@@ -638,13 +634,15 @@ void main() {
   });
 
   testWidgets('si la API falla permite reintentar', (tester) async {
+    // Sin permiso de ubicación el mapa encuadra todas las mascotas y reportes (con ubicación se centra en ti)
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
     final api = FakeApi()..animalsFail = true;
     await openMap(tester, api);
 
     expect(find.text('No pudimos cargar las mascotas.'), findsOneWidget);
 
     api.animalsFail = false;
-    await tapAndSettle(tester, find.text('Reintentar'));
+    await tapAndSettle(tester, find.text('Reintentar').first);
     expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
   });
 }

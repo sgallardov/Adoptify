@@ -59,6 +59,9 @@ async def _report_with_foundations(report_id: int, db: AsyncSession) -> Abandone
             selectinload(AbandonedDogReport.taken_by_foundation),
         )
         .where(AbandonedDogReport.id == report_id)
+        # Después de tomar o soltar un caso se vuelve a leer el mismo reporte: sin esto, la sesión reutiliza el
+        # objeto en memoria (expire_on_commit=False) y la fundación responsable llega desactualizada
+        .execution_options(populate_existing=True)
     )
     try:
         report = (await db.execute(statement)).scalar_one_or_none()
