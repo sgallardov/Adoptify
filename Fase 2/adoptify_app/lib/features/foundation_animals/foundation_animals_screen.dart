@@ -120,7 +120,7 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
                         onEdit: () => context.push('/fundacion/mis-animales/${animal.id}/editar', extra: animal),
                         onStatus: () => _changeStatus(animal),
                         interestCount: overview?.interestCount(animal.id) ?? 0,
-                        onInterested: () => context.push('/fundacion/interesados?animal_id=${animal.id}'),
+                        onInterested: () => context.push('/fundacion/postulaciones?animal_id=${animal.id}'),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
@@ -209,7 +209,7 @@ class _AnimalCard extends StatelessWidget {
                     TextButton.icon(
                       onPressed: onInterested,
                       icon: const Icon(Icons.favorite_outline, size: 18),
-                      label: Text(interestCount == 0 ? 'Aún sin interesados' : '$interestCount interesado${interestCount == 1 ? '' : 's'}'),
+                      label: Text(interestCount == 0 ? 'Ver postulaciones' : '$interestCount lo guardaron · Ver postulaciones'),
                     ),
                     const SizedBox(height: AdoptifySpacing.md),
                     Row(

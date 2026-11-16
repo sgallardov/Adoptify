@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Heart, UserRound } from 'lucide-react'
+import { Heart } from 'lucide-react'
 import Feedback from './Feedback'
 import { fetchInterested } from '../services/interested'
 import type { InterestedPerson } from '../services/interested'
 import { errorMessage } from '../services/api'
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium' }).format(new Date(value))
-}
 
 export default function InterestedSection({ animalId }: { animalId: number }) {
   const [people, setPeople] = useState<InterestedPerson[] | null>(null)
@@ -35,17 +31,12 @@ export default function InterestedSection({ animalId }: { animalId: number }) {
 
   return <section className="mt-6 border-t border-base-100 pt-6" aria-labelledby="interested-title">
     <div className="flex items-center gap-2"><Heart size={18} className="text-brand-600" /><h2 id="interested-title" className="font-semibold">Personas interesadas</h2></div>
-    <p className="mt-1 text-sm text-base-500">Personas que marcaron este animal como favorito. Tú decides cuándo iniciar contacto.</p>
+    <p className="mt-1 text-sm text-base-500">Los favoritos muestran interés general. Para contactar a alguien, revisa sus postulaciones más abajo.</p>
     <div className="mt-4">
       {error && <Feedback kind="error" title={error} actionLabel="Reintentar" onAction={retry} compact />}
       {!error && people === null && <Feedback kind="loading" title="Cargando personas interesadas…" compact />}
-      {!error && people?.length === 0 && <Feedback kind="empty" title="Aún no hay personas interesadas" description="Cuando alguien marque este animal con un corazón, aparecerá aquí." compact />}
-      {!error && people != null && people.length > 0 && <ul className="space-y-3" aria-label="Personas interesadas">
-        {people.map(person => <li key={person.user_id} className="flex items-center gap-3 rounded-xl border border-base-200 bg-base-50 p-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-800"><UserRound size={18} /></span>
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{person.full_name}</p><p className="text-xs text-base-500">Marcó favorito el {formatDate(person.favorited_at)}</p></div>
-        </li>)}
-      </ul>}
+      {!error && people?.length === 0 && <Feedback kind="empty" title="Aún nadie lo ha guardado" description="Los favoritos son una señal de interés, no una postulación." compact />}
+      {!error && people != null && people.length > 0 && <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-900">♡ {people.length} persona{people.length === 1 ? '' : 's'} guardaron a este animal.</div>}
     </div>
   </section>
 }

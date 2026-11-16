@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../features/account/account_screen.dart';
+import '../features/adoption_applications/application_form_screen.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
@@ -8,7 +9,7 @@ import '../features/foundation_add/add_animal_screen.dart';
 import '../features/foundation_chat/foundation_chat_screen.dart';
 import '../features/foundation_animals/foundation_animals_screen.dart';
 import '../features/foundation_animals/foundation_animals_service.dart';
-import '../features/foundation_animals/interested_animals_screen.dart';
+import '../features/foundation_animals/application_candidates_screen.dart';
 import '../features/foundation_home/foundation_home_screen.dart';
 import '../features/foundation_profile/foundation_profile_screen.dart';
 import '../features/foundations/foundation_detail_screen.dart';
@@ -102,10 +103,8 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
       builder: (context, state) => const FoundationAnimalsScreen(),
     ),
     GoRoute(
-      path: '/fundacion/interesados',
-      builder: (context, state) => InterestedAnimalsScreen(
-        animalId: int.tryParse(state.uri.queryParameters['animal_id'] ?? ''),
-      ),
+      path: '/fundacion/postulaciones',
+      builder: (context, state) => ApplicationCandidatesScreen(animalId: int.tryParse(state.uri.queryParameters['animal_id'] ?? '')),
     ),
     GoRoute(
       path: '/fundacion/mis-animales/:id/editar',
@@ -174,6 +173,10 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
       path: '/animales/:id',
       builder: (context, state) =>
           AnimalDetailScreen(animal: state.extra as Animal),
+    ),
+    GoRoute(
+      path: '/animales/:id/postular',
+      builder: (context, state) => ApplicationFormScreen(animal: state.extra as Animal),
     ),
     GoRoute(
       path: '/reportes/:id',

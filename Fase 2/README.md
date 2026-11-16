@@ -353,6 +353,11 @@ Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 | `PUT` | `/{animal_id}/favorite` | Marca un favorito (`204`). |
 | `DELETE` | `/{animal_id}/favorite` | Quita un favorito (`204`). |
 | `GET` | `/interested` | Solo fundación dueña o administrador: devuelve por cada animal los interesados (`user_id`, `full_name`, `favorited_at`), sin correo, teléfono ni RUT. |
+| `POST` | `/adoption-applications/animals/{animal_id}` | Adoptante: envía una postulación con una copia de su ficha “Quiero adoptar” y un mensaje opcional. Un favorito no crea una candidatura. |
+| `GET` | `/adoption-applications/mine` | Adoptante: consulta el estado de sus propias postulaciones. |
+| `DELETE` | `/adoption-applications/{id}` | Adoptante: retira una postulación abierta. |
+| `GET` | `/adoption-applications/foundation` | Fundación: ve solo las postulaciones a sus animales, sin correo, teléfono ni RUT. |
+| `PATCH` | `/adoption-applications/{id}/status` | Fundación: revisa, rechaza, preselecciona o invita a conversar a una candidatura propia. |
 
 Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
 En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha

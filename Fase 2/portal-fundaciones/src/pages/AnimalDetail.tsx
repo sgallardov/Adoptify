@@ -9,6 +9,7 @@ import Feedback from '../components/Feedback'
 import AnimalsState from '../components/AnimalsState'
 import { AnimalPhoto, StatusBadge } from '../components/AnimalCard'
 import InterestedSection from '../components/InterestedSection'
+import ApplicationsSection from '../components/ApplicationsSection'
 import NotFound from './NotFound'
 
 export default function AnimalDetail() {
@@ -74,6 +75,7 @@ function Detail({ record, onUpdate }: { record: AnimalResponse; onUpdate: (anima
         <Link to={`/animales/${animal.id}/editar`} className="button-secondary mt-5">Editar animal</Link>
         <StatusEditor key={`${record.id}-${record.status}`} record={record} onUpdate={updated => { onUpdate(updated); setNotice('El estado del animal se actualizó correctamente.') }} />
         <InterestedSection animalId={animal.id} />
+        <ApplicationsSection animalId={animal.id} />
       </div>
     </div>
   </>

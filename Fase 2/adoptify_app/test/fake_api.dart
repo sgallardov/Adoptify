@@ -95,7 +95,7 @@ class FakeApi {
       'animal_id': 8,
       'animal_name': 'Rocky',
       'animal_status': 'adopted',
-      'interested': <Map<String, dynamic>[],
+      'interested': <Map<String, dynamic>>[],
     },
   ];
   final reports = <Map<String, dynamic>>[
@@ -338,6 +338,7 @@ class FakeApi {
         if (request.method == 'PUT') adoptionProfile = body;
         return _json(200, adoptionProfile);
       case '/veterinary-clinics':
+      case '/veterinaries':
         return _json(200, [
           {
             'id': 1, 'name': 'Clínica Urgencias Vet', 'address': 'Av. Grecia 100', 'commune': 'Ñuñoa',

@@ -56,6 +56,14 @@ class AnimalDetailScreen extends StatelessWidget {
                         style: textTheme.labelLarge?.copyWith(color: colors.primaryDark),
                       ),
                     ],
+                    if (AuthScope.of(context).user?.isFoundation == false && animal.status == 'available') ...[
+                      const SizedBox(height: AdoptifySpacing.lg),
+                      FilledButton.icon(
+                        onPressed: () => context.push('/animales/${animal.id}/postular', extra: animal),
+                        icon: const Icon(Icons.assignment_outlined),
+                        label: const Text('Postular a adoptar'),
+                      ),
+                    ],
                     if (animal.position != null) ...[
                       const SizedBox(height: AdoptifySpacing.xl),
                       _MiniMap(position: animal.position!, pin: MapPins.animal),

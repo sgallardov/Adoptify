@@ -92,6 +92,18 @@ class AnimalInterested {
   final List<InterestedPerson> interested;
 }
 
+class FoundationApplication {
+  const FoundationApplication({required this.id, required this.animalId, required this.animalName, required this.userId, required this.fullName, required this.status, required this.housingType, required this.hasPets, this.experience, this.message});
+  factory FoundationApplication.fromJson(Map<String, dynamic> json) {
+    final applicant = json['applicant'] as Map<String, dynamic>;
+    final profile = json['profile'] as Map<String, dynamic>;
+    return FoundationApplication(id: json['id'] as int, animalId: json['animal_id'] as int, animalName: json['animal_name'] as String, userId: applicant['user_id'] as int, fullName: applicant['full_name'] as String, status: json['status'] as String, housingType: profile['housing_type'] as String, hasPets: profile['has_pets'] as String, experience: profile['experience'] as String?, message: json['message'] as String?);
+  }
+  final int id; final int animalId; final String animalName; final int userId; final String fullName; final String status; final String housingType; final String hasPets; final String? experience; final String? message;
+  bool get canAct => status == 'submitted' || status == 'reviewing';
+  String get statusLabel => {'submitted': 'Nueva', 'reviewing': 'En revisión', 'invited_to_chat': 'Invitada a conversar', 'rejected': 'No continúa', 'approved': 'Preseleccionada'}[status] ?? status;
+}
+
 class FoundationAnimalsService {
   const FoundationAnimalsService(this._api);
 
@@ -111,6 +123,14 @@ class FoundationAnimalsService {
     final response = await _api.get('/animals/interested') as List<dynamic>;
     return response.map((item) => AnimalInterested.fromJson(item as Map<String, dynamic>)).toList();
   }
+
+  Future<List<FoundationApplication>> applications() async {
+    final response = await _api.get('/adoption-applications/foundation') as List<dynamic>;
+    return response.map((item) => FoundationApplication.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> updateApplicationStatus(int id, String status) =>
+      _api.patch('/adoption-applications/$id/status', <String, dynamic>{'status': status});
 }
 
 String _capitalize(String value) => value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';
