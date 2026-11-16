@@ -67,7 +67,9 @@ void main() {
       // Cerrado: solo el botón chico, sin la lista
       expect(find.byKey(const ValueKey('alerts-panel')), findsNothing);
       final alerts = api.requests.lastWhere(
-        (r) => r.url.path == '/reports/nearby',
+        (r) =>
+            r.url.path == '/reports/nearby' &&
+            r.url.queryParameters['radius_km'] == '5',
       );
       expect(alerts.url.queryParameters, {
         'lat': '-33.4378',
@@ -115,8 +117,11 @@ void main() {
     await openMap(tester, FakeApi());
 
     expect(find.text('Activar ubicación'), findsOneWidget);
-    // Al abrir no se muestra el error: solo si la persona toca el botón o el de ubicación
-    expect(find.text('No diste permiso para usar tu ubicación.'), findsNothing);
+    // Al no obtenerse la ubicación al abrir, ya aparece el aviso con opción de reintentar
+    expect(
+      find.text('No diste permiso para usar tu ubicación.'),
+      findsOneWidget,
+    );
 
     await tapAndSettle(tester, find.text('Activar ubicación'));
     expect(
@@ -124,6 +129,63 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'con permiso de ubicación el mapa busca lo cercano a tu posición al abrir',
+    (tester) async {
+      final api = FakeApi();
+      await openMap(tester, api);
+
+      final nearby = api.requests.lastWhere(
+        (r) => r.url.path == '/animals/nearby',
+      );
+      expect(nearby.url.queryParameters, {
+        'lat': '-33.4378',
+        'lng': '-70.6505',
+        'radius_km': '10',
+      });
+      // Encuadra tu posición junto con lo cercano, sin tapar el resto del mapa (a diferencia
+      // del zoom de calles de "Usar mi ubicación")
+      final markers = tester
+          .widget<MarkerLayer>(find.byType(MarkerLayer))
+          .markers;
+      expect(markers.any((m) => m.key == const ValueKey('animal-7')), isTrue);
+      expect(find.text('Radio 10 km'), findsOneWidget);
+      expect(find.text('No diste permiso para usar tu ubicación.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'sin señal al abrir el mapa queda como siempre, con aviso para reintentar',
+    (tester) async {
+      LocationService.instance = FakeLocation(
+        error: 'No pudimos obtener tu ubicación. Inténtalo nuevamente.',
+      );
+      final api = FakeApi();
+      await openMap(tester, api);
+
+      // Sigue como hoy: centrado en Santiago, buscando con el radio de respaldo
+      final reportsRequest = api.requests.firstWhere(
+        (r) => r.url.path == '/reports/nearby',
+      );
+      expect(reportsRequest.url.queryParameters['radius_km'], '100');
+      expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
+      expect(
+        find.text('No pudimos obtener tu ubicación. Inténtalo nuevamente.'),
+        findsOneWidget,
+      );
+      expect(find.text('Reintentar'), findsOneWidget);
+
+      // El botón de retry vuelve a pedir la ubicación y, si funciona, se centra igual que "Usar mi ubicación"
+      LocationService.instance = FakeLocation();
+      await tapAndSettle(tester, find.text('Reintentar'));
+      expect(
+        find.text('No pudimos obtener tu ubicación. Inténtalo nuevamente.'),
+        findsNothing,
+      );
+      expect(find.text('Radio 10 km'), findsOneWidget);
+    },
+  );
 
   testWidgets('tocar una mascota o un reporte muestra su ficha', (
     tester,
