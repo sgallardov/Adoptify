@@ -55,6 +55,55 @@ class ManagedAnimal {
   String get summary => '${_capitalize(species)} · ${_capitalize(size)}';
 }
 
+class InterestedPerson {
+  const InterestedPerson({required this.userId, required this.fullName, required this.favoritedAt});
+
+  factory InterestedPerson.fromJson(Map<String, dynamic> json) => InterestedPerson(
+        userId: json['user_id'] as int,
+        fullName: json['full_name'] as String,
+        favoritedAt: DateTime.parse(json['favorited_at'] as String).toLocal(),
+      );
+
+  final int userId;
+  final String fullName;
+  final DateTime favoritedAt;
+}
+
+class AnimalInterested {
+  const AnimalInterested({
+    required this.animalId,
+    required this.animalName,
+    required this.animalStatus,
+    required this.interested,
+  });
+
+  factory AnimalInterested.fromJson(Map<String, dynamic> json) => AnimalInterested(
+        animalId: json['animal_id'] as int,
+        animalName: json['animal_name'] as String,
+        animalStatus: json['animal_status'] as String,
+        interested: (json['interested'] as List<dynamic>)
+            .map((item) => InterestedPerson.fromJson(item as Map<String, dynamic>))
+            .toList(),
+      );
+
+  final int animalId;
+  final String animalName;
+  final String animalStatus;
+  final List<InterestedPerson> interested;
+}
+
+class FoundationApplication {
+  const FoundationApplication({required this.id, required this.animalId, required this.animalName, required this.userId, required this.fullName, required this.status, required this.housingType, required this.hasPets, this.experience, this.message});
+  factory FoundationApplication.fromJson(Map<String, dynamic> json) {
+    final applicant = json['applicant'] as Map<String, dynamic>;
+    final profile = json['profile'] as Map<String, dynamic>;
+    return FoundationApplication(id: json['id'] as int, animalId: json['animal_id'] as int, animalName: json['animal_name'] as String, userId: applicant['user_id'] as int, fullName: applicant['full_name'] as String, status: json['status'] as String, housingType: profile['housing_type'] as String, hasPets: profile['has_pets'] as String, experience: profile['experience'] as String?, message: json['message'] as String?);
+  }
+  final int id; final int animalId; final String animalName; final int userId; final String fullName; final String status; final String housingType; final String hasPets; final String? experience; final String? message;
+  bool get canAct => status == 'submitted' || status == 'reviewing';
+  String get statusLabel => {'submitted': 'Nueva', 'reviewing': 'En revisión', 'invited_to_chat': 'Invitada a conversar', 'rejected': 'No continúa', 'approved': 'Preseleccionada'}[status] ?? status;
+}
+
 class FoundationAnimalsService {
   const FoundationAnimalsService(this._api);
 
@@ -69,6 +118,19 @@ class FoundationAnimalsService {
 
   Future<void> updateStatus(int animalId, String status) =>
       _api.patch('/animals/$animalId', <String, dynamic>{'status': status});
+
+  Future<List<AnimalInterested>> interested() async {
+    final response = await _api.get('/animals/interested') as List<dynamic>;
+    return response.map((item) => AnimalInterested.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<FoundationApplication>> applications() async {
+    final response = await _api.get('/adoption-applications/foundation') as List<dynamic>;
+    return response.map((item) => FoundationApplication.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> updateApplicationStatus(int id, String status) =>
+      _api.patch('/adoption-applications/$id/status', <String, dynamic>{'status': status});
 }
 
 String _capitalize(String value) => value.isEmpty ? value : '${value[0].toUpperCase()}${value.substring(1)}';

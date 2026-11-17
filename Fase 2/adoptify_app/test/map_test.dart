@@ -69,7 +69,9 @@ void main() {
       // Cerrado: solo el botón chico, sin la lista
       expect(find.byKey(const ValueKey('alerts-panel')), findsNothing);
       final alerts = api.requests.lastWhere(
-        (r) => r.url.path == '/reports/nearby',
+        (r) =>
+            r.url.path == '/reports/nearby' &&
+            r.url.queryParameters['radius_km'] == '5',
       );
       expect(alerts.url.queryParameters, {
         'lat': '-33.4378',
@@ -117,8 +119,11 @@ void main() {
     await openMap(tester, FakeApi());
 
     expect(find.text('Activar ubicación'), findsOneWidget);
-    // Al abrir no se muestra el error: solo si la persona toca el botón o el de ubicación
-    expect(find.text('No diste permiso para usar tu ubicación.'), findsNothing);
+    // Al no obtenerse la ubicación al abrir, ya aparece el aviso con opción de reintentar
+    expect(
+      find.text('No diste permiso para usar tu ubicación.'),
+      findsOneWidget,
+    );
 
     await tapAndSettle(tester, find.text('Activar ubicación'));
     expect(
@@ -126,6 +131,38 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'sin señal al abrir el mapa queda como siempre, con aviso para reintentar',
+    (tester) async {
+      LocationService.instance = FakeLocation(
+        error: 'No pudimos obtener tu ubicación. Inténtalo nuevamente.',
+      );
+      final api = FakeApi();
+      await openMap(tester, api);
+
+      // Sigue como hoy: centrado en Santiago, buscando con el radio de respaldo
+      final reportsRequest = api.requests.firstWhere(
+        (r) => r.url.path == '/reports/nearby',
+      );
+      expect(reportsRequest.url.queryParameters['radius_km'], '100');
+      expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
+      expect(
+        find.text('No pudimos obtener tu ubicación. Inténtalo nuevamente.'),
+        findsOneWidget,
+      );
+      expect(find.text('Reintentar'), findsOneWidget);
+
+      // El botón de retry vuelve a pedir la ubicación y, si funciona, se centra igual que "Usar mi ubicación"
+      LocationService.instance = FakeLocation();
+      await tapAndSettle(tester, find.text('Reintentar'));
+      expect(
+        find.text('No pudimos obtener tu ubicación. Inténtalo nuevamente.'),
+        findsNothing,
+      );
+      expect(find.text('Radio 10 km'), findsOneWidget);
+    },
+  );
 
   testWidgets('tocar una mascota o un reporte muestra su ficha', (
     tester,
@@ -605,7 +642,7 @@ void main() {
     expect(find.text('No pudimos cargar las mascotas.'), findsOneWidget);
 
     api.animalsFail = false;
-    await tapAndSettle(tester, find.text('Reintentar'));
+    await tapAndSettle(tester, find.text('Reintentar').first);
     expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
   });
 }

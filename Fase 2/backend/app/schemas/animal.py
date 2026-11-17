@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
@@ -68,6 +69,23 @@ class AnimalMutationResponse(PublicAnimalResponse):
     """Respuesta de crear o editar: no reexpone el lugar privado de resguardo."""
     latitude: float | None
     longitude: float | None
+
+
+class InterestedUserResponse(BaseModel):
+    """Información mínima de un adoptante interesado; nunca incluye datos de contacto ni RUT."""
+
+    user_id: int
+    full_name: str
+    favorited_at: datetime
+
+
+class AnimalInterestedResponse(BaseModel):
+    """Interesados por animal, visible solo a la fundación dueña o al administrador."""
+
+    animal_id: int
+    animal_name: str
+    animal_status: AnimalStatus
+    interested: list[InterestedUserResponse]
 
 
 class CommuneInput(BaseModel):

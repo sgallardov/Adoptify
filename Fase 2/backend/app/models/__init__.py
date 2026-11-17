@@ -7,6 +7,7 @@ from app.models.animal_favorite import AnimalFavorite
 from app.models.veterinary_clinic import VeterinaryClinic
 from app.models.foundation_member import FoundationMember
 from app.models.login_challenge import LoginChallenge
+from app.models.adoption_application import AdoptionApplication
 from app.models.foster_application import FosterApplication
 
-__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember", "LoginChallenge", "FosterApplication"]
+__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember", "LoginChallenge", "AdoptionApplication", "FosterApplication"]

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, animals, foundations, reports, uploads, users, veterinary_clinics, foundation_members, foster_applications
+from app.api.v1.endpoints import health, auth, animals, foundations, reports, uploads, users, veterinary_clinics, foundation_members, adoption_applications, foster_applications
 
 api_router = APIRouter()
 
@@ -14,4 +14,5 @@ api_router.include_router(reports.router, prefix="/reports", tags=["Reportes de 
 api_router.include_router(uploads.router, prefix="/uploads", tags=["Imágenes"])
 api_router.include_router(veterinary_clinics.router, prefix="/veterinary-clinics", tags=["Clínicas veterinarias"])
 api_router.include_router(veterinary_clinics.router, prefix="/veterinaries", tags=["Veterinarias"])
+api_router.include_router(adoption_applications.router, prefix="/adoption-applications", tags=["Postulaciones de adopción"])
 api_router.include_router(foster_applications.router, prefix="/foster-applications", tags=["Hogares temporales"])

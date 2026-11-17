@@ -111,7 +111,7 @@ class _MapScreenState extends State<MapScreen> {
     super.didChangeDependencies();
     if (_request == 0) {
       _load();
-      _detectUser();
+      _detectInitialLocation();
       _loadFoundations();
     }
   }
@@ -132,18 +132,30 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {}
   }
 
-  // Ubicación para la tarjeta de avisos, sin mostrar errores: si falla, la tarjeta ofrece activarla
-  Future<void> _detectUser() async {
+  // Al abrir el mapa se pide la ubicación real para centrarlo ahí y buscar lo cercano con el radio
+  // elegido. El mapa ya quedó cargado en Santiago desde _load(), así que esto solo recentra al llegar.
+  // Sin permiso o sin señal, se queda en Santiago y aparece un aviso para reintentar.
+  Future<void> _detectInitialLocation() async {
     try {
       final position = await LocationService.instance.current();
       if (!mounted) return;
       _centerOnUser = true;
       _setUserPosition(position);
       _fitToPoints();
+    } on LocationException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _detecting = false;
+        _geoError = error.message;
+      });
+      // Sin ubicación se encuadran las mascotas y reportes, como antes
+      _fitToPoints();
     } catch (_) {
       if (!mounted) return;
-      setState(() => _detecting = false);
-      // Sin ubicación se encuadran las mascotas y reportes, como antes
+      setState(() {
+        _detecting = false;
+        _geoError = 'No pudimos obtener tu ubicación. Inténtalo nuevamente.';
+      });
       _fitToPoints();
     }
   }
@@ -559,7 +571,16 @@ class _MapScreenState extends State<MapScreen> {
                         ],
                         if (_geoError != null) ...[
                           const SizedBox(height: AdoptifySpacing.sm),
-                          MessageBox.error(message: _geoError!),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: MessageBox.error(message: _geoError!)),
+                              TextButton(
+                                onPressed: _locating ? null : _locate,
+                                child: const Text('Reintentar'),
+                              ),
+                            ],
+                          ),
                         ],
                       ],
                     ],
