@@ -236,6 +236,30 @@ class FakeApi {
       return _json(200, [for (final m in members) if (m['foundation_id'] == 1) m]);
     }
 
+    final editAnimal = RegExp(r'^/animals/(\d+)$').firstMatch(request.url.path);
+    if (editAnimal != null && request.method == 'PATCH') {
+      if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+        return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
+      }
+      return _json(200, {...luna, ...body});
+    }
+
+    if (request.url.path == '/animals/communes') {
+      return _json(200, ['Aysén', 'Providencia', 'Santiago', 'Ñuñoa']);
+    }
+
+    // Búsqueda de direcciones: "Av. Grecia" encuentra un punto en Ñuñoa; cualquier otra, nada
+    if (request.url.path == '/geocode') {
+      if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+        return _json(403, {'detail': 'Tu cuenta no puede buscar direcciones.'});
+      }
+      final query = request.url.queryParameters['q'] ?? '';
+      return _json(200, [
+        if (query.toLowerCase().contains('grecia'))
+          {'label': 'Avenida Grecia, Ñuñoa, Santiago, Chile', 'latitude': -33.4582, 'longitude': -70.6241, 'commune': 'Ñuñoa'},
+      ]);
+    }
+
     final interestedIn = RegExp(r'^/animals/(\d+)/interested$').firstMatch(request.url.path);
     if (interestedIn != null) {
       if (request.headers['Authorization'] != 'Bearer $foundationToken') {

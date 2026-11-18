@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
@@ -10,14 +11,16 @@ import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
 import '../foundation_animals/foundation_animals_service.dart';
 import '../map/map_service.dart';
+import 'animal_location_picker.dart';
+import 'commune_field.dart';
 
 const _placeTypes = <String, String>{
   'refugio': 'Refugio',
   'hogar_temporal': 'Hogar temporal',
 };
 
-// location conserva su función de punto privado de HU-04. El lugar de resguardo
-// se guarda como texto interno y no se geocodifica automáticamente.
+// location es el punto privado de HU-04: se marca buscando la dirección o tocando el mapa,
+// nunca escribiendo coordenadas. El público solo ve la comuna.
 class AddAnimalScreen extends StatefulWidget {
   const AddAnimalScreen({super.key, this.animal});
 
@@ -31,11 +34,15 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _placeAddress;
+  late final TextEditingController _commune;
+  List<String> _communes = const [];
+  bool _communesFailed = false;
   String? _species;
   String? _size;
   String? _gender;
   String? _placeType;
   int _energyLevel = 3;
+  LatLng? _position;
   String? _photoUrl;
   bool _uploading = false;
   String? _photoError;
@@ -50,19 +57,38 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
     final animal = widget.animal;
     _name = TextEditingController(text: animal?.name ?? '');
     _placeAddress = TextEditingController(text: animal?.keepingPlaceAddress ?? '');
+    _commune = TextEditingController(text: animal?.publicCommune ?? '');
     _species = animal?.species;
     _size = animal?.size;
     _gender = animal?.gender;
     _placeType = animal?.keepingPlaceType;
     _energyLevel = animal?.energyLevel ?? 3;
     _photoUrl = animal?.photoUrl;
+    _position = animal?.position;
   }
 
   @override
   void dispose() {
     _name.dispose();
     _placeAddress.dispose();
+    _commune.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_communes.isEmpty && !_communesFailed) _loadCommunes();
+  }
+
+  Future<void> _loadCommunes() async {
+    try {
+      final data = await AuthScope.of(context).api.get('/animals/communes') as List<dynamic>;
+      if (mounted) setState(() => _communes = data.cast<String>());
+    } catch (_) {
+      // Sin catálogo, el campo queda deshabilitado y la comuna guardada no se toca
+      if (mounted) setState(() => _communesFailed = true);
+    }
   }
 
   Future<void> _submit() async {
@@ -86,6 +112,8 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
         'keeping_place_address': _placeAddress.text.trim(),
         // Al editar, omitir la foto conserva la que ya tenía el registro (incluidos casos históricos sin foto).
         if (!_editing || _photoUrl != null) 'photo_url': _photoUrl,
+        if (_position != null) ...{'latitude': _position!.latitude, 'longitude': _position!.longitude},
+        if (_communes.isNotEmpty) 'public_commune': matchCommune(_commune.text, _communes),
       };
       if (_editing) {
         await AuthScope.of(context).api.patch('/animals/${widget.animal!.id}', payload);
@@ -285,6 +313,35 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
                     ? 'Indica el lugar donde se encuentra el animal.'
                     : null,
               ),
+              const SizedBox(height: AdoptifySpacing.xl),
+              Text('Ubicación del animal', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: AdoptifySpacing.xs),
+              Text(
+                'Es privada: el público solo ve la comuna. Sirve para que aparezca en las búsquedas por cercanía.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AdoptifySpacing.md),
+              AnimalLocationPicker(
+                value: _position,
+                suggestion: _placeAddress,
+                enabled: !busy,
+                onChanged: (position) => setState(() => _position = position),
+                onCommune: (commune) => _commune.text = commune,
+              ),
+              const SizedBox(height: AdoptifySpacing.md),
+              CommuneField(controller: _commune, communes: _communes, enabled: !busy),
+              if (_communesFailed)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setState(() => _communesFailed = false);
+                      _loadCommunes();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('No pudimos cargar las comunas. Reintentar'),
+                  ),
+                ),
               if (_error != null) ...[const SizedBox(height: AdoptifySpacing.md), MessageBox.error(message: _error!)],
               const SizedBox(height: AdoptifySpacing.lg),
               FilledButton.icon(
