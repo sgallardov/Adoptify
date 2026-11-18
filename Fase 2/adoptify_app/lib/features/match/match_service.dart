@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/api_client.dart';
 import '../../core/config.dart';
 import '../map/map_service.dart';
@@ -17,6 +19,7 @@ class MatchAnimal {
     this.description,
     this.photoUrl,
     this.foundationName,
+    this.status = 'available',
   });
 
   factory MatchAnimal.fromJson(Map<String, dynamic> json) => MatchAnimal(
@@ -32,6 +35,7 @@ class MatchAnimal {
         description: json['description'] as String?,
         photoUrl: mediaUrl(json['photo_url'] as String?),
         foundationName: json['foundation_name'] as String?,
+        status: json['status'] as String? ?? 'available',
       );
 
   final int id;
@@ -46,10 +50,60 @@ class MatchAnimal {
   final String? description;
   final String? photoUrl;
   final String? foundationName;
+  final String status;
 
   int get percent => matchScore.round();
   String get age => formatAge(ageMonths);
-  String get energyLabel => energyLevel <= 2 ? 'Tranquilo' : (energyLevel == 3 ? 'Moderado' : 'Muy activo');
+  String get energyLabel => formatEnergy(energyLevel);
+  bool get lowCompatibility => matchScore < lowCompatibilityScore;
+
+  // Para abrir la misma ficha que desde el mapa (/animales/:id). El match no trae la comuna a propósito.
+  Animal toAnimal() => Animal(
+        id: id,
+        name: name,
+        species: species,
+        ageMonths: ageMonths,
+        size: size,
+        status: status,
+        photoUrl: photoUrl,
+        foundationName: foundationName,
+        description: description,
+        breed: breed,
+        gender: gender,
+        energyLevel: energyLevel,
+      );
+}
+
+// Bajo este porcentaje la tarjeta va al final del mazo con el rótulo "Poco compatible"
+const lowCompatibilityScore = 40.0;
+
+// Ordena el mazo: primero los compatibles, al final los poco compatibles, sin los descartados
+List<MatchAnimal> buildDeck(List<MatchAnimal> cards, Set<int> discarded) => [
+      for (final card in cards) if (!discarded.contains(card.id) && !card.lowCompatibility) card,
+      for (final card in cards) if (!discarded.contains(card.id) && card.lowCompatibility) card,
+    ];
+
+// Descartes del match ("Pasar"): se guardan en el dispositivo, por usuario, para que no vuelvan al recargar
+class DiscardStore {
+  const DiscardStore(this.userId);
+
+  final int userId;
+  String get _key => 'match_discarded_$userId';
+
+  Future<Set<int>> read() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getStringList(_key) ?? const [];
+      return {for (final id in saved) ?int.tryParse(id)};
+    } catch (_) {
+      return {}; // Sin almacenamiento: los descartes duran solo esta sesión
+    }
+  }
+
+  Future<void> write(Set<int> ids) async {
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(_key, [for (final id in ids) '$id']);
+    } catch (_) {}
+  }
 }
 
 // GET /animals/match: de dónde salen las tarjetas. Si luego cambia la fuente, solo se toca este archivo.

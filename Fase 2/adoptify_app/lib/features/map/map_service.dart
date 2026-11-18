@@ -19,6 +19,10 @@ class Animal {
     this.position,
     this.commune,
     this.withinRadius = false,
+    this.description,
+    this.breed,
+    this.gender,
+    this.energyLevel,
   });
 
   factory Animal.fromJson(Map<String, dynamic> json, {bool withinRadius = false}) => Animal(
@@ -33,6 +37,10 @@ class Animal {
         position: _communePoint(json['commune_point']),
         commune: json['public_commune'] as String?,
         withinRadius: withinRadius,
+        description: json['description'] as String?,
+        breed: json['breed'] as String?,
+        gender: json['gender'] as String?,
+        energyLevel: json['energy_level'] as int?,
       );
 
   final int id;
@@ -46,12 +54,20 @@ class Animal {
   final LatLng? position;
   final String? commune;
   final bool withinRadius;
+  final String? description;
+  final String? breed;
+  final String? gender;
+  final int? energyLevel;
   String get publicZone => commune == null ? 'Zona no informada' : 'Zona aproximada: $commune';
 
   String get age => formatAge(ageMonths);
   String get statusLabel => animalStatuses[status] ?? status;
+  String? get energyLabel => energyLevel == null ? null : formatEnergy(energyLevel!);
   String get summary => '${capitalize(species)} · $age · $size';
 }
+
+// Mismo texto en la ficha y en la tarjeta del match
+String formatEnergy(int level) => level <= 2 ? 'Tranquilo' : (level == 3 ? 'Moderado' : 'Muy activo');
 
 // Reporte de una mascota abandonada. Los datos de la ficha pueden faltar en reportes antiguos.
 class DogReport {

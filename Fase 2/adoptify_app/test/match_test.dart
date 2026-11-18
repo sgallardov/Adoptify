@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adoptify_app/app/app.dart';
 
@@ -13,6 +14,8 @@ Future<void> openMatch(WidgetTester tester, FakeApi api) async {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('sin sesión no se llega a Match: la app abre en el login', (tester) async {
     // Login obligatorio: sin sesión no hay barra inferior ni pestaña Match
     await tester.pumpWidget(AdoptifyApp(auth: FakeApi(loggedIn: false).auth));
@@ -55,7 +58,7 @@ void main() {
     await tester.tap(find.byTooltip('Pasar'));
     await tester.pumpAndSettle();
     expect(find.text('Viste todas las mascotas'), findsOneWidget);
-    expect(find.text('Marcaste 1 como favorita.'), findsOneWidget);
+    expect(find.text('Marcaste 1 como favorita. Descartaste 1.'), findsOneWidget);
   });
 
   testWidgets('el corazón guarda el favorito y se ve en Mis favoritos, donde se puede quitar', (tester) async {

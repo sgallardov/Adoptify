@@ -24,6 +24,12 @@ class AnimalDetailScreen extends StatelessWidget {
 
   final Animal animal;
 
+  // Raza, sexo y energía con el mismo texto que la tarjeta del match
+  List<String> get _facts => [
+        for (final fact in [animal.breed, animal.gender, animal.energyLabel])
+          if (fact != null && fact.trim().isNotEmpty) capitalize(fact.trim()),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -45,6 +51,20 @@ class AnimalDetailScreen extends StatelessWidget {
                     _StatusChip(label: animal.statusLabel, background: colors.primarySoft, foreground: colors.primaryTextDark),
                     const SizedBox(height: AdoptifySpacing.md),
                     Text(animal.summary, style: textTheme.bodyLarge),
+                    if (_facts.isNotEmpty) ...[
+                      const SizedBox(height: AdoptifySpacing.sm),
+                      Wrap(
+                        spacing: AdoptifySpacing.sm,
+                        runSpacing: AdoptifySpacing.xs,
+                        children: [for (final fact in _facts) Chip(label: Text(fact), visualDensity: VisualDensity.compact)],
+                      ),
+                    ],
+                    if (animal.description?.trim().isNotEmpty ?? false) ...[
+                      const SizedBox(height: AdoptifySpacing.md),
+                      Text('Sobre ${animal.name}', style: textTheme.titleSmall),
+                      const SizedBox(height: AdoptifySpacing.xs),
+                      Text(animal.description!.trim(), style: textTheme.bodyMedium),
+                    ],
                     if (animal.foundationName != null) ...[
                       const SizedBox(height: AdoptifySpacing.sm),
                       _IconLine(icon: Icons.home_work_outlined, text: animal.foundationName!),
