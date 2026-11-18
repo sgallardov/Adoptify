@@ -47,20 +47,22 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion/agregar si es fundación/admin (barra propia: Chat, Agregar mascota, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mapa, Match, Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion (Inicio) si es fundación/admin (barra propia: Inicio, Mapa, Chat, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mensajes, Mapa, Match, Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
-  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), foundation_chat / foundation_add / foundation_profile (vista de fundación; hoy placeholders "Próximamente")
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), messages (chat del adoptante), foundation_home / foundation_animals / foundation_add / foundation_profile (vista de fundación), foundation_chat (todavía "Próximamente": las fundaciones chatean desde el portal)
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
   shared/widgets/          # app_shell.dart (barra inferior: AppShell de adoptante y FoundationShell, mismo diseño), coming_soon.dart
 ```
 
 ## Dominio
-- **Roles:** `adopter` (app móvil), `foundation` y `admin` (portal web; en la app, vista `/fundacion` "Muy pronto"). **La app tiene un solo login sin pestañas** (no manda `account_type`): el router lleva a cada rol a su vista y el adoptante nunca ve que existen cuentas de fundación. El portal sigue mandando `account_type: "foundation"`. Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
+- **Roles:** `adopter` (app móvil), `foundation` y `admin` (portal web y, en la app, su propia vista `/fundacion`). **La app tiene un solo login sin pestañas** (no manda `account_type`): el router lleva a cada rol a su vista y el adoptante nunca ve que existen cuentas de fundación. El portal sigue mandando `account_type: "foundation"`. Fundaciones no tienen registro público: `python -m app.db.create_user ... --role foundation`.
 - **Rutas portal:** foundation/admin → `/`, `/animales`, `/animales/:id`, `/fundacion` (maqueta).
 - **Animal.status:** `available` | `adopted` | `in_process`. **Report.status:** `reported` | `in_rescue` | `resolved`. El portal traduce estados al español.
 - **Reporte de mascota:** obligatorios `species` (`perro`|`gato`|`otro`), `size`, `color`, `conditions` (lista, al menos una de 15 opciones: `bien`, `herido`, `desnutrido`, `cojea`, `prenada`…) y `description` (= "Comentarios"); opcionales `weight_kg`, `features`, `behaviors` (lista de 13 opciones: `tranquilo`, `amistoso`, `asustado`, `agresivo`…). Opciones en `schemas/report.py` (backend), y `map_service.dart` (app): mantener las dos iguales. En la interfaz se dice "mascota", no "perro".
 - **RUT:** obligatorio y único, no autentica. Solo se valida formato; se normaliza sin puntos y con K mayúscula (`normalize_rut`). En `users` va cifrado (HU-E): `rut_encrypted` (Fernet) + `rut_hash` (HMAC, único); `user.rut` es una propiedad que cifra/descifra y para buscar se usa `User.rut_hash == hash_rut(rut)`. Claves `RUT_ENCRYPTION_KEY`/`RUT_HASH_KEY` en `.env`; con la BD compartida no se aceptan las de desarrollo. El RUT de `foundations` sigue en texto.
 - **Contraseñas:** 8 caracteres mínimo, 72 bytes máximo (bcrypt). Correos en minúsculas.
+- **Cuenta:** `PATCH /auth/me` edita el nombre y `POST /auth/change-password` cambia la contraseña pidiendo la actual (`400` si no coincide). El correo y el RUT no se editan.
+- **Errores en español** (`core/errors.py`): `401` sin token ("Inicia sesión para continuar.") y `422` con `msg` en español y sin `input`. Un permiso que debe ganar a la validación va como dependencia (ver `require_admin` en veterinarias).
 - **Verificación en dos pasos (HU-I):** opcional, por correo (Gmail SMTP, `services/email.py`; sin SMTP en development el código sale en los logs). Con ella activa, `/auth/login` responde 202 con `challenge_id` y el token llega con `/auth/verify-code`. Los endpoints con sesión iniciada nunca responden 401 por un dato mal ingresado (usar 400): la app y el portal cierran sesión ante cualquier 401.
 - **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.
 
@@ -87,12 +89,9 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Cada pantalla nueva con su widget test en `test/`; la API se simula con `test/fake_api.dart` (MockClient + MemoryTokenStorage). `FakeApi()` parte con la sesión de Matías iniciada; `FakeApi(loggedIn: false)` parte en el login.
 
 ## Estado y pendientes
-Hecho: HU-01 a HU-07, búsqueda por cercanía, mapa Leaflet/OSM y reportes de perros abandonados (rama `feat/mapa-leaflet-reportes`).
+Hecho: HU-01 a HU-16 (backend, portal y app), match con `/animals/match` y "Quiero adoptar", fotos privadas en Supabase Storage, HU-A a HU-L (resguardo privado, hogares temporales, gestión de reportes, veterinarias, RUT cifrado, socios, interesados, avisos cercanos, verificación en dos pasos, mapa de la fundación), postulaciones de adopción, chat HU-G2 (backend, portal y pestaña Mensajes del adoptante), edición de nombre y contraseña, y errores en español.
 Pendiente (en orden aproximado de prioridad):
-1. Formulario de alta/edición de animales en el portal (HU-13). El backend ya está: `POST/PATCH/DELETE /animals` (HU-12).
-2. (Hecho en backend, HU-12) `users.foundation_id` y `GET /animals` filtrado por fundación; falta consumirlo en "Mis casos" del portal.
-3. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
-4. Endpoint del match (animales ordenados por compatibilidad para el adoptante) y edición de `preferences`.
-5. Fotos (HU-16) hechas: `POST /uploads`, `PhotoPicker` en el portal (animales y reportes) y cámara/galería en la app. Pendiente: borrar archivos huérfanos y almacenamiento externo.
-6. App móvil Flutter: HU-08, HU-14, HU-15 y HU-16 hechas.
-7. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.
+1. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
+2. Chat en la pestaña Chat de la fundación en la app (hoy "Próximamente"; el portal ya lo tiene).
+3. Fotos: borrar archivos huérfanos del bucket.
+4. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.

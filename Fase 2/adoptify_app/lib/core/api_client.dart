@@ -102,15 +102,13 @@ String errorMessage(Object error, String fallback) {
   if (error.statusCode == null) return 'No pudimos conectar con el servidor. Inténtalo nuevamente.';
   final detail = error.detail;
   if (detail is String) return detail;
-  // Errores de validación (422): Pydantic envía una lista; se muestra el primer motivo propio
+  // Errores de validación (422): la API envía una lista con mensajes en español; se muestra el primero
   if (detail is List && detail.isNotEmpty && detail.first is Map) {
     final message = (detail.first as Map)['msg'];
-    if (message is String && message.startsWith('Value error, ')) {
+    if (message is String && message.isNotEmpty) {
       return message.replaceFirst('Value error, ', '');
     }
   }
-  if (error.statusCode == 422) {
-    return 'Revisa los datos: el correo debe ser válido y la contraseña tener al menos 8 caracteres.';
-  }
+  if (error.statusCode == 422) return 'Revisa los datos ingresados.';
   return fallback;
 }

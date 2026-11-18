@@ -151,13 +151,17 @@ Notas:
   ```
 
 ### Login con correo y contraseña
-Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañas **Usuario** y **Fundación** del login web.
+Un solo login para todas las cuentas. La **app** no envía `account_type`: entra cualquier cuenta y la app muestra la vista
+de su rol (adoptante o fundación). El **portal** envía `account_type: "foundation"`, así una cuenta de adoptante no
+entra al portal (`403` con "Esta cuenta es de adoptante. Inicia sesión desde la app de Adoptify.").
 
 | Endpoint | Descripción |
 | --- | --- |
 | `POST /api/v1/auth/register` | Registra un **adoptante** (`email`, `rut`, `password`, `full_name`). `201`, o `409` si el correo o el RUT ya existen. |
 | `POST /api/v1/auth/login` | Recibe `email`, `password` y, opcional, `account_type` (`"user"` o `"foundation"`). Sin `account_type` entra cualquier cuenta (login único de la app, que muestra la vista según el `role`); con él, solo ese tipo (el portal manda `"foundation"`). Devuelve `access_token` (JWT) y `role`. `401` si las credenciales son incorrectas; `403` si la cuenta no corresponde al `account_type` pedido. |
 | `GET /api/v1/auth/me` | Devuelve el usuario del token enviado en `Authorization: Bearer <token>` (incluye `two_factor_enabled`). `401` sin token o con token inválido/expirado. |
+| `PATCH /api/v1/auth/me` | Con sesión: `full_name`, con las mismas reglas del registro (2 a 255 caracteres, sin espacios al borde). Devuelve el usuario. El correo y el RUT no se editan. |
+| `POST /api/v1/auth/change-password` | Con sesión: `current_password` y `new_password` (8 caracteres a 72 bytes). `204`. Contraseña actual incorrecta o nueva igual a la actual: **`400`** (no `401`, para no cerrar la sesión). La sesión actual sigue abierta. |
 | `POST /api/v1/auth/verify-code` | Segundo paso del login con verificación en dos pasos: `challenge_id` y `code` (6 dígitos). Devuelve `access_token` y `role`. `401` si el código es incorrecto (dice cuántos intentos quedan), venció o se agotaron los intentos. |
 | `POST /api/v1/auth/resend-code` | `challenge_id`: envía un código nuevo y anula el anterior. `429` si no ha pasado 1 minuto desde el último envío. |
 | `POST /api/v1/auth/two-factor/enable` | Con sesión: envía un código al correo para activar la verificación (`202` con `challenge_id`). `409` si ya está activa. |
@@ -172,7 +176,7 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * **Diseño del correo:** HTML con los colores de la app, el logo incrustado como imagen en línea (`app/assets/email_logo.png`, CID `adoptify-logo`), saludo con el nombre, el código en recuadros y un aviso de seguridad distinto para el login y la activación; también lleva una versión en texto plano.
 * **Correo:** `services/email.py` envía por SMTP (Gmail con contraseña de aplicación; variables `SMTP_*` en `.env`, ver `.env.example`). **Sin SMTP configurado y con `ENVIRONMENT=development`, el correo se escribe en `docker compose logs backend`**, así se puede probar sin las credenciales; en otro ambiente el login con verificación responde `503`. Las pruebas nunca envían correos (`conftest.py`).
 
-* **Roles por pestaña:** `user` → `adopter`; `foundation` → `foundation` o `admin`.
+* **`account_type`:** `user` → `adopter`; `foundation` → `foundation` o `admin`. Sin `account_type` (la app) entra cualquier rol.
 * **Contraseñas:** se guardan con bcrypt. Mínimo 8 caracteres y máximo 72 bytes (la `ñ` y las tildes cuentan doble).
 * **Correos:** se guardan y comparan en minúsculas.
 * **RUT:** atributo obligatorio y único de cada usuario (no se usa para autenticar). Se acepta con o sin puntos (`12.345.678-5` o `12345678-5`), solo se revisa el formato (no el dígito verificador) y se guarda sin puntos con `K` mayúscula. Formato inválido: `422`.
@@ -246,9 +250,10 @@ Cada fundación gestiona solo sus propios animales.
 * **Veterinarias (HU-D):** `veterinary_clinics` (migraciones `0011` y `0014`, con RLS) conserva la carga idempotente de OpenStreetMap (`amenity=veterinary`) y permite altas manuales por administración. El origen queda definido como **importación de OpenStreetMap más alta manual administrativa**: `source` es `importacion`, `manual` o `fundacion`; las respuestas públicas no exponen ese dato ni `is_active`.
   * `GET /api/v1/veterinaries?lat=-33.4489&lng=-70.6693&radius_km=10` es público: devuelve solo activas, en radio de hasta 100 km y ordenadas por distancia, con `name`, contacto, dirección y punto. `/api/v1/veterinary-clinics` se mantiene como alias compatible para clientes antiguos.
   * `POST /api/v1/veterinaries` y `PATCH /api/v1/veterinaries/{id}` son exclusivos para `admin`; una fundación o adoptante recibe `403`.
-  * La app móvil y el portal las muestran con una cruz distinta de los pines de animales y reportes. Se conserva la atribución © OpenStreetMap, ODbL. Para importar o actualizar OSM: `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto Región Metropolitana; `--region` cambia la región).
+  * El permiso se revisa antes que los datos (dependencia `require_admin`): un adoptante o una fundación recibe `403` aunque el cuerpo sea inválido.
+  * Cada clínica trae `name`, `address`, `commune`, `phone`, `opening_hours`, `emergency` (urgencias o 24 horas) y `latitude`/`longitude`. Sin `lat`/`lng`, el listado va primero con las de urgencias y luego por nombre.
+  * La app móvil y el portal las muestran con una cruz distinta de los pines de animales y reportes. Se conserva la atribución © OpenStreetMap, ODbL. Para importar o actualizar OSM: `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto Región Metropolitana; `--region` cambia la región). Es idempotente: cada clínica se identifica por su `osm_id`.
 * **Socios de la fundación (HU-F, migración `0015`, tabla `foundation_members` con RLS):** registro interno y privado. CRUD en `GET/POST /api/v1/foundations/me/members` y `PUT/DELETE /api/v1/foundations/me/members/{id}` (campos `name`, `contribution` opcional, `joined_at`, `is_public` por defecto `false`). Solo la fundación dueña edita sus socios (otra recibe `403`, uno inexistente `404`); el administrador ve y edita todos (`?foundation_id=` filtra el listado y al crear debe indicar `foundation_id`). Público: `GET /api/v1/foundations/{id}/members/public` devuelve solo `name` y `joined_at` de los socios con `is_public=true`, nunca el aporte. No hay pasarela ni cobros: el aporte es solo informativo.
-* `GET /api/v1/veterinary-clinics` (público): clínicas veterinarias para emergencias con `name`, `address`, `commune`, `phone`, `opening_hours`, `emergency` (urgencias o 24 horas) y `latitude`/`longitude`; primero las de urgencias y luego por nombre. Tabla `veterinary_clinics` (migración `0011`, con RLS). Los datos vienen de OpenStreetMap (`amenity=veterinary`, © colaboradores de OpenStreetMap, ODbL) y se cargan o actualizan con `docker compose exec backend python -m app.db.import_vet_clinics --allow-shared` (por defecto la Región Metropolitana; `--region` cambia la región). Es idempotente: cada clínica se identifica por su `osm_id`.
 
 ### Hogares temporales: postulación (HU-B)
 Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `foster_applications` (migración `0019`, con RLS).
@@ -268,11 +273,23 @@ Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `fo
 * **Quién decide:** el estado es global, pero una decisión ya tomada solo la cambia la fundación que la tomó; las demás ven "Aprobada por Fundación X". Los administradores pueden ver la API, pero no deciden (no tienen fundación).
 * **Privacidad:** la dirección y el teléfono solo los ven el adoptante dueño y las fundaciones (portal, página **Hogares temporales**). Cada postulación trae el `user_id` del postulante para abrir el chat (botón **Conversar**, HU-G2).
 
+### Errores en español
+Todas las respuestas de error llegan en español (`core/errors.py`), sin cambiar su forma:
+* **`401`** sin token: `{"detail": "Inicia sesión para continuar."}` (FastAPI respondía "Not authenticated").
+  También se traducen "Not Found" (`404`) y "Method Not Allowed" (`405`).
+* **`422`** sigue siendo `{"detail": [{"loc", "msg", "type"}]}`, con `msg` en español y el nombre del campo:
+  "Nombre: debe tener al menos 2 caracteres.", "Radio: debe ser menor o igual a 100.", "Contraseña: es obligatorio.".
+  Los mensajes de los validadores propios llegan tal cual, sin el prefijo "Value error, ". Ya no se devuelve el valor
+  enviado (`input`), para no repetir una contraseña en la respuesta.
+* El portal y la app muestran el `msg` del primer error (`errorMessage`).
+* Los endpoints con sesión nunca responden `401` por un dato mal ingresado (usan `400`): la app y el portal cierran
+  sesión ante cualquier `401`.
+
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
 * **Validación:** solo JPG y PNG, reconocidos por el contenido del archivo (no por el nombre ni el `Content-Type`). Otro formato: `415`. Más de 5 MB (`MAX_UPLOAD_MB`): `413`. Sin sesión: `401`. Sin archivo: `422`.
-* **Almacenamiento (decisión provisoria):** volumen local `backend/uploads/` (`UPLOAD_DIR`), ignorado por git y servido en `GET /uploads/<archivo>`. El nombre es un UUID: nunca se usa el nombre que envía el cliente. Para migrar a S3 o Cloudinary solo habría que cambiar la escritura en `endpoints/uploads.py`.
-* **URL devuelta:** se arma con `PUBLIC_BASE_URL` si está definida; si no, con la dirección desde la que se llamó a la API. Al probar desde el emulador Android (`10.0.2.2`) la URL saldría con esa dirección y la web no podría abrirla; en un entorno desplegado hay que definir `PUBLIC_BASE_URL`.
+* **Almacenamiento:** con `SUPABASE_SERVICE_KEY` en el `.env`, las fotos van al bucket **privado** `fotos` de Supabase Storage y la BD guarda `storage:<archivo>`; el middleware `services/photo_access.py` lo cambia por un enlace firmado (`PHOTO_LINK_HOURS`, 6 h) solo si la petición trae un token válido, y si no, entrega `null`. Sin esa llave (por ejemplo, en las pruebas), se guardan en el disco local `backend/uploads/` (`UPLOAD_DIR`, ignorado por git) y se sirven en `GET /uploads/<archivo>`. En los dos casos el nombre es un UUID: nunca se usa el que envía el cliente. El bucket no se crea solo: en un proyecto nuevo se corre `storage.ensure_bucket()` una vez.
+* **URL en disco local:** se arma con `PUBLIC_BASE_URL` si está definida; si no, con la dirección desde la que se llamó a la API. Al probar desde el emulador Android (`10.0.2.2`) la URL saldría con esa dirección y la web no podría abrirla.
 * Requiere `python-multipart` (ya en `requirements.txt`), por lo que hay que reconstruir la imagen: `docker compose up --build -d`.
 
 ---
@@ -295,12 +312,12 @@ Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `fo
   Esto carga usuarios adoptantes con preferencias, fundaciones con RUTs en Santiago y animales con geolocalización GPS real.
   Cuentas de prueba creadas por el seed (solo para desarrollo local):
 
-  | Correo | RUT | Contraseña | Rol | Pestaña del login |
+  | Correo | RUT | Contraseña | Rol | Dónde entra |
   | --- | --- | --- | --- | --- |
-  | `matias.adopter@gmail.com` | `18765432-1` | `Adoptante2026` | `adopter` | Usuario |
-  | `sofia.adopter@gmail.com` | `19876543-2` | `Adoptante2026` | `adopter` | Usuario |
-  | `fundacion@adoptify.cl` | `20123456-3` | `Fundacion2026` | `foundation` | Fundación |
-  | `admin@adoptify.cl` | `11111111-1` | `Admin2026` | `admin` | Fundación |
+  | `matias.adopter@gmail.com` | `18765432-1` | `Adoptante2026` | `adopter` | App |
+  | `sofia.adopter@gmail.com` | `19876543-2` | `Adoptante2026` | `adopter` | App |
+  | `fundacion@adoptify.cl` | `20123456-3` | `Fundacion2026` | `foundation` | App y portal |
+  | `admin@adoptify.cl` | `11111111-1` | `Admin2026` | `admin` | App y portal |
 
 ---
 
@@ -429,11 +446,14 @@ Para ejecutar la suite completa de pruebas unitarias y de integración dentro de
 docker compose exec backend pytest -v
 ```
 
-Esto ejecuta 18 pruebas asíncronas verificando automáticamente:
-1. **HU-01:** Carga de `.env`, conexión asíncrona a PostgreSQL, PostGIS 15 y persistencia.
-2. **HU-02:** Swagger UI (`/docs`), OpenAPI v3 y endpoint `/health` validado con Pydantic v2.
-3. **Login:** registro con RUT obligatorio y único, login por pestaña (usuario/fundación), sesión con JWT y casos borde (mayúsculas, 72 bytes).
-4. **HU-04:** Creación de usuarios con preferencias JSON, fundaciones con RUT y validación de geometrías PostGIS en animales con integridad referencial en cascada.
+Las pruebas usan siempre el Postgres local (nunca la BD compartida), escriben datos con correos y RUT únicos y los
+borran al terminar. Hay un archivo por módulo en `backend/tests/`; entre otras cosas verifican:
+1. **Infraestructura (HU-01, HU-02):** `.env`, conexión a PostgreSQL/PostGIS, Swagger (`/docs`) y `/health`.
+2. **Cuenta:** registro con RUT obligatorio y único (cifrado), login único y por acceso (app o portal), JWT,
+   verificación en dos pasos, edición del nombre y cambio de contraseña (`400`, no `401`, si la actual es incorrecta).
+3. **Errores en español:** `401` sin token, `422` traducidos y sin repetir lo enviado, y el orden permiso/validación.
+4. **Datos y permisos:** animales y fundaciones (PostGIS), reportes, match, favoritos e interesados, hogares temporales,
+   postulaciones, socios, veterinarias, fotos privadas y chat.
 
 
 

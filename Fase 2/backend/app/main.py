@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -7,6 +9,7 @@ import asyncio
 import logging
 
 from app.core.config import settings
+from app.core.errors import http_exception_handler, validation_exception_handler
 from app.api.api_router import api_router
 from app.api.v1.endpoints.health import router as health_router
 from app.db.database import keep_connections_warm
@@ -39,6 +42,10 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Errores en español: los 401 y 404 del framework y los 422 de Pydantic llegan traducidos
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 
 # Configuración de CORS para permitir solicitudes de Frontend Web y App Móvil
 app.add_middleware(

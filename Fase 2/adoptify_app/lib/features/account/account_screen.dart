@@ -9,6 +9,7 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
 import '../auth/two_factor_card.dart';
 import '../foster/foster_card.dart';
+import 'account_dialogs.dart';
 import 'adoption_card.dart';
 
 class AccountScreen extends StatelessWidget {
@@ -110,6 +111,25 @@ class _Profile extends StatelessWidget {
                   const Divider(),
                   _InfoRow(icon: Icons.mail_outline, label: 'Correo', value: user.email),
                   _InfoRow(icon: Icons.badge_outlined, label: 'RUT', value: user.rut),
+                  const SizedBox(height: AdoptifySpacing.md),
+                  // El correo y el RUT identifican la cuenta y no se editan; el nombre y la contraseña sí
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: AdoptifySpacing.sm,
+                    runSpacing: AdoptifySpacing.sm,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => showEditNameDialog(context),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Editar nombre'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => showChangePasswordDialog(context),
+                        icon: const Icon(Icons.lock_outline, size: 18),
+                        label: const Text('Cambiar contraseña'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

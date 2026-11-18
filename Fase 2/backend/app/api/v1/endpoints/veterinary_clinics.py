@@ -23,9 +23,11 @@ def _point(latitude: float, longitude: float) -> WKTElement:
     return WKTElement(f"POINT({longitude} {latitude})", srid=4326)
 
 
-def _require_admin(current_user: User) -> None:
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Como dependencia, el permiso se revisa antes que el cuerpo: un adoptante recibe 403 aunque envíe datos inválidos."""
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administración puede gestionar veterinarias.")
+    return current_user
 
 
 @router.get(
@@ -64,10 +66,9 @@ async def list_veterinary_clinics(
 @router.post("", response_model=VeterinaryClinicResponse, status_code=status.HTTP_201_CREATED)
 async def create_veterinary_clinic(
     payload: VeterinaryClinicCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    _require_admin(current_user)
     data = payload.model_dump(exclude={"latitude", "longitude"})
     clinic = VeterinaryClinic(**data, location=_point(payload.latitude, payload.longitude))
     db.add(clinic)
@@ -84,10 +85,9 @@ async def create_veterinary_clinic(
 async def update_veterinary_clinic(
     clinic_id: int,
     payload: VeterinaryClinicUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    _require_admin(current_user)
     try:
         clinic = await db.get(VeterinaryClinic, clinic_id)
     except SQLAlchemyError as exc:

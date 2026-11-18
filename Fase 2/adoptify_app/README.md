@@ -61,11 +61,14 @@ diseño (`shared/widgets/app_shell.dart`).
 - **Match** (`/match`).
 - **Perfil** (`/cuenta`).
 
-**Fundación** (`foundation` o `admin`): abre en **Agregar mascota**. Barra de izquierda a derecha (hoy las tres
-son placeholders "Próximamente"; cada módulo se desarrolla aparte):
-- **Chat** (`/fundacion/chat`): hablar con un adoptante cuando haya match.
-- **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca. La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
-- **Perfil** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
+**Fundación** (`foundation` o `admin`): abre en **Inicio** (`/fundacion`). Barra de izquierda a derecha:
+- **Inicio** (`/fundacion`): resumen, **Mis animales** (con interesados y postulaciones) y **Agregar mascota**.
+- **Mapa** (`/fundacion/mapa`): el mismo mapa, con la gestión de reportes (HU-L).
+- **Chat** (`/fundacion/chat`): todavía "Próximamente" en la app; las fundaciones chatean desde el portal (HU-G2).
+- **Perfil** (`/fundacion/perfil`), descrito abajo.
+
+**Agregar mascota** (`/fundacion/agregar`, desde Inicio). La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
+- **Perfil de la fundación** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
 intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.
@@ -103,7 +106,11 @@ Mismo formato y mismas cuentas que el login del portal web:
   vuelve a pedir la contraseña. Se activa en el Perfil (adoptante y fundación) con la tarjeta
   **Verificación en dos pasos** (`features/auth/two_factor_card.dart`): llega un código al correo y queda activa al
   ingresarlo; desactivarla pide la contraseña. Piezas compartidas en `features/auth/verification_code.dart`.
-- La pestaña **Cuenta** muestra el perfil (nombre, rol, correo, RUT) y permite cerrar sesión.
+- La pestaña **Perfil** (`/cuenta`) muestra nombre, rol, correo y RUT, y permite cerrar sesión. **Editar nombre**
+  (`PATCH /auth/me`, mismas reglas del registro) y **Cambiar contraseña** (`POST /auth/change-password`, pide la actual
+  y repetir la nueva) se abren en diálogos (`features/account/account_dialogs.dart`). Una contraseña actual incorrecta
+  responde `400`: el diálogo muestra el error y la sesión sigue abierta. El correo y el RUT no se editan.
+  "Activar" la verificación en dos pasos es un botón secundario: la acción principal del Perfil es **Quiero adoptar**.
 
 Para probar con el backend local (desde `Fase 2`): `docker compose up -d` y `python -m app.db.seed`;
 cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
@@ -186,6 +193,12 @@ izquierda, con un campo de hasta 1000 caracteres; no se envían mensajes vacíos
 Sin WebSockets, igual que el portal: la lista se consulta cada 15 s mientras la pestaña está a la vista y el chat
 abierto cada 10 s, pidiendo solo lo nuevo (`after_id`). Así lo que escribe la fundación aparece en 10 s o menos. La
 lista también se actualiza deslizando hacia abajo. Un fallo del sondeo no borra lo que ya se ve.
+
+## Carruseles
+Las listas horizontales (por ejemplo, "Historias que buscan hogar" y las fotos de cada fundación) usan
+`shared/widgets/horizontal_carousel.dart`: en web y escritorio se arrastran con el mouse y el trackpad
+(`AdoptifyScrollBehavior`, registrado en `MaterialApp.scrollBehavior`), la rueda vertical del mouse las mueve hacia el
+lado y, desde 600 px de ancho, tienen flechas **Anterior** y **Siguiente**. En el teléfono se deslizan con el dedo, igual que antes.
 
 ## Hogar temporal (HU-B)
 En el Perfil del adoptante, la tarjeta **Hogar temporal** invita a postular o muestra el estado de su postulación

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/api_client.dart';
 import '../core/token_storage.dart';
 import '../features/auth/auth_controller.dart';
+import '../shared/widgets/horizontal_carousel.dart';
 import 'router.dart';
 import 'theme.dart';
 import 'theme_controller.dart';
@@ -52,6 +53,8 @@ class _AdoptifyAppState extends State<AdoptifyApp> {
           builder: (context, _) => MaterialApp.router(
             title: 'Adoptify',
             debugShowCheckedModeBanner: false,
+            // Las listas horizontales se arrastran también con mouse y trackpad (web y escritorio)
+            scrollBehavior: const AdoptifyScrollBehavior(),
             theme: buildAdoptifyTheme(),
             darkTheme: buildAdoptifyTheme(Brightness.dark),
             themeMode: _theme.mode,

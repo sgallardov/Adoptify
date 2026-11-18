@@ -30,10 +30,10 @@ export function errorMessage(error: unknown, fallback: string): string {
     if (!error.response) return 'No pudimos conectar con el servidor. Inténtalo nuevamente.'
     const detail = error.response.data?.detail
     if (typeof detail === 'string') return detail
-    // Errores de validación (422): Pydantic envía una lista; se muestra el primer motivo propio
+    // Errores de validación (422): la API envía una lista con mensajes en español; se muestra el primero
     const firstMessage = Array.isArray(detail) ? detail[0]?.msg : undefined
-    if (typeof firstMessage === 'string' && firstMessage.startsWith('Value error, ')) return firstMessage.replace('Value error, ', '')
-    if (error.response.status === 422) return 'Revisa los datos: el correo debe ser válido y la contraseña tener al menos 8 caracteres.'
+    if (typeof firstMessage === 'string' && firstMessage) return firstMessage.replace(/^Value error, /, '')
+    if (error.response.status === 422) return 'Revisa los datos ingresados.'
   }
   return fallback
 }

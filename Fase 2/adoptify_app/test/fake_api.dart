@@ -68,6 +68,9 @@ class FakeApi {
   bool animalsFail = false;
   bool interestedFail = false;
   bool foundationsFail = false;
+  // Nombre y contraseña de Matías: se pueden cambiar desde el Perfil
+  String matiasName = matias['full_name'] as String;
+  String matiasPassword = 'Adoptante2026';
   // Verificación en dos pasos de Matías (HU-I). El código bueno es 123456; 999999 simula uno vencido.
   bool twoFactor = false;
   // Postulación a hogar temporal de Matías (HU-B): null hasta que postula, como en el backend
@@ -438,6 +441,14 @@ class FakeApi {
           fosterApplication = {...fosterApplication!, ...body};
         }
         return _json(200, fosterApplication);
+      case '/auth/change-password':
+        if (!loggedIn) return _json(401, {'detail': 'Inicia sesión para continuar.'});
+        // Contraseña actual incorrecta: 400 y no 401, como el backend (la sesión no se cierra)
+        if (body['current_password'] != matiasPassword) {
+          return _json(400, {'detail': 'La contraseña actual no es correcta.'});
+        }
+        matiasPassword = body['new_password'] as String;
+        return http.Response('', 204);
       case '/auth/verify-code':
         return switch (body['code']) {
           '123456' => _json(200, {'access_token': validToken, 'token_type': 'bearer', 'role': 'adopter'}),
@@ -470,7 +481,16 @@ class FakeApi {
         });
       case '/auth/me':
         final authorization = request.headers['Authorization'];
-        if (authorization == 'Bearer $validToken') return _json(200, {...matias, 'two_factor_enabled': twoFactor});
+        if (request.method == 'PATCH' && authorization == 'Bearer $validToken') {
+          final name = (body['full_name'] as String).trim();
+          if (name.length < 2) {
+            return _json(422, {'detail': [{'loc': ['body', 'full_name'], 'msg': 'Nombre: debe tener al menos 2 caracteres.', 'type': 'string_too_short'}]});
+          }
+          matiasName = name;
+        }
+        if (authorization == 'Bearer $validToken') {
+          return _json(200, {...matias, 'full_name': matiasName, 'two_factor_enabled': twoFactor});
+        }
         if (authorization == 'Bearer $foundationToken')
           return _json(200, patitas);
         return _json(401, {'detail': 'Token inválido o expirado'});

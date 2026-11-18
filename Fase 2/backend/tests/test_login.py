@@ -118,7 +118,7 @@ class TestLoginEmailPassword:
 
 class TestLoginAccountTabs:
     """
-    Pruebas del login con pestañas: 'user' (adoptantes) y 'foundation' (fundaciones).
+    Pruebas del login según el acceso: 'user' (app de adoptantes) y 'foundation' (portal de fundaciones).
     """
 
     async def test_adopter_logs_in_through_user_tab(self, async_client: AsyncClient, registered_email: str):
@@ -147,7 +147,8 @@ class TestLoginAccountTabs:
         )
 
         assert response.status_code == 403
-        assert "Usuario" in response.json()["detail"]
+        # El mensaje indica dónde entrar, sin hablar de pestañas que ya no existen
+        assert response.json()["detail"] == "Esta cuenta es de adoptante. Inicia sesión desde la app de Adoptify."
 
     async def test_foundation_logs_in_only_through_foundation_tab(
         self, async_client: AsyncClient, db_session: AsyncSession, registered_email: str
