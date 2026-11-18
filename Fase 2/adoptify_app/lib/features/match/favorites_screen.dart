@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
@@ -88,15 +89,23 @@ class _FavoriteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textTheme = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(AdoptifyRadius.lg);
+    // Tocar la fila abre la ficha (desde ahí se postula); el corazón solo quita el favorito
     return Container(
-      padding: const EdgeInsets.all(AdoptifySpacing.md),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
+        borderRadius: radius,
         border: Border.all(color: colors.border),
         boxShadow: AdoptifyShadows.soft,
       ),
-      child: Row(
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: () => context.push('/animales/${animal.id}', extra: animal.toAnimal()),
+          child: Padding(
+            padding: const EdgeInsets.all(AdoptifySpacing.md),
+            child: Row(
         children: [
           AnimalPhoto(url: animal.photoUrl, size: 64),
           const SizedBox(width: AdoptifySpacing.md),
@@ -116,6 +125,9 @@ class _FavoriteTile extends StatelessWidget {
             icon: Icon(Icons.favorite, color: colors.primaryDark),
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }

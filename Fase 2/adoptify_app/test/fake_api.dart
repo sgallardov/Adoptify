@@ -85,6 +85,9 @@ class FakeApi {
   int? uploadStatus;
   // Ids marcados con el corazón en el match
   final favorites = <int>{};
+  // Tarjetas extra del match (por ejemplo, una poco compatible)
+  final extraMatchCards = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> get _allMatchCards => [..._matchCards, ...extraMatchCards];
   final interestedAnimals = <Map<String, dynamic>>[
     {
       'animal_id': 7,
@@ -476,11 +479,11 @@ class FakeApi {
             'detail':
                 "Completa 'Quiero adoptar' en tu perfil para ver tu match.",
           });
-        return _json(200, _matchCards);
+        return _json(200, _allMatchCards);
       case '/animals/favorites':
         if (!loggedIn) return _json(401, {'detail': 'Not authenticated'});
         return _json(200, [
-          for (final card in _matchCards)
+          for (final card in _allMatchCards)
             if (favorites.contains(card['id'])) card,
         ]);
       case '/animals/nearby':
@@ -779,7 +782,7 @@ class FakeApi {
       'foundation_name': 'Fundación Patitas',
       'name': 'Luna',
       'species': 'perro',
-      'breed': null,
+      'breed': 'Mestiza',
       'age_months': 18,
       'gender': 'hembra',
       'size': 'mediano',

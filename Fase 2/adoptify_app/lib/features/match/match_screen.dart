@@ -22,8 +22,10 @@ enum _Status { loading, needsLogin, needsProfile, error, ready }
 
 class _MatchScreenState extends State<MatchScreen> {
   _Status _status = _Status.loading;
-  List<MatchAnimal> _cards = const [];
+  List<MatchAnimal> _all = const []; // todo lo que devolvió /animals/match
+  List<MatchAnimal> _cards = const []; // el mazo: sin descartados y con los poco compatibles al final
   final _liked = <int>{};
+  final _discarded = <int>{};
   int _index = 0;
   Object? _loadedFor; // usuario con el que se cargó; null si no había sesión
   bool _started = false;
@@ -50,9 +52,12 @@ class _MatchScreenState extends State<MatchScreen> {
       final service = MatchService(auth.api);
       final cards = await service.fetch();
       final favorites = await _favoriteIds(service);
+      final discarded = await DiscardStore(auth.user!.id).read();
       if (!mounted) return;
       setState(() {
-        _cards = cards;
+        _all = cards;
+        _discarded..clear()..addAll(discarded);
+        _cards = buildDeck(cards, _discarded);
         _liked..clear()..addAll(favorites);
         _index = 0;
         _status = _Status.ready;
@@ -80,11 +85,37 @@ class _MatchScreenState extends State<MatchScreen> {
     if (_index >= _cards.length) return;
     final card = _cards[_index];
     setState(() {
-      if (like) _liked.add(card.id);
+      if (like) {
+        _liked.add(card.id);
+      } else {
+        _discarded.add(card.id);
+      }
       _index++;
     });
-    if (like) _saveFavorite(card.id);
+    if (like) {
+      _saveFavorite(card.id);
+    } else {
+      _saveDiscards();
+    }
   }
+
+  Future<void> _saveDiscards() async {
+    final user = AuthScope.of(context).user;
+    if (user != null) await DiscardStore(user.id).write(_discarded);
+  }
+
+  // "Ver descartados": vuelven al mazo y se olvidan en el dispositivo
+  Future<void> _restoreDiscarded() async {
+    setState(() {
+      _discarded.clear();
+      _cards = buildDeck(_all, _discarded);
+      _index = 0;
+    });
+    await _saveDiscards();
+  }
+
+  // La ficha se abre encima: al volver el mazo sigue en la misma tarjeta
+  Future<void> _openDetail(MatchAnimal card) => context.push('/animales/${card.id}', extra: card.toAnimal());
 
   Future<void> _saveFavorite(int id) async {
     try {
@@ -120,6 +151,8 @@ class _MatchScreenState extends State<MatchScreen> {
                 child: const Icon(Icons.favorite_border),
               ),
             ),
+          if (_status == _Status.ready && _discarded.isNotEmpty && _index < _cards.length)
+            IconButton(tooltip: 'Ver descartados', onPressed: _restoreDiscarded, icon: const Icon(Icons.replay)),
           IconButton(tooltip: 'Actualizar', onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
@@ -146,12 +179,20 @@ class _MatchScreenState extends State<MatchScreen> {
             action: 'Reintentar',
             onAction: _load,
           ),
-        _Status.ready => _index >= _cards.length ? _Done(liked: _liked.length, onReload: _load) : _Deck(
-            card: _cards[_index],
-            remaining: _cards.length - _index,
-            onPass: () => _next(like: false),
-            onLike: () => _next(like: true),
-          ),
+        _Status.ready => _index >= _cards.length
+            ? _Done(
+                liked: _liked.length,
+                discarded: _discarded.length,
+                onReload: _load,
+                onRestore: _discarded.isEmpty ? null : _restoreDiscarded,
+              )
+            : _Deck(
+                card: _cards[_index],
+                remaining: _cards.length - _index,
+                onPass: () => _next(like: false),
+                onLike: () => _next(like: true),
+                onOpen: () => _openDetail(_cards[_index]),
+              ),
       },
     );
   }
@@ -178,28 +219,40 @@ class _Prompt extends StatelessWidget {
 }
 
 class _Done extends StatelessWidget {
-  const _Done({required this.liked, required this.onReload});
+  const _Done({required this.liked, required this.discarded, required this.onReload, this.onRestore});
 
   final int liked;
+  final int discarded;
   final VoidCallback onReload;
+  final VoidCallback? onRestore; // null si no hay descartados
 
   @override
-  Widget build(BuildContext context) => _Prompt(
-        icon: Icons.check_circle_outline,
-        title: 'Viste todas las mascotas',
-        message: liked == 0 ? 'No marcaste ninguna como favorita.' : 'Marcaste $liked como favorita${liked == 1 ? '' : 's'}.',
-        action: 'Volver a empezar',
-        onAction: onReload,
-      );
+  Widget build(BuildContext context) {
+    final favorites = liked == 0 ? 'No marcaste ninguna como favorita.' : 'Marcaste $liked como favorita${liked == 1 ? '' : 's'}.';
+    final passed = discarded == 0 ? '' : ' Descartaste $discarded.';
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ComingSoon(icon: Icons.check_circle_outline, title: 'Viste todas las mascotas', message: '$favorites$passed'),
+        if (onRestore != null) ...[
+          FilledButton.icon(onPressed: onRestore, icon: const Icon(Icons.replay), label: const Text('Ver descartados')),
+          const SizedBox(height: AdoptifySpacing.sm),
+        ],
+        OutlinedButton(onPressed: onReload, child: const Text('Actualizar')),
+        const SizedBox(height: AdoptifySpacing.xxl),
+      ],
+    );
+  }
 }
 
 class _Deck extends StatelessWidget {
-  const _Deck({required this.card, required this.remaining, required this.onPass, required this.onLike});
+  const _Deck({required this.card, required this.remaining, required this.onPass, required this.onLike, required this.onOpen});
 
   final MatchAnimal card;
   final int remaining;
   final VoidCallback onPass;
   final VoidCallback onLike;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +266,7 @@ class _Deck extends StatelessWidget {
               child: Dismissible(
                 key: ValueKey(card.id),
                 onDismissed: (direction) => direction == DismissDirection.startToEnd ? onLike() : onPass(),
-                child: _AnimalCard(card: card),
+                child: _AnimalCard(card: card, onOpen: onOpen),
               ),
             ),
             const SizedBox(height: AdoptifySpacing.lg),
@@ -245,9 +298,10 @@ class _Deck extends StatelessWidget {
 }
 
 class _AnimalCard extends StatelessWidget {
-  const _AnimalCard({required this.card});
+  const _AnimalCard({required this.card, required this.onOpen});
 
   final MatchAnimal card;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +332,7 @@ class _AnimalCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.xs),
                     decoration: BoxDecoration(color: colors.primaryStrong, borderRadius: BorderRadius.circular(99)),
-                    child: Text('${card.percent}% match', style: textTheme.labelLarge?.copyWith(color: colors.onAccent)),
+                    child: Text(card.lowCompatibility ? 'Poco compatible · ${card.percent}%' : '${card.percent}% match', style: textTheme.labelLarge?.copyWith(color: colors.onAccent)),
                   ),
                 ),
               ],
@@ -289,7 +343,12 @@ class _AnimalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(card.name, style: textTheme.titleLarge),
+                Row(
+                  children: [
+                    Expanded(child: Text(card.name, style: textTheme.titleLarge)),
+                    TextButton.icon(onPressed: onOpen, icon: const Icon(Icons.info_outline), label: const Text('Ver ficha')),
+                  ],
+                ),
                 if (card.foundationName != null) Text(card.foundationName!, style: textTheme.bodySmall),
                 const SizedBox(height: AdoptifySpacing.sm),
                 Wrap(

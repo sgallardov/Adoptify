@@ -54,6 +54,7 @@ class MatchAnimalResponse(BaseModel):
     energy_level: int
     description: str | None
     photo_url: str | None
+    status: str = "available"  # los favoritos pueden estar ya adoptados o en proceso
     match_score: float = 0.0
 
 
