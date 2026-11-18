@@ -412,7 +412,7 @@ Una sola conversación por par fundación-usuario (`conversations`, único por `
 | `POST /api/v1/conversations/{id}/messages` | Solo los dos participantes (`404` para otros). `{"body"}` de 1 a 1000 caracteres, sin contar espacios al borde; vacío o más largo, `422`. El adoptante responde en las existentes, no abre nuevas. |
 
 * **Sin WebSockets: sondeo.** El portal pide la lista cada 15 s y el chat abierto cada 10 s (solo lo nuevo, con `after_id`), y solo mientras la pestaña está visible. Así un mensaje aparece en 10 s o menos. Se eligió por simple y porque cada consulta a Supabase cuesta ~55 ms; si el uso crece, se puede pasar a WebSockets sin cambiar las tablas.
-* **Alcance actual:** vista de chat en el portal (`/mensajes`). La app sigue con el esqueleto de la pestaña Chat de la fundación; el adoptante todavía no tiene dónde ver sus conversaciones en la app.
+* **Alcance actual:** vista de chat en el portal (`/mensajes`) y pestaña **Mensajes** del adoptante en la app, con el mismo sondeo. La pestaña Chat de la fundación en la app sigue con el esqueleto.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 
