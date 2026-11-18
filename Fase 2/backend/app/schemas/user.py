@@ -4,7 +4,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, fie
 
 from app.core.rut import normalize_rut
 
-# Tipo de cuenta que se elige en la pestaña del login
+# Acceso desde el que se inicia sesión: "user" (app) o "foundation" (portal). La app no lo envía.
 AccountType = Literal["user", "foundation"]
 
 # bcrypt solo admite contraseñas de hasta 72 bytes (una "ñ" o una tilde ocupan 2)
@@ -43,6 +43,27 @@ class UserCreate(BaseModel):
         if len(clean) < 2:
             raise ValueError("El nombre debe tener al menos 2 caracteres")
         return clean
+
+
+class ProfileUpdate(BaseModel):
+    """Datos que la persona puede cambiar de su cuenta. Mismas reglas del nombre que en el registro."""
+    full_name: str = Field(..., min_length=2, max_length=255)
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        return UserCreate.validate_full_name(value)
+
+
+class PasswordChange(BaseModel):
+    """Cambio de contraseña con sesión iniciada: se pide la actual para confirmar que es la misma persona."""
+    current_password: str = Field(..., min_length=1, max_length=200)
+    new_password: str = Field(..., min_length=8, description="Mínimo 8 caracteres y máximo 72 bytes")
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_bytes(cls, value: str) -> str:
+        return UserCreate.validate_password_bytes(value)
 
 
 class UserPublic(BaseModel):

@@ -98,7 +98,8 @@ class _TwoFactorCardState extends State<TwoFactorCard> {
           const SizedBox(height: AdoptifySpacing.md),
           enabled
               ? OutlinedButton(onPressed: _busy ? null : _disable, child: const Text('Desactivar'))
-              : FilledButton(
+              // Secundario: la acción principal del Perfil es "Quiero adoptar", no esta
+              : OutlinedButton(
                   onPressed: _busy ? null : _enable,
                   child: Text(_busy ? 'Enviando código…' : 'Activar'),
                 ),

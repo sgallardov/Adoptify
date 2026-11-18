@@ -9,6 +9,7 @@ import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/foundation_avatar.dart';
+import '../../shared/widgets/horizontal_carousel.dart';
 import '../auth/auth_controller.dart';
 import '../map/map_service.dart';
 import 'foundation_service.dart';
@@ -266,16 +267,12 @@ class _StoriesCarousel extends StatelessWidget {
   final List<_AdoptionStory> stories;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) => HorizontalCarousel(
+    listKey: const ValueKey('adoption-stories'),
     height: 228,
-    child: ListView.separated(
-      key: const ValueKey('adoption-stories'),
-      scrollDirection: Axis.horizontal,
-      itemCount: stories.length,
-      padding: const EdgeInsets.only(right: AdoptifySpacing.lg),
-      separatorBuilder: (_, _) => const SizedBox(width: AdoptifySpacing.md),
-      itemBuilder: (context, index) => _StoryCard(story: stories[index]),
-    ),
+    itemCount: stories.length,
+    padding: const EdgeInsets.only(right: AdoptifySpacing.lg),
+    itemBuilder: (context, index) => _StoryCard(story: stories[index]),
   );
 }
 
@@ -567,20 +564,17 @@ class _AnimalStrip extends StatelessWidget {
       final height = width + AdoptifySpacing.xxl + AdoptifySpacing.xs;
       return Padding(
         padding: const EdgeInsets.only(top: AdoptifySpacing.lg),
-        child: SizedBox(
+        child: HorizontalCarousel(
+          listKey: ValueKey('animal-strip-${foundation.id}'),
           height: height,
-          child: ListView.separated(
-            key: ValueKey('animal-strip-${foundation.id}'),
-            scrollDirection: Axis.horizontal,
-            physics: carousel ? null : const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
-            itemCount: animals.length,
-            separatorBuilder: (_, _) => const SizedBox(width: AdoptifySpacing.sm),
-            itemBuilder: (context, index) => _AnimalMiniCard(
-              animal: animals[index],
-              size: width,
-              onTap: () => _open(context, animals[index]),
-            ),
+          scrollable: carousel,
+          spacing: AdoptifySpacing.sm,
+          padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
+          itemCount: animals.length,
+          itemBuilder: (context, index) => _AnimalMiniCard(
+            animal: animals[index],
+            size: width,
+            onTap: () => _open(context, animals[index]),
           ),
         ),
       );

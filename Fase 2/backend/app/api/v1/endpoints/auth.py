@@ -13,6 +13,8 @@ from app.models.user import User
 from app.schemas.user import (
     ChallengeResponse,
     LoginRequest,
+    PasswordChange,
+    ProfileUpdate,
     ResendCodeRequest,
     TokenResponse,
     TwoFactorDisableRequest,
@@ -26,7 +28,7 @@ router = APIRouter()
 bearer_scheme = HTTPBearer()
 optional_bearer_scheme = HTTPBearer(auto_error=False)
 
-# Roles que puede tener una cuenta para entrar por cada pestaña del login
+# Roles que puede tener una cuenta según el acceso: "user" (app) o "foundation" (portal de fundaciones)
 ACCOUNT_TYPE_ROLES = {
     "user": {"adopter"},
     "foundation": {"foundation", "admin"},
@@ -116,7 +118,7 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     responses={
         202: {"description": "Código enviado al correo (verificación en dos pasos activa)", "model": ChallengeResponse},
         401: {"description": "Correo o contraseña incorrectos"},
-        403: {"description": "La cuenta no corresponde al tipo elegido (usuario o fundación)"},
+        403: {"description": "La cuenta no corresponde a este acceso (app de adoptantes o portal de fundaciones)"},
         503: {"description": "No se pudo enviar el código por correo"},
     },
 )
@@ -129,11 +131,12 @@ async def login(payload: LoginRequest, response: Response, db: AsyncSession = De
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Correo o contraseña incorrectos")
 
     if payload.account_type and user.role not in ACCOUNT_TYPE_ROLES[payload.account_type]:
-        other_tab = "Usuario" if payload.account_type == "foundation" else "Fundación"
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Esta cuenta no es de este tipo. Inicia sesión en la pestaña {other_tab}.",
+        detail = (
+            "Esta cuenta es de adoptante. Inicia sesión desde la app de Adoptify."
+            if payload.account_type == "foundation"
+            else "Esta cuenta es de una fundación. Inicia sesión desde el portal de fundaciones."
         )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     # Verificación en dos pasos (HU-I): la contraseña sola no entrega token
     if user.two_factor_enabled:
@@ -260,3 +263,57 @@ async def _set_two_factor(db: AsyncSession, user: User, enabled: bool) -> User:
 )
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.patch(
+    "/me",
+    response_model=UserPublic,
+    summary="Editar mi nombre",
+    description="Cambia el nombre completo con las mismas reglas del registro (2 a 255 caracteres, sin espacios al borde).",
+    responses={401: {"description": "Token ausente, inválido o expirado"}, 422: {"description": "Nombre inválido"}},
+)
+async def update_me(
+    payload: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_user.full_name = payload.full_name
+    try:
+        await db.commit()
+        await db.refresh(current_user)
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo guardar tu nombre.") from exc
+    return current_user
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cambiar mi contraseña",
+    description=(
+        "Pide la contraseña actual. Si no es correcta responde 400 y no 401, para que la app y el portal no "
+        "cierren la sesión por un dato mal escrito. La sesión actual sigue abierta después del cambio."
+    ),
+    responses={
+        400: {"description": "La contraseña actual no es correcta o la nueva es igual a la actual"},
+        401: {"description": "Token ausente, inválido o expirado"},
+        422: {"description": "La nueva contraseña no cumple el largo"},
+    },
+)
+async def change_password(
+    payload: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual no es correcta.")
+    if verify_password(payload.new_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La nueva contraseña debe ser distinta de la actual.")
+    current_user.hashed_password = hash_password(payload.new_password)
+    try:
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo cambiar la contraseña.") from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

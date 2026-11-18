@@ -109,4 +109,13 @@ class AuthService {
   }
 
   Future<AppUser> fetchMe() async => AppUser.fromJson(await _api.get('/auth/me') as Map<String, dynamic>);
+
+  // Mismas reglas del nombre que en el registro (la API valida de nuevo)
+  Future<AppUser> updateProfile(String fullName) async =>
+      AppUser.fromJson(await _api.patch('/auth/me', {'full_name': fullName}) as Map<String, dynamic>);
+
+  // Contraseña actual incorrecta: 400, no 401, así la sesión no se cierra
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _api.post('/auth/change-password', {'current_password': currentPassword, 'new_password': newPassword});
+  }
 }

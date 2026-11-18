@@ -48,10 +48,8 @@ export default function Login() {
         setSubmitting(false)
       }
     } catch (err) {
-      // 403: la cuenta existe pero no es de fundación; el mensaje del backend habla de pestañas que ya no existen
-      setError(axios.isAxiosError(err) && err.response?.status === 403
-        ? 'Esta cuenta no tiene acceso al portal de fundaciones. Los adoptantes usan la app móvil.'
-        : errorMessage(err, 'No pudimos iniciar sesión. Inténtalo nuevamente.'))
+      // 403: la cuenta es de adoptante; el backend explica que debe entrar desde la app
+      setError(errorMessage(err, 'No pudimos iniciar sesión. Inténtalo nuevamente.'))
       setSubmitting(false)
     }
   }

@@ -123,8 +123,14 @@ void main() {
     expect(find.text('Verificación en dos pasos'), findsOneWidget);
     expect(find.text('Inactiva'), findsOneWidget);
 
+    // Activar es un botón secundario: la acción principal del Perfil es "Quiero adoptar"
+    expect(find.widgetWithText(FilledButton, 'Activar'), findsNothing);
+    final activate = find.widgetWithText(OutlinedButton, 'Activar');
+    await tester.ensureVisible(activate);
+    await tester.pumpAndSettle();
     // Activar: llega un código y solo queda activa al ingresarlo
-    await tapButton(tester, 'Activar');
+    await tester.tap(activate);
+    await tester.pumpAndSettle();
     expect(find.textContaining('m***r@gmail.com'), findsOneWidget);
     expect(api.twoFactor, isFalse);
     await tester.enterText(codeField(), '123456');
