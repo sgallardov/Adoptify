@@ -4,6 +4,7 @@ import Feedback from './Feedback'
 import { fetchAnimalInterested, formatMatch } from '../services/interested'
 import type { InterestedPerson } from '../services/interested'
 import { errorMessage } from '../services/api'
+import { useOpenChat } from '../hooks/useOpenChat'
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -11,6 +12,7 @@ export default function InterestedSection({ animalId }: { animalId: number }) {
   const [people, setPeople] = useState<InterestedPerson[] | null>(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const { openChat, opening, error: chatError } = useOpenChat()
 
   function retry() {
     setPeople(null)
@@ -44,13 +46,12 @@ export default function InterestedSection({ animalId }: { animalId: number }) {
               <p className="text-xs text-base-500">Favorito desde el {formatDate(person.favorited_at)}</p>
             </div>
             <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-800">{formatMatch(person.match_score)}</span>
-            {/* El chat del portal llega con HU-G2: el botón queda visible pero deshabilitado */}
-            <button type="button" disabled aria-describedby="chat-pending" className="button-secondary inline-flex items-center gap-1 opacity-60">
-              <MessageCircle size={16} aria-hidden="true" />Conversar
+            <button type="button" disabled={opening !== null} onClick={() => openChat(person.user_id)} className="button-secondary inline-flex items-center gap-1">
+              <MessageCircle size={16} aria-hidden="true" />{opening === person.user_id ? 'Abriendo…' : 'Conversar'}
             </button>
           </li>)}
         </ul>
-        <p id="chat-pending" className="mt-3 text-xs text-base-500">El chat con interesados estará disponible pronto.</p>
+        {chatError && <p role="alert" className="mt-3 text-sm text-danger-700">{chatError}</p>}
       </>}
     </div>
   </section>

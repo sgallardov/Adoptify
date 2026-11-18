@@ -10,6 +10,7 @@ import AnimalForm from './pages/AnimalForm'
 import Foundation from './pages/Foundation'
 import Reports from './pages/Reports'
 import FosterApplications from './pages/FosterApplications'
+import Messages from './pages/Messages'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -28,6 +29,8 @@ export default function App() {
               <Route path="fundacion" element={<Foundation />} />
               <Route path="reportes" element={<Reports />} />
               <Route path="hogares-temporales" element={<FosterApplications />} />
+              <Route path="mensajes" element={<Messages />} />
+              <Route path="mensajes/:id" element={<Messages />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

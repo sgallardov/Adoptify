@@ -6,9 +6,8 @@ import { capacityLabel, phoneHref, sizesLabel, spaceLabel, speciesLabel, statusL
 import { errorMessage } from '../services/api'
 import Feedback from '../components/Feedback'
 import PageHeading from '../components/PageHeading'
+import { useOpenChat } from '../hooks/useOpenChat'
 
-// "Abrir chat" depende de HU-G2 (conversaciones con user_id): se muestra cuando exista el chat
-const CHAT_ENABLED = false
 
 type Filter = FosterStatus | 'all'
 const filters: { id: Filter; label: string }[] = [
@@ -28,6 +27,7 @@ export default function FosterApplications() {
   const [applications, setApplications] = useState<FosterApplication[] | null>(null)
   const [filter, setFilter] = useState<Filter>('pending')
   const [error, setError] = useState('')
+  const { openChat, opening, error: chatError } = useOpenChat()
   const [busy, setBusy] = useState<number | null>(null)
   const [attempt, setAttempt] = useState(0)
 
@@ -87,6 +87,7 @@ export default function FosterApplications() {
     </div>
 
     {error && <div className="mb-5"><Feedback kind="error" title={error} actionLabel="Reintentar" onAction={() => setAttempt(value => value + 1)} /></div>}
+    {chatError && <div className="mb-5"><Feedback kind="error" title={chatError} compact /></div>}
     {applications === null && !error && <Feedback kind="loading" title="Cargando postulaciones…" />}
     {visible?.length === 0 && (
       <Feedback
@@ -135,7 +136,7 @@ export default function FosterApplications() {
             {application.can_decide && application.status !== 'pending' && (
               <button type="button" disabled={busy === application.id} onClick={() => decide(application.id, 'pending')} className="button-secondary"><RotateCcw size={16} />Volver a pendiente</button>
             )}
-            {CHAT_ENABLED && <button type="button" className="button-secondary"><MessageCircle size={16} />Abrir chat</button>}
+            <button type="button" disabled={opening !== null} onClick={() => openChat(application.user_id)} className="button-secondary"><MessageCircle size={16} />{opening === application.user_id ? 'Abriendo…' : 'Conversar'}</button>
           </div>
         </article>
       ))}

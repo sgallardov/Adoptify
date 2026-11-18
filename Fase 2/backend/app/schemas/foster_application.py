@@ -80,6 +80,8 @@ class FosterApplicationForFoundation(BaseModel):
     (nombre y correo de su cuenta, teléfono y dirección), que el adoptante no muestra a nadie más.
     """
     id: int
+    # Para abrir el chat con el postulante (HU-G2)
+    user_id: int
     full_name: str
     email: str
     phone: str
