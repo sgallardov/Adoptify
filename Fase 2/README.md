@@ -237,8 +237,8 @@ Cada fundación gestiona solo sus propios animales.
 * `GET /api/v1/animals` sigue siendo público. Si el token es de una cuenta `foundation`, solo devuelve los animales de su fundación; visitantes, adoptantes y `admin` ven todos. Un token inválido se trata como visitante. `/animals/nearby` no cambia.
 * **Valores válidos:** `species` (`perro`, `gato`), `gender` (`macho`, `hembra`), `size` (`pequeño`, `mediano`, `grande`), `energy_level` (1 a 5), `status` (`available`, `in_process`, `adopted`). Fuera de eso: `422`.
 * **Roles:** `admin` puede crear, editar y borrar en cualquier fundación; `adopter` recibe `403`.
-* **Lugar de resguardo privado (HU-A):** al crear un animal, la fundación debe indicar `keeping_place_type` (`refugio` o `hogar_temporal`) y `keeping_place_address` (texto de hasta 255 caracteres). Ambos se entregan **solo** por `GET /api/v1/animals/management` y `GET /api/v1/animals/management/{id}` a la fundación dueña o al administrador. No aparecen en `/animals`, `/animals/nearby`, `/foundations` ni en el mapa. Los animales creados antes de esta funcionalidad conservan ambos valores en `null` y el portal muestra “Sin información”. La dirección no se geocodifica: `location` continúa siendo el punto privado ya existente de HU-04.
-* **Lugar de resguardo privado (HU-A):** al crear un animal, la fundación debe indicar `keeping_place_type` (`refugio` o `hogar_temporal`) y `keeping_place_address` (texto de hasta 255 caracteres). Ambos se entregan **solo** por `GET /api/v1/animals/management` y `GET /api/v1/animals/management/{id}` a la fundación dueña o al administrador. No aparecen en `/animals`, `/animals/nearby`, `/foundations` ni en el mapa. Los animales creados antes de esta funcionalidad conservan ambos valores en `null` y el portal muestra “Sin información”. La dirección no se geocodifica: `location` continúa siendo el punto privado ya existente de HU-04.
+* **Lugar de resguardo privado (HU-A):** al crear un animal, la fundación debe indicar `keeping_place_type` (`refugio` o `hogar_temporal`) y `keeping_place_address` (texto de hasta 255 caracteres). Ambos se entregan **solo** por `GET /api/v1/animals/management` y `GET /api/v1/animals/management/{id}` a la fundación dueña o al administrador. No aparecen en `/animals`, `/animals/nearby`, `/foundations` ni en el mapa. Los animales creados antes de esta funcionalidad conservan ambos valores en `null` y el portal muestra “Sin información”. La dirección no se convierte sola en coordenadas: `location` sigue siendo el punto privado de HU-04, pero los formularios la usan como sugerencia del buscador de direcciones (ver abajo).
+* **Buscar dirección (`GET /api/v1/geocode?q=...`):** solo `foundation` y `admin` (`403` para adoptantes). Devuelve hasta 5 lugares de Chile con `label`, `latitude`, `longitude` y `commune` (la comuna del catálogo reconocida en el lugar, comparando sin tildes ni mayúsculas; `null` si no se reconoce), para ubicar al animal sin escribir coordenadas y completar sola su comuna pública. Consulta Nominatim de OpenStreetMap desde el backend (máximo una consulta por segundo, caché en memoria y `User-Agent` de la aplicación, como exige su política de uso). `q` va de 3 a 200 caracteres (`422` fuera de eso); si Nominatim falla, `503`.
 
 ### Fundaciones
 * `GET /api/v1/foundations` (público): fundaciones ordenadas por nombre o, con `lat` y `lng` (opcionales, juntos; si llega solo uno, `422`), de la más cercana a la más lejana con `distance_km` (las sin ubicación al final), con `description`, `address`, `commune`, `city`, `phone`, `email`, `is_verified`, `photo_url` (foto de perfil), `latitude`/`longitude` y `animals` (solo los disponibles, con el mismo formato de `GET /animals`). No expone el RUT ni la geometría cruda. La usan la pestaña Fundaciones y los pines de fundaciones del mapa de la app.
@@ -389,6 +389,13 @@ Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
 En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha
 guarda el favorito) y el corazón de la barra abre la lista de favoritos.
 
+**HU-N (ficha desde Match y favoritos):** las tarjetas de `/animals/match` y `/animals/favorites`
+incluyen `status` (un favorito puede estar ya adoptado). En la app, "Ver ficha" en la tarjeta y
+tocar una fila de favoritos abren `/animales/:id` (descripción, raza, sexo y energía; desde ahí
+se postula). Los descartes ("Pasar") se guardan **en el dispositivo** por usuario
+(`shared_preferences`, clave `match_discarded_<id>`) y "Ver descartados" los devuelve al mazo.
+Bajo 40 % de compatibilidad la tarjeta va al final con el rótulo "Poco compatible".
+
 ### Interesados por animal (HU-G1)
 
 Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales:
@@ -439,6 +446,13 @@ En el formulario de animales, elegir la comuna que verá el público. Es opciona
 los animales existentes conservan su punto privado y quedan con «Zona no informada»
 hasta que su fundación complete la comuna. El formulario usa `GET /api/v1/animals/communes`.
 
+**Nombres de comunas (migración 0022):** el catálogo `communes.json` venía de GeoNames con
+varios nombres mal escritos ("Aisen", "Chillan", "Peñalolen", "O Higgins"...). Se corrigieron
+65 a la escritura oficial ("Aysén", "Chillán", "Peñalolén", "O'Higgins"); la lista está en
+`services/commune_renames.py` y los puntos no cambian. La migración `0022` actualiza los
+animales que ya tenían guardado un nombre antiguo (aplicarla también en la BD compartida,
+la persona responsable). La API solo acepta los nombres corregidos.
+
 - El listado público, la búsqueda por radio y los animales de `GET /foundations`
   entregan `public_commune` y `commune_point` (latitud, longitud de referencia).
   Cada animal de una comuna usa el mismo punto fijo. Nunca se deriva del domicilio.
@@ -448,6 +462,9 @@ hasta que su fundación complete la comuna. El formulario usa `GET /api/v1/anima
   consultar puntos privados, con autenticación y autorización de propietario o admin.
 - Los avisos activos de rescate mantienen sus coordenadas exactas de avistamiento;
   al superponerse, su marcador tiene prioridad. Las sedes conservan su ubicación pública.
+- Las fichas de animales (app y portal) no muestran mapa ni coordenadas, solo la comuna
+  como texto (HU-J): el `commune_point` se usa únicamente para ubicar el pin en el mapa
+  general. El detalle de un reporte sí conserva su mini mapa, porque sirve para el rescate.
 - Referencias comunales: datos ADM3 de Chile de [GeoNames](https://www.geonames.org/),
   [extracto CL](https://download.geonames.org/export/dump/CL.zip) bajo
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). El catálogo local

@@ -135,8 +135,12 @@ el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
 - En **Mis casos → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
 - En la ficha, **Editar animal** (`/animales/:id/editar`) carga los valores guardados.
 - **Estado de adopción → Cambiar estado** permite Disponible, En proceso o Adoptado.
-- `ReportLocationPicker` se reutiliza para marcar o arrastrar el punto; también
-  se pueden introducir coordenadas con teclado. Conserva la atribución de OSM.
+- **Buscar dirección** (`AddressSearch`, `GET /geocode`) mueve el marcador al lugar elegido;
+  parte con el texto del lugar de resguardo y, al elegir un resultado, completa la comuna pública.
+  La comuna se escribe con sugerencias (`datalist`); "aysen" se guarda como "Aysén" y un texto que
+  no es comuna no se acepta. Después `ReportLocationPicker` permite hacer
+  clic o arrastrar el punto. Las coordenadas a mano quedan en «Ingresar coordenadas
+  manualmente». Conserva la atribución de OSM.
 - La ubicación es opcional al crear. Sin ella, el animal no aparece por cercanía.
   Una ubicación existente se puede mover, pero no borrar: HU-12 rechaza
   coordenadas nulas en PATCH. Siempre se envían latitud y longitud juntas.

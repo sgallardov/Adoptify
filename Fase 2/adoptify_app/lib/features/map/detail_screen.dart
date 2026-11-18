@@ -65,10 +65,6 @@ class AnimalDetailScreen extends StatelessWidget {
                         label: const Text('Postular a adoptar'),
                       ),
                     ],
-                    if (animal.position != null) ...[
-                      const SizedBox(height: AdoptifySpacing.xl),
-                      _MiniMap(position: animal.position!, pin: MapPins.animal),
-                    ],
                   ],
                 ),
               ),

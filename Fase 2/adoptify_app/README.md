@@ -64,7 +64,7 @@ diseño (`shared/widgets/app_shell.dart`).
 **Fundación** (`foundation` o `admin`): abre en **Agregar mascota**. Barra de izquierda a derecha (hoy las tres
 son placeholders "Próximamente"; cada módulo se desarrolla aparte):
 - **Chat** (`/fundacion/chat`): hablar con un adoptante cuando haya match.
-- **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca.
+- **Agregar mascota** (`/fundacion/agregar`): la acción principal, destacada con el relleno de la marca. La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
 - **Perfil** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que

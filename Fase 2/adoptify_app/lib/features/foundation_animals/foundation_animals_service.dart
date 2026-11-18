@@ -1,3 +1,5 @@
+import 'package:latlong2/latlong.dart';
+
 import '../../core/api_client.dart';
 import '../../core/config.dart';
 
@@ -21,6 +23,8 @@ class ManagedAnimal {
     this.photoUrl,
     this.keepingPlaceType,
     this.keepingPlaceAddress,
+    this.position,
+    this.publicCommune,
   });
 
   factory ManagedAnimal.fromJson(Map<String, dynamic> json) => ManagedAnimal(
@@ -36,6 +40,10 @@ class ManagedAnimal {
         photoUrl: mediaUrl(json['photo_url'] as String?),
         keepingPlaceType: json['keeping_place_type'] as String?,
         keepingPlaceAddress: json['keeping_place_address'] as String?,
+        position: json['latitude'] == null || json['longitude'] == null
+            ? null
+            : LatLng((json['latitude'] as num).toDouble(), (json['longitude'] as num).toDouble()),
+        publicCommune: json['public_commune'] as String?,
       );
 
   final int id;
@@ -50,6 +58,10 @@ class ManagedAnimal {
   final String? photoUrl;
   final String? keepingPlaceType;
   final String? keepingPlaceAddress;
+  // Punto privado (solo lo ve la fundación dueña)
+  final LatLng? position;
+  // Comuna que ve el público
+  final String? publicCommune;
 
   String get statusLabel => animalStatusLabels[status] ?? status;
   String get summary => '${_capitalize(species)} · ${_capitalize(size)}';

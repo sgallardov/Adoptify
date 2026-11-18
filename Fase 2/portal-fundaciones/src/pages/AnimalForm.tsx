@@ -11,6 +11,8 @@ import { animalFields, animalPayload, validateAnimal } from '../services/animalF
 import type { AnimalFields, FieldErrors } from '../services/animalForm'
 import { animalError } from '../services/animalErrors'
 import ReportLocationPicker from '../components/ReportLocationPicker'
+import AddressSearch from '../components/AddressSearch'
+import { matchCommune } from '../services/communeMatch'
 import PhotoPicker from '../components/PhotoPicker'
 import AnimalsState from '../components/AnimalsState'
 import Feedback from '../components/Feedback'
@@ -59,6 +61,20 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
     setFields(previous => ({ ...previous, latitude: value.lat.toFixed(6), longitude: value.lng.toFixed(6) }))
     setErrors(previous => ({ ...previous, latitude: undefined, longitude: undefined }))
   }
+  // Al elegir una dirección se mueve el marcador y, si se reconoció, se completa la comuna
+  function pickAddress(value: LatLng, commune: string | null) {
+    markLocation(value)
+    if (commune && communes.includes(commune)) change('public_commune', commune)
+  }
+  // "aysen" se corrige a "Aysén"; un texto que no es comuna se marca como error al guardar
+  function normalizeCommune(text: string) {
+    const match = matchCommune(text, communes)
+    if (match && match !== text) change('public_commune', match)
+  }
+  function communeErrors(text: string): FieldErrors {
+    if (!text || !communes.length || communes.includes(text)) return {}
+    return { public_commune: 'Elige una comuna de la lista o déjala vacía.' }
+  }
   function showError(text: string, fieldErrors: FieldErrors) {
     setMessage(text)
     setErrors(fieldErrors)
@@ -67,14 +83,17 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (inFlight.current || uploading) return
-    const validation = validateAnimal(fields, adminCreate, hasLocation, !animal)
+    // Se guarda el nombre del catálogo aunque se haya escrito "aysen" y enviado con Enter
+    const typed = fields.public_commune.trim()
+    const current = { ...fields, public_commune: matchCommune(typed, communes) ?? typed }
+    const validation = { ...validateAnimal(current, adminCreate, hasLocation, !animal), ...communeErrors(current.public_commune) }
     if (Object.keys(validation).length) { showError('Revisa los campos indicados antes de guardar.', validation); return }
     inFlight.current = true
     setSaving(true)
     setMessage('')
     setErrors({})
     try {
-      const payload = animalPayload(fields, adminCreate, animal?.status ?? 'available')
+      const payload = animalPayload(current, adminCreate, animal?.status ?? 'available')
       // El estado se cambia desde la ficha; editar los datos no sobrescribe un cambio de estado reciente.
       const { status: _status, foundation_id: _foundation, ...changes } = payload
       const saved = animal ? await updateAnimal(animal.id, changes) : await createAnimal(payload)
@@ -130,20 +149,25 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
       </fieldset>
       <fieldset disabled={saving} className="min-w-0 rounded-2xl border border-base-200 bg-surface p-5 sm:p-7">
         <legend className="px-2 text-lg font-bold">Ubicación del animal</legend>
-        <p className="mb-4 text-sm text-base-600">Haz clic en el mapa o arrastra el marcador. También puedes escribir las coordenadas. {hasLocation ? 'Puedes mover la ubicación guardada a otro punto.' : 'Sin ubicación, el animal se publica pero no aparecerá en búsquedas por cercanía.'}</p>
-        <Field id="public_commune" label="Comuna que verán los adoptantes">
-          <select {...props('public_commune')} disabled={!communes.length}>
-            <option value="">Zona no informada</option>
-            {(!communes.length && fields.public_commune ? [fields.public_commune] : communes).map(name => <option key={name}>{name}</option>)}
-          </select>
+        <p className="mb-4 text-sm text-base-600">Busca la dirección donde está el animal: la comuna se completa sola y después puedes ajustar el punto en el mapa. {hasLocation ? 'Puedes mover la ubicación guardada a otro punto.' : 'Sin ubicación, el animal se publica pero no aparecerá en búsquedas por cercanía.'}</p>
+        <AddressSearch suggestion={fields.keeping_place_address} onPick={pickAddress} disabled={saving} />
+        <Field id="public_commune" label="Comuna que verán los adoptantes" error={errors.public_commune}>
+          {/* Con datalist se escribe "Ñuñ" y se elige de las sugerencias, sin recorrer las 346 comunas */}
+          <input {...props('public_commune')} list="communes-list" autoComplete="off" disabled={saving || !communes.length}
+            placeholder="Escribe la comuna o déjala vacía" onBlur={() => normalizeCommune(fields.public_commune)} />
+          <datalist id="communes-list">{communes.map(name => <option key={name} value={name} />)}</datalist>
         </Field>
         {communeError && <Feedback kind="error" title="No se pudieron cargar las comunas." actionLabel="Reintentar" onAction={() => setAttempt(n => n + 1)} />}
-        <p className="my-3 text-sm text-base-600">El público verá solo una referencia de la comuna. El punto exacto de este mapa es privado para tu fundación y el administrador.</p>
+        <p className="my-3 text-sm text-base-600">El público verá solo la comuna. El punto exacto de este mapa es privado para tu fundación y el administrador.</p>
         <ReportLocationPicker value={position} onChange={markLocation} markerLabel="Ubicación del animal" />
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          {input('latitude', 'Latitud', { type: 'number', min: -90, max: 90, step: 'any', placeholder: '-33.4489' })}
-          {input('longitude', 'Longitud', { type: 'number', min: -180, max: 180, step: 'any', placeholder: '-70.6693' })}
-        </div>
+        {/* Las coordenadas quedan como opción avanzada; abiertas si hay un error en ellas */}
+        <details className="mt-5" open={Boolean(errors.latitude || errors.longitude)}>
+          <summary className="cursor-pointer text-sm font-semibold text-base-600">Ingresar coordenadas manualmente</summary>
+          <div className="mt-4 grid gap-5 sm:grid-cols-2">
+            {input('latitude', 'Latitud', { type: 'number', min: -90, max: 90, step: 'any', placeholder: '-33.4489' })}
+            {input('longitude', 'Longitud', { type: 'number', min: -180, max: 180, step: 'any', placeholder: '-70.6693' })}
+          </div>
+        </details>
       </fieldset>
       {saving && <Feedback kind="loading" title="Guardando animal…" compact />}
       <div className="flex flex-wrap justify-end gap-3">
