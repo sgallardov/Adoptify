@@ -22,6 +22,9 @@ import '../features/map/map_screen.dart';
 import '../features/map/map_service.dart';
 import '../features/match/favorites_screen.dart';
 import '../features/match/match_screen.dart';
+import '../features/messages/chat_screen.dart';
+import '../features/messages/messages_screen.dart';
+import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
@@ -52,7 +55,7 @@ String? sessionRedirect(AuthController auth, String location) {
 
 // Rutas de la app. Las pestañas comparten la barra inferior (AppShell) y
 // cada una conserva su propio historial al cambiar de pestaña.
-// El orden de las ramas es el de la barra: Fundaciones, Mapa, Match, Perfil.
+// El orden de las ramas es el de la barra: Fundaciones, Mensajes, Mapa, Match, Perfil.
 GoRouter createAppRouter(AuthController auth) => GoRouter(
   initialLocation: _loading,
   refreshListenable: auth,
@@ -152,6 +155,14 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
         ),
         StatefulShellBranch(
           routes: [
+            GoRoute(
+              path: '/mensajes',
+              builder: (context, state) => const MessagesScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
             // extra: id del reporte recién creado, para que el mapa recargue los datos
             GoRoute(
               path: '/mapa',
@@ -184,6 +195,11 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/reportar',
       builder: (context, state) => const ReportScreen(),
+    ),
+    // Chat con una fundación (HU-G2), desde la pestaña Mensajes; la conversación viaja en `extra`
+    GoRoute(
+      path: '/mensajes/:id',
+      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
     ),
     // Se abre con el corazón de la pestaña Match
     GoRoute(

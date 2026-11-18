@@ -39,7 +39,7 @@ lib/
   main.dart
   app/            # app.dart (MaterialApp.router), router.dart (go_router), theme.dart (paleta del portal)
   core/           # config.dart (URL de la API), api_client.dart (HTTP + Bearer), token_storage.dart, location_service.dart (GPS), photo_service.dart (cámara y galería)
-  features/       # una carpeta por pantalla: map, report, account, auth, foundation_chat, foundation_add, foundation_profile
+  features/       # una carpeta por pantalla: map, report, account, auth, messages, foundation_chat, foundation_add, foundation_profile
     auth/         # auth_service.dart (/auth), auth_controller.dart (sesión + AuthScope), login_screen.dart
     map/          # map_service.dart (modelos + /animals, /reports), map_screen.dart
     report/       # report_screen.dart (formulario de reporte)
@@ -56,6 +56,7 @@ diseño (`shared/widgets/app_shell.dart`).
 
 **Adoptante** (`adopter`): abre en el **Mapa**. Barra de izquierda a derecha:
 - **Fundaciones** (`/fundaciones`): fundaciones con sus mascotas en adopción.
+- **Mensajes** (`/mensajes`): conversaciones con fundaciones (HU-G2); cada chat se abre en `/mensajes/:id`.
 - **Mapa** (`/mapa`).
 - **Match** (`/match`).
 - **Perfil** (`/cuenta`).
@@ -160,6 +161,17 @@ La elección se guarda en el dispositivo (`shared_preferences`) y está disponib
 correo y dirección, seleccionables) y una fila con sus mascotas en adopción. Se actualiza deslizando hacia abajo.
 Si el teléfono entrega tu ubicación, las pide con `lat`/`lng` y quedan de la más cercana a la más lejana, con la distancia en cada tarjeta ("a 4,2 km"); sin permiso, quedan por nombre y sin mostrar errores.
 La versión web de esta vista queda pendiente.
+
+## Mensajes (HU-G2)
+La pestaña **Mensajes** del adoptante (`features/messages/`) lista las conversaciones que le abrieron las
+fundaciones (`GET /conversations`), con el último mensaje y la hora. El adoptante no abre conversaciones nuevas:
+una fundación le escribe desde el portal (Interesados u Hogares temporales) y desde ahí responde. Al tocar una se abre
+`/mensajes/:id` a pantalla completa (`chat_screen.dart`): sus mensajes a la derecha y los de la fundación a la
+izquierda, con un campo de hasta 1000 caracteres; no se envían mensajes vacíos.
+
+Sin WebSockets, igual que el portal: la lista se consulta cada 15 s mientras la pestaña está a la vista y el chat
+abierto cada 10 s, pidiendo solo lo nuevo (`after_id`). Así lo que escribe la fundación aparece en 10 s o menos. La
+lista también se actualiza deslizando hacia abajo. Un fallo del sondeo no borra lo que ya se ve.
 
 ## Hogar temporal (HU-B)
 En el Perfil del adoptante, la tarjeta **Hogar temporal** invita a postular o muestra el estado de su postulación
