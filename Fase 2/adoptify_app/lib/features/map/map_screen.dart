@@ -91,8 +91,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _showClinics = true;
 
   int? _selectedAnimalId;
-  // Grupo de mascotas de una misma comuna abierto (ids, en el orden del pin)
-  List<int>? _selectedGroupIds;
   int? _selectedReportId;
   int? _selectedFoundationId;
   int? _selectedClinicId;
@@ -322,7 +320,6 @@ class _MapScreenState extends State<MapScreen> {
         _selectedReportId = null;
         _selectedFoundationId = null;
         _selectedClinicId = null;
-        _selectedGroupIds = null;
         _locating = false;
       });
       // Se centra al tiro, sin esperar a que lleguen las mascotas y reportes del radio
@@ -348,7 +345,6 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
-        _selectedGroupIds = null;
     });
     _load();
   }
@@ -370,39 +366,12 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
-        _selectedGroupIds = null;
       _showAnimals = true;
     });
     if (animal.position != null && _mapReady) {
       _mapController.move(animal.position!, _mapController.camera.zoom);
     }
   }
-
-  // Pin con varias mascotas en el mismo punto: se abre la lista para elegir cuál ver
-  void _selectGroup(List<Animal> group) {
-    setState(() {
-      _selectedGroupIds = [for (final animal in group) animal.id];
-      _selectedAnimalId = null;
-      _selectedReportId = null;
-      _selectedFoundationId = null;
-      _selectedClinicId = null;
-    });
-  }
-
-  // Mascotas agrupadas por su punto en el mapa. Todas las de una comuna comparten el punto público
-  // (commune_point), así que quedarían una sobre otra y solo se podría tocar la de arriba.
-  List<List<Animal>> get _animalGroups {
-    final groups = <LatLng, List<Animal>>{};
-    for (final animal in _animals) {
-      final position = animal.position;
-      if (position != null) groups.putIfAbsent(position, () => []).add(animal);
-    }
-    return groups.values.toList();
-  }
-
-  // El grupo está marcado si está abierto o si contiene la mascota elegida (por ejemplo, desde el buscador)
-  bool _groupSelected(List<Animal> group) =>
-      group.any((animal) => animal.id == _selectedAnimalId || (_selectedGroupIds?.contains(animal.id) ?? false));
 
   // Elegir un resultado del buscador: se cierra la búsqueda y se muestra la mascota en el mapa
   void _pickResult(Animal animal) {
@@ -427,7 +396,6 @@ class _MapScreenState extends State<MapScreen> {
       _selectedAnimalId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
-        _selectedGroupIds = null;
     });
   }
 
@@ -437,14 +405,12 @@ class _MapScreenState extends State<MapScreen> {
       _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedClinicId = null;
-        _selectedGroupIds = null;
     });
   }
 
   void _selectClinic(VetClinic clinic) {
     setState(() {
       _selectedClinicId = clinic.id;
-      _selectedGroupIds = null;
       _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
@@ -473,7 +439,6 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
-        _selectedGroupIds = null;
     });
   }
 
@@ -526,10 +491,7 @@ class _MapScreenState extends State<MapScreen> {
             showOrigin: _origin != null,
             onAnimals: (value) => update(() {
               _showAnimals = value;
-              if (!value) {
-                _selectedAnimalId = null;
-                _selectedGroupIds = null;
-              }
+              if (!value) _selectedAnimalId = null;
             }),
             onReports: (value) => update(() {
               _showReports = value;
@@ -542,7 +504,6 @@ class _MapScreenState extends State<MapScreen> {
             onClinics: (value) => update(() {
               _showClinics = value;
               if (!value) _selectedClinicId = null;
-        _selectedGroupIds = null;
             }),
           );
         },
@@ -564,15 +525,7 @@ class _MapScreenState extends State<MapScreen> {
     final selectedClinic = _clinics
         .where((c) => c.id == _selectedClinicId)
         .firstOrNull;
-    final selectedGroup = _selectedGroupIds == null
-        ? null
-        : [
-            for (final id in _selectedGroupIds!)
-              ?_animals.where((animal) => animal.id == id).firstOrNull,
-          ];
-    final groupOpen = selectedGroup != null && selectedGroup.isNotEmpty;
     final hasSelection =
-        groupOpen ||
         selectedAnimal != null ||
         selectedReport != null ||
         selectedFoundation != null ||
@@ -684,7 +637,7 @@ class _MapScreenState extends State<MapScreen> {
             duration: const Duration(milliseconds: 180),
             right: AdoptifySpacing.lg,
             // Las fichas de fundación (foto arriba) y de veterinaria (botones) son más altas que las demás
-            bottom: selectedFoundation != null || groupOpen
+            bottom: selectedFoundation != null
                 ? 400
                 : selectedClinic != null
                 ? 340
@@ -728,17 +681,7 @@ class _MapScreenState extends State<MapScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (groupOpen) ...[
-                      _AnimalGroupCard(
-                        animals: selectedGroup,
-                        onClose: _clearSelection,
-                        onOpen: (animal) => context.push(
-                          '$_base/animales/${animal.id}',
-                          extra: animal,
-                        ),
-                      ),
-                      const SizedBox(height: AdoptifySpacing.md),
-                    ] else if (selectedAnimal != null) ...[
+                    if (selectedAnimal != null) ...[
                       _AnimalDetailCard(
                         animal: selectedAnimal,
                         onClose: _clearSelection,
@@ -877,7 +820,6 @@ class _MapScreenState extends State<MapScreen> {
             setState(() {
               _clinicsInView = inView;
               if (!inView) _selectedClinicId = null;
-        _selectedGroupIds = null;
             });
           }
         },
@@ -913,26 +855,25 @@ class _MapScreenState extends State<MapScreen> {
                   ),
             // Tu ubicación: la del botón o la detectada al abrir el mapa
             if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
-            // Una mascota sola en su punto lleva su pin; varias en el mismo punto, un pin con el número.
-            // Lo elegido (o el grupo que lo contiene) se dibuja al final para quedar encima.
-            if (_showAnimals)
-              for (final group in [
-                ..._animalGroups.where((g) => !_groupSelected(g)),
-                ..._animalGroups.where(_groupSelected),
-              ])
-                group.length == 1
-                    ? mapMarker(
-                        group.first.position!,
-                        group.first.id == _selectedAnimalId ? MapPins.selectedAnimal : MapPins.animal,
-                        key: ValueKey('animal-${group.first.id}'),
-                        onTap: () => _selectAnimal(group.first),
-                      )
-                    : mapMarker(
-                        group.first.position!,
-                        MapPins.animalGroup(group.length, selected: _groupSelected(group)),
-                        key: ValueKey('animal-group-${group.first.id}'),
-                        onTap: () => _selectGroup(group),
-                      ),
+            if (_showAnimals) ...[
+              for (final animal in _animals)
+                if (animal.position != null && animal.id != _selectedAnimalId)
+                  mapMarker(
+                    animal.position!,
+                    MapPins.animal,
+                    key: ValueKey('animal-${animal.id}'),
+                    onTap: () => _selectAnimal(animal),
+                  ),
+              // La seleccionada se dibuja al final para quedar encima
+              for (final animal in _animals)
+                if (animal.position != null && animal.id == _selectedAnimalId)
+                  mapMarker(
+                    animal.position!,
+                    MapPins.selectedAnimal,
+                    key: ValueKey('animal-${animal.id}'),
+                    onTap: () => _selectAnimal(animal),
+                  ),
+            ],
             // Un aviso de rescate debe poder tocarse incluso si coincide con una referencia comunal.
             if (_showReports)
               for (final report in _reports)
@@ -1571,77 +1512,6 @@ class _AnimalDetailCard extends StatelessWidget {
   }
 }
 
-// Varias mascotas en la misma comuna: lista para elegir cuál abrir. Alto limitado; con muchas se desplaza.
-class _AnimalGroupCard extends StatelessWidget {
-  const _AnimalGroupCard({required this.animals, required this.onClose, required this.onOpen});
-
-  final List<Animal> animals;
-  final VoidCallback onClose;
-  final ValueChanged<Animal> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final zone = animals.first.commune;
-    return Container(
-      key: const ValueKey('animal-group-card'),
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.4),
-      decoration: mapSurface(context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.xs, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${animals.length} mascotas ${zone == null ? 'en esta zona' : 'en $zone'}',
-                    style: textTheme.titleMedium,
-                  ),
-                ),
-                IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
-            child: Text(
-              'Comparten la ubicación aproximada de su comuna. Toca una para ver su ficha.',
-              style: textTheme.bodySmall?.copyWith(color: context.colors.textMuted),
-            ),
-          ),
-          Flexible(
-            child: Material(
-              type: MaterialType.transparency,
-              child: ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(vertical: AdoptifySpacing.sm),
-                children: [
-                  for (final animal in animals)
-                    ListTile(
-                      leading: AnimalPhoto(url: animal.photoUrl, size: 44),
-                      title: Text(animal.name, style: textTheme.titleSmall),
-                      subtitle: Text(
-                        [animal.summary, ?animal.foundationName].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodySmall,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => onOpen(animal),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // Qué significa cada pin, con los mismos dibujos del mapa. Se abre con el botón de información.
 class _LegendSheet extends StatelessWidget {
   const _LegendSheet();
@@ -1666,7 +1536,6 @@ class _LegendSheet extends StatelessWidget {
               child: Text('Qué significa cada pin', style: textTheme.titleMedium),
             ),
             row(MapPins.animal, 'Mascota en adopción', 'Zona aproximada de su comuna, no la dirección exacta.'),
-            row(MapPins.animalGroup(3), 'Varias mascotas en la misma comuna', 'Toca el número para ver la lista.'),
             row(MapPins.reportFor('perro'), 'Perro reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart';
 
 import 'package:adoptify_app/app/app.dart';
 import 'package:adoptify_app/core/location_service.dart';
@@ -9,7 +8,7 @@ import 'package:adoptify_app/shared/map/map_controls.dart';
 
 import 'fake_api.dart';
 
-// Arreglos del mapa: buscador en web, permiso de ubicación sin respuesta, pines por comuna y leyenda
+// Arreglos del mapa: buscador en web, permiso de ubicación sin respuesta y leyenda
 
 Future<void> openMap(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
@@ -129,54 +128,7 @@ void main() {
     });
   });
 
-  group('pines por comuna y leyenda', () {
-    final toby = {...luna, 'id': 20, 'name': 'Toby'};
-    // Tu ubicación junto al punto de Ñuñoa, para que el pin quede a la vista
-    setUp(() => LocationService.instance = FakeLocation(position: const LatLng(-33.461, -70.601)));
-
-    testWidgets('las mascotas de una misma comuna van en un pin con el número', (tester) async {
-      final api = FakeApi()..extraAnimals.add(toby);
-      await openMap(tester, api);
-
-      expect(find.byKey(const ValueKey('animal-7')), findsNothing);
-      final group = find.byKey(const ValueKey('animal-group-7'));
-      expect(group, findsOneWidget);
-      expect(find.descendant(of: group, matching: find.text('2')), findsOneWidget);
-
-      await tester.tap(group);
-      await tester.pumpAndSettle();
-      final card = find.byKey(const ValueKey('animal-group-card'));
-      expect(find.descendant(of: card, matching: find.text('2 mascotas en Ñuñoa')), findsOneWidget);
-      expect(find.descendant(of: card, matching: find.text('Luna')), findsOneWidget);
-      expect(find.descendant(of: card, matching: find.text('Toby')), findsOneWidget);
-
-      // Se puede abrir cada una
-      await tester.tap(find.descendant(of: card, matching: find.text('Toby')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('animal-group-card')), findsNothing);
-      expect(find.text('Toby'), findsWidgets);
-      expect(find.byTooltip('Volver'), findsOneWidget);
-    });
-
-    testWidgets('una mascota sola en su comuna mantiene su pin', (tester) async {
-      await openMap(tester, FakeApi());
-      expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
-      expect(find.byKey(const ValueKey('animal-group-7')), findsNothing);
-    });
-
-    testWidgets('elegir desde el buscador una mascota agrupada abre su ficha', (tester) async {
-      final api = FakeApi()..extraAnimals.add(toby);
-      await openMap(tester, api);
-      await tester.enterText(find.byType(TextField), 'toby');
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ListTile, 'Toby'));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('animal-group-card')), findsNothing);
-      expect(find.text('Toby'), findsOneWidget);
-      expect(find.byTooltip('Cerrar'), findsOneWidget);
-    });
-
+  group('leyenda', () {
     testWidgets('la leyenda se abre con un toque desde el mapa', (tester) async {
       await openMap(tester, FakeApi());
       await tester.tap(find.byTooltip('Leyenda del mapa'));
@@ -184,7 +136,7 @@ void main() {
 
       final legend = find.byKey(const ValueKey('map-legend'));
       expect(find.text('Qué significa cada pin'), findsOneWidget);
-      for (final item in ['Mascota en adopción', 'Varias mascotas en la misma comuna', 'Perro reportado', 'Fundación', 'Veterinaria']) {
+      for (final item in ['Mascota en adopción', 'Perro reportado', 'Gato reportado', 'Fundación', 'Veterinaria']) {
         expect(find.descendant(of: legend, matching: find.text(item)), findsOneWidget);
       }
     });

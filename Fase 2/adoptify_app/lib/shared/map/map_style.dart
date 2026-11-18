@@ -161,8 +161,6 @@ class MapPins {
   // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
   static const animal = AnimalPin(size: 28);
   static const selectedAnimal = AnimalPin(size: 34, selected: true);
-  // Varias mascotas en el mismo punto público de comuna: un solo pin con el número
-  static Widget animalGroup(int count, {bool selected = false}) => AnimalGroupPin(count: count, selected: selected);
   static final report = MapDot(color: AdoptifyColors.light.report, size: 18);
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
@@ -194,27 +192,6 @@ class AnimalPin extends StatelessWidget {
         color: selected ? AdoptifyColors.light.primaryText : AdoptifyColors.light.primaryStrong,
         child: Icon(Icons.favorite, size: size * 0.5, color: AdoptifyColors.light.onAccent),
       );
-}
-
-// Grupo de mascotas de una misma comuna: el número de mascotas en lugar del corazón, un poco más grande
-class AnimalGroupPin extends StatelessWidget {
-  const AnimalGroupPin({super.key, required this.count, this.selected = false});
-
-  final int count;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = selected ? 40.0 : 36.0;
-    return _PinCircle(
-      size: size,
-      color: selected ? AdoptifyColors.light.primaryText : AdoptifyColors.light.primaryStrong,
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AdoptifyColors.light.onAccent),
-      ),
-    );
-  }
 }
 
 class _PinCircle extends StatelessWidget {

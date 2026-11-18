@@ -134,9 +134,6 @@ los íconos naranjos y rojos que trae OpenStreetMap.
   - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
   - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
   - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
-  - **Mascotas de una misma comuna**: todas usan el punto público de su comuna (`commune_point`), así que se
-    agrupan en un solo pin con el número (`MapPins.animalGroup`). Al tocarlo se abre una lista con foto, nombre y
-    fundación, y cada fila abre la ficha de esa mascota. Una mascota sola en su punto mantiene su pin;
   - **Leyenda** (botón de información, arriba de Capas): qué significa cada pin, con los mismos dibujos del mapa;
   - **Capas**: opción de mostrar u ocultar mascotas, reportes, fundaciones y veterinarias;
   - **Al abrir el mapa** (por ejemplo, después de iniciar sesión) se pide la ubicación y la cámara se centra en ti a nivel de

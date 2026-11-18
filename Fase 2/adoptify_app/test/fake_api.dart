@@ -83,8 +83,6 @@ class FakeApi {
   Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
   int? uploadStatus;
-  // Mascotas extra en el mapa (por ejemplo, otras de la misma comuna que Luna)
-  final extraAnimals = <Map<String, dynamic>>[];
   // Ids marcados con el corazón en el match
   final favorites = <int>{};
   final interestedAnimals = <Map<String, dynamic>>[
@@ -435,7 +433,7 @@ class FakeApi {
       case '/animals':
         if (animalsFail)
           return _json(503, {'detail': 'No se pudo consultar los animales.'});
-        return _json(200, [luna, rocky, ...extraAnimals]);
+        return _json(200, [luna, rocky]);
       case '/animals/management':
         if (request.headers['Authorization'] != 'Bearer $foundationToken') {
           return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
@@ -464,7 +462,7 @@ class FakeApi {
       case '/animals/nearby':
         if (animalsFail)
           return _json(503, {'detail': 'No se pudo consultar los animales.'});
-        return _json(200, [luna, ...extraAnimals]);
+        return _json(200, [luna]);
       case '/users/me/adoption-profile':
         if (request.headers['Authorization'] != 'Bearer $validToken')
           return _json(401, {'detail': 'Not authenticated'});
