@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/account/account_screen.dart';
@@ -26,7 +27,9 @@ import '../features/messages/chat_screen.dart';
 import '../features/messages/messages_screen.dart';
 import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
+import '../core/api_client.dart';
 import '../shared/widgets/app_shell.dart';
+import '../shared/widgets/detail_loader.dart';
 
 const _loading = '/cargando';
 const _login = '/login';
@@ -53,10 +56,41 @@ String? sessionRedirect(AuthController auth, String location) {
   return null;
 }
 
+// Los detalles reciben el objeto por `extra` al abrirse desde una lista; al recargar la página o abrir el
+// enlace directo no hay `extra` y se pide por id (GET /reports|animals|foundations/{id}).
+int _id(GoRouterState state) => int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+
+Widget _reportDetail(GoRouterState state) => DetailLoader<DogReport>(
+  key: ValueKey('reporte-${_id(state)}'),
+  initial: state.extra as DogReport?,
+  load: (api) => MapService(api).fetchReport(_id(state)),
+  builder: (context, report) => ReportDetailScreen(report: report),
+);
+
+Widget _animalDetail(GoRouterState state) => DetailLoader<Animal>(
+  key: ValueKey('animal-${_id(state)}'),
+  initial: state.extra as Animal?,
+  load: (api) => MapService(api).fetchAnimal(_id(state)),
+  builder: (context, animal) => AnimalDetailScreen(animal: animal),
+);
+
+Widget _foundationDetail(GoRouterState state) => DetailLoader<Foundation>(
+  key: ValueKey('fundacion-${_id(state)}'),
+  initial: state.extra as Foundation?,
+  load: (api) => FoundationService(api).fetchFoundation(_id(state)),
+  builder: (context, foundation) => FoundationDetailScreen(foundation: foundation),
+);
+
 // Rutas de la app. Las pestañas comparten la barra inferior (AppShell) y
 // cada una conserva su propio historial al cambiar de pestaña.
 // El orden de las ramas es el de la barra: Fundaciones, Mensajes, Mapa, Match, Perfil.
-GoRouter createAppRouter(AuthController auth) => GoRouter(
+GoRouter createAppRouter(AuthController auth) {
+  // Que la barra de direcciones refleje las pantallas abiertas con push (/reportes/3, /animales/7...)
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+  return _buildRouter(auth);
+}
+
+GoRouter _buildRouter(AuthController auth) => GoRouter(
   initialLocation: _loading,
   refreshListenable: auth,
   redirect: (context, state) => sessionRedirect(auth, state.matchedLocation),
@@ -115,15 +149,15 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     // Detalles abiertos desde el mapa de la fundación: dentro de /fundacion para que el redirect no la expulse
     GoRoute(
       path: '/fundacion/reportes/:id',
-      builder: (context, state) => ReportDetailScreen(report: state.extra as DogReport),
+      builder: (context, state) => _reportDetail(state),
     ),
     GoRoute(
       path: '/fundacion/animales/:id',
-      builder: (context, state) => AnimalDetailScreen(animal: state.extra as Animal),
+      builder: (context, state) => _animalDetail(state),
     ),
     GoRoute(
       path: '/fundacion/directorio/:id',
-      builder: (context, state) => FoundationDetailScreen(foundation: state.extra as Foundation),
+      builder: (context, state) => _foundationDetail(state),
     ),
     GoRoute(
       path: '/fundacion/mis-animales',
@@ -215,14 +249,14 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/fundaciones/:id',
       builder: (context, state) =>
-          FoundationDetailScreen(foundation: state.extra as Foundation),
+          _foundationDetail(state),
     ),
     // Se abren al tocar la ficha de una mascota o un reporte en el mapa; el objeto viaja en `extra`
     // (ya está cargado ahí) para no volver a pedirlo a la API.
     GoRoute(
       path: '/animales/:id',
       builder: (context, state) =>
-          AnimalDetailScreen(animal: state.extra as Animal),
+          _animalDetail(state),
     ),
     GoRoute(
       path: '/animales/:id/postular',
@@ -231,7 +265,7 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/reportes/:id',
       builder: (context, state) =>
-          ReportDetailScreen(report: state.extra as DogReport),
+          _reportDetail(state),
     ),
   ],
 );

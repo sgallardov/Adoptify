@@ -180,3 +180,36 @@ async def test_cercania_exige_lat_y_lng(async_client: AsyncClient):
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Para ordenar por cercanía envía lat y lng juntos."
+
+
+async def test_detalle_publico_de_fundacion(async_client: AsyncClient, foundation_with_animals):
+    response = await async_client.get(f"/api/v1/foundations/{foundation_with_animals.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == foundation_with_animals.id
+    assert data["phone"] == "+56 9 1234 5678"
+    assert [animal["name"] for animal in data["animals"]] == ["Disponible"]
+
+
+async def test_detalle_de_fundacion_inexistente_da_404(async_client: AsyncClient):
+    response = await async_client.get("/api/v1/foundations/999999999")
+
+    assert response.status_code == 404
+
+
+async def test_detalle_publico_de_animal(async_client: AsyncClient, foundation_with_animals, db_session: AsyncSession):
+    from sqlalchemy import select
+
+    animal = (await db_session.execute(select(Animal).where(Animal.foundation_id == foundation_with_animals.id, Animal.name == "Disponible"))).scalar_one()
+    response = await async_client.get(f"/api/v1/animals/{animal.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "Disponible"
+    assert data["foundation_name"] == foundation_with_animals.name
+    assert "location" not in data
+
+
+async def test_detalle_de_animal_inexistente_da_404(async_client: AsyncClient):
+    assert (await async_client.get("/api/v1/animals/999999999")).status_code == 404

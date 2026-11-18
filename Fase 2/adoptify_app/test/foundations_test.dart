@@ -37,7 +37,7 @@ void main() {
     );
     // FakeLocation parte en Santiago centro: la fundación de Providencia queda a unos 4 km
     expect(find.textContaining(RegExp(r'^Providencia, Santiago · a [34],\d km$')), findsOneWidget);
-    expect(find.byTooltip('Fundación verificada'), findsOneWidget);
+    expect(find.text('Verificada'), findsOneWidget);
     expect(find.text('1 animal disponible'), findsOneWidget);
 
   });

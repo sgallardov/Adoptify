@@ -478,22 +478,22 @@ class _FoundationIdentity extends StatelessWidget {
             TextSpan(
               text: foundation.name,
               children: [
-                if (foundation.isVerified)
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: AdoptifySpacing.xs),
-                      child: Tooltip(
-                        message: 'Fundación verificada',
-                        child: Icon(Icons.verified, size: 18, color: colors.onAccent),
-                      ),
-                    ),
-                  ),
               ],
             ),
             textAlign: TextAlign.center,
             style: textTheme.titleMedium?.copyWith(color: colors.onAccent),
           ),
+          if (foundation.isVerified) ...[
+            const SizedBox(height: AdoptifySpacing.xs),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified, size: 16, color: colors.onAccent),
+                const SizedBox(width: AdoptifySpacing.xs),
+                Text('Verificada', style: textTheme.labelMedium?.copyWith(color: colors.onAccent)),
+              ],
+            ),
+          ],
           const SizedBox(height: AdoptifySpacing.xs),
           Row(
             mainAxisSize: MainAxisSize.min,

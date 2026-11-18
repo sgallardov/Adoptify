@@ -142,3 +142,26 @@ async def update_my_foundation(
         await db.rollback()
         raise HTTPException(status_code=503, detail="No se pudo guardar el perfil de tu fundación.") from exc
     return _foundation_response(await _own_foundation(current_user, db))
+
+
+# Al final, después de /me, para que "me" no se interprete como un id
+@router.get(
+    "/{foundation_id}",
+    response_model=FoundationResponse,
+    summary="Perfil público de una fundación",
+    description="Público. Mismos datos que la lista (contacto y animales disponibles); sirve para abrir o recargar /fundaciones/:id.",
+    responses={404: {"description": "Fundación no encontrada"}},
+)
+async def get_foundation(foundation_id: int, db: AsyncSession = Depends(get_db)):
+    statement = (
+        select(Foundation)
+        .options(selectinload(Foundation.animals).selectinload(Animal.foundation))
+        .where(Foundation.id == foundation_id)
+    )
+    try:
+        foundation = (await db.execute(statement)).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar la fundación.") from exc
+    if foundation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fundación no encontrada.")
+    return _foundation_response(foundation)

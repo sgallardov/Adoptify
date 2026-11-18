@@ -415,3 +415,25 @@ async def delete_animal(
         await db.rollback()
         raise HTTPException(status_code=503, detail="No se pudo eliminar el animal.") from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# Se declara al final: las rutas fijas (/nearby, /match, /favorites...) deben resolverse antes que /{animal_id}
+@router.get(
+    "/{animal_id}",
+    response_model=PublicAnimalResponse,
+    summary="Ficha pública de un animal",
+    description="Público. Mismos datos que la lista (sin ubicación exacta); sirve para abrir o recargar un enlace /animales/:id.",
+    responses={404: {"description": "Animal no encontrado"}},
+)
+async def get_animal(animal_id: int, db: AsyncSession = Depends(get_db)):
+    try:
+        animal = (
+            await db.execute(
+                select(Animal).options(selectinload(Animal.foundation)).where(Animal.id == animal_id)
+            )
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="No se pudo consultar el animal.") from exc
+    if animal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal no encontrado.")
+    return animal

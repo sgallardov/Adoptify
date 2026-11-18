@@ -318,6 +318,10 @@ class MapService {
     return DogReport.fromJson(data as Map<String, dynamic>);
   }
 
+  // Ficha pública de un animal por id (enlace /animales/:id recargado)
+  Future<Animal> fetchAnimal(int animalId) async =>
+      Animal.fromJson(await _api.get('/animals/$animalId') as Map<String, dynamic>);
+
   Future<DogReport> fetchReport(int reportId) async => _reportAction(await _api.get('/reports/$reportId'));
 
   // Acciones de la fundación sobre un reporte (HU-C). Cada una devuelve el reporte ya actualizado.
