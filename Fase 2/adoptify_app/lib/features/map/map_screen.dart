@@ -141,7 +141,7 @@ class _MapScreenState extends State<MapScreen> {
   // Sin permiso o sin señal, se queda en Santiago y aparece un aviso para reintentar.
   Future<void> _detectInitialLocation() async {
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       _centerOnUser = true;
       _setUserPosition(position);
@@ -309,7 +309,7 @@ class _MapScreenState extends State<MapScreen> {
       _geoError = null;
     });
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       _setUserPosition(position);
       setState(() {
@@ -380,6 +380,16 @@ class _MapScreenState extends State<MapScreen> {
     _selectAnimal(animal);
   }
 
+  // Enter en el buscador elige el primer resultado; sin resultados la lista queda abierta con el aviso
+  void _pickFirstResult(String _) {
+    final first = _results.firstOrNull;
+    if (first != null) {
+      _pickResult(first);
+    } else {
+      _searchFocus.requestFocus();
+    }
+  }
+
   void _selectReport(DogReport report) {
     setState(() {
       _selectedReportId = report.id;
@@ -443,6 +453,15 @@ class _MapScreenState extends State<MapScreen> {
         )
         .take(5)
         .toList();
+  }
+
+  void _openLegend() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: context.colors.surface,
+      builder: (_) => const _LegendSheet(),
+    );
   }
 
   void _openLayers() {
@@ -535,9 +554,18 @@ class _MapScreenState extends State<MapScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _SearchBar(controller: _search, focusNode: _searchFocus),
+                      _SearchBar(
+                        controller: _search,
+                        focusNode: _searchFocus,
+                        onSubmitted: _pickFirstResult,
+                      ),
+                      // La lista cuenta como parte del campo: en web, presionar el mouse sobre un resultado ya no
+                      // le quita el foco al buscador (lo que cerraba la lista antes de que llegara el clic).
+                      // Tocar fuera de ambos sigue cerrándola.
                       if (searching)
-                        _SearchResults(results: _results, onPick: _pickResult)
+                        TextFieldTapRegion(
+                          child: _SearchResults(results: _results, onPick: _pickResult),
+                        )
                       else ...[
                         const SizedBox(height: AdoptifySpacing.sm),
                         Row(
@@ -545,16 +573,21 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Expanded(child: _buildStatus()),
                             const SizedBox(width: AdoptifySpacing.sm),
-                            _AlertsButton(
-                              key: const ValueKey('alerts-button'),
-                              count: _alerts?.length,
-                              open: _alertsOpen,
-                              loading: _detecting || _alertsLoading,
-                              hasLocation: _userPosition != null,
-                              onToggle: () =>
-                                  setState(() => _alertsOpen = !_alertsOpen),
-                              onActivate: _locating ? null : _locate,
-                              onRetry: _loadAlerts,
+                            // Ancho máximo: con letra grande el texto se recorta en vez de desbordar la fila
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 220),
+                              child: _AlertsButton(
+                                key: const ValueKey('alerts-button'),
+                                count: _alerts?.length,
+                                open: _alertsOpen,
+                                loading: _detecting || _alertsLoading,
+                                loadingLabel: _detecting ? 'Buscando tu ubicación…' : 'Buscando avisos…',
+                                hasLocation: _userPosition != null,
+                                onToggle: () =>
+                                    setState(() => _alertsOpen = !_alertsOpen),
+                                onActivate: _locating ? null : _locate,
+                                onRetry: _loadAlerts,
+                              ),
                             ),
                           ],
                         ),
@@ -612,6 +645,12 @@ class _MapScreenState extends State<MapScreen> {
             child: Column(
               children: [
                 MapButton(
+                  icon: Icons.info_outline,
+                  tooltip: 'Leyenda del mapa',
+                  onPressed: _openLegend,
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+                MapButton(
                   icon: Icons.layers_outlined,
                   tooltip: 'Capas',
                   onPressed: _openLayers,
@@ -622,6 +661,7 @@ class _MapScreenState extends State<MapScreen> {
                       ? Icons.my_location
                       : Icons.near_me_outlined,
                   tooltip: 'Usar mi ubicación',
+                  loadingTooltip: 'Buscando tu ubicación…',
                   active: _origin != null,
                   loading: _locating,
                   onPressed: _locating ? null : _locate,
@@ -711,7 +751,9 @@ class _MapScreenState extends State<MapScreen> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: AdoptifySpacing.sm),
-          Text('Buscando mascotas…', style: muted),
+          Flexible(
+            child: Text('Buscando mascotas…', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+          ),
         ],
       );
     } else if (_error) {
@@ -822,6 +864,7 @@ class _MapScreenState extends State<MapScreen> {
                     key: ValueKey('animal-${animal.id}'),
                     onTap: () => _selectAnimal(animal),
                   ),
+              // La seleccionada se dibuja al final para quedar encima
               for (final animal in _animals)
                 if (animal.position != null && animal.id == _selectedAnimalId)
                   mapMarker(
@@ -868,6 +911,7 @@ class _AlertsButton extends StatelessWidget {
     required this.count,
     required this.open,
     required this.loading,
+    required this.loadingLabel,
     required this.hasLocation,
     required this.onToggle,
     required this.onActivate,
@@ -877,6 +921,8 @@ class _AlertsButton extends StatelessWidget {
   final int? count;
   final bool open;
   final bool loading;
+  // Texto junto al indicador de carga: dice qué se está esperando
+  final String loadingLabel;
   final bool hasLocation;
   final VoidCallback onToggle;
   final VoidCallback? onActivate;
@@ -890,9 +936,19 @@ class _AlertsButton extends StatelessWidget {
     VoidCallback? onTap;
     String? label;
     if (loading) {
-      content = const SizedBox.square(
-        dimension: 16,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      label = loadingLabel;
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: AdoptifySpacing.sm),
+          Flexible(
+            child: Text(loadingLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.labelMedium),
+          ),
+        ],
       );
     } else if (hasLocation && count != null) {
       label =
@@ -924,7 +980,9 @@ class _AlertsButton extends StatelessWidget {
         children: [
           Icon(Icons.my_location, size: 16, color: colors.primaryDark),
           const SizedBox(width: AdoptifySpacing.xs),
-          Text('Activar ubicación', style: textTheme.labelMedium),
+          Flexible(
+            child: Text('Activar ubicación', maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.labelMedium),
+          ),
         ],
       );
       onTap = onActivate;
@@ -943,13 +1001,13 @@ class _AlertsButton extends StatelessWidget {
           child: Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md),
-            alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(99),
               border: Border.all(color: colors.border),
               boxShadow: AdoptifyShadows.soft,
             ),
-            child: content,
+            // widthFactor 1: la píldora mide lo justo de su contenido, no el ancho máximo que se le permite
+            child: Center(widthFactor: 1, child: content),
           ),
         ),
       ),
@@ -1080,10 +1138,11 @@ class _AlertsPanel extends StatelessWidget {
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.controller, required this.focusNode});
+  const _SearchBar({required this.controller, required this.focusNode, required this.onSubmitted});
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final ValueChanged<String> onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -1093,6 +1152,9 @@ class _SearchBar extends StatelessWidget {
         controller: controller,
         focusNode: focusNode,
         textInputAction: TextInputAction.search,
+        onSubmitted: onSubmitted,
+        // Tocar fuera del campo y de la lista (TextFieldTapRegion) cierra la búsqueda en web y en el teléfono
+        onTapOutside: (_) => focusNode.unfocus(),
         decoration: InputDecoration(
           hintText: 'Buscar mascota o fundación',
           prefixIcon: Icon(Icons.search, color: context.colors.textMuted),
@@ -1446,6 +1508,43 @@ class _AnimalDetailCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// Qué significa cada pin, con los mismos dibujos del mapa. Se abre con el botón de información.
+class _LegendSheet extends StatelessWidget {
+  const _LegendSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    Widget row(Widget pin, String title, String detail) => ListTile(
+      leading: SizedBox(width: 48, child: Center(child: pin)),
+      title: Text(title, style: textTheme.bodyMedium),
+      subtitle: Text(detail, style: textTheme.bodySmall),
+    );
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: AdoptifySpacing.lg),
+        child: Column(
+          key: const ValueKey('map-legend'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xl),
+              child: Text('Qué significa cada pin', style: textTheme.titleMedium),
+            ),
+            row(MapPins.animal, 'Mascota en adopción', 'Zona aproximada de su comuna, no la dirección exacta.'),
+            row(MapPins.reportFor('perro'), 'Perro reportado', 'Un vecino lo vio en ese lugar.'),
+            row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
+            row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
+            row(const DropPin(width: 30, kind: DropKind.foundation), 'Fundación', 'Sede de la organización.'),
+            row(const DropPin(width: 30, kind: DropKind.clinic), 'Veterinaria', 'Aparecen al acercar el mapa.'),
+            row(MapPins.origin, 'Tu ubicación', 'Solo si diste permiso para usarla.'),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -85,7 +85,7 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
       urlTemplate: _osmTiles,
       userAgentPackageName: 'cl.adoptify.adoptify_app',
       maxZoom: 19,
-      tileBuilder: Theme.of(context).brightness == Brightness.dark ? darkModeTileBuilder : null,
+      tileBuilder: Theme.of(context).brightness == Brightness.dark ? darkModeTileBuilder : _softTileBuilder,
       reset: _reset.stream,
       errorTileCallback: _onTileError,
       // Los mosaicos con error se descartan para que el siguiente intento los pida de nuevo
@@ -94,6 +94,19 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
     );
   }
 }
+
+// Mapa base con colores más suaves (60 % de saturación): los pines de la app, con colores plenos, resaltan
+// sobre los íconos naranjos y rojos que trae OpenStreetMap
+const _saturation = 0.6;
+const _softTiles = ColorFilter.matrix(<double>[
+  0.2126 + 0.7874 * _saturation, 0.7152 - 0.7152 * _saturation, 0.0722 - 0.0722 * _saturation, 0, 0,
+  0.2126 - 0.2126 * _saturation, 0.7152 + 0.2848 * _saturation, 0.0722 - 0.0722 * _saturation, 0, 0,
+  0.2126 - 0.2126 * _saturation, 0.7152 - 0.7152 * _saturation, 0.0722 + 0.9278 * _saturation, 0, 0,
+  0, 0, 0, 1, 0,
+]);
+
+Widget _softTileBuilder(BuildContext context, Widget tileWidget, TileImage tile) =>
+    ColorFiltered(colorFilter: _softTiles, child: tileWidget);
 
 // La licencia de OpenStreetMap exige mostrar "© OpenStreetMap" sobre el mapa: se deja lo más discreta posible
 Widget osmAttribution(BuildContext context, {Alignment alignment = Alignment.bottomRight}) => Align(
@@ -144,8 +157,10 @@ class MapDot extends StatelessWidget {
 
 // Los pines usan los mismos colores en modo claro y oscuro, igual que en la web
 class MapPins {
-  static final animal = MapDot(color: AdoptifyColors.light.primary, size: 20);
-  static final selectedAnimal = MapDot(color: AdoptifyColors.light.primaryText, size: 26);
+  // Mascota en adopción: círculo naranjo con un corazón blanco y borde blanco. El ícono y el borde la
+  // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
+  static const animal = AnimalPin(size: 28);
+  static const selectedAnimal = AnimalPin(size: 34, selected: true);
   static final report = MapDot(color: AdoptifyColors.light.report, size: 18);
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
@@ -162,6 +177,43 @@ class MapPins {
   // Veterinarias: mismo tamaño que las fundaciones, gota roja con una cruz roja sobre blanco
   static const clinic = DropPin(width: 46, kind: DropKind.clinic);
   static const selectedClinic = DropPin(width: 56, kind: DropKind.clinic);
+}
+
+// Pin de una mascota en adopción. Usa los mismos colores en modo claro y oscuro.
+class AnimalPin extends StatelessWidget {
+  const AnimalPin({super.key, required this.size, this.selected = false});
+
+  final double size;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => _PinCircle(
+        size: size,
+        color: selected ? AdoptifyColors.light.primaryText : AdoptifyColors.light.primaryStrong,
+        child: Icon(Icons.favorite, size: size * 0.5, color: AdoptifyColors.light.onAccent),
+      );
+}
+
+class _PinCircle extends StatelessWidget {
+  const _PinCircle({required this.size, required this.color, required this.child});
+
+  final double size;
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2.5),
+          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2))],
+        ),
+        child: child,
+      );
 }
 
 // Reporte de un perro o un gato: círculo rojo de reportes con borde blanco y la huella de la especie adentro

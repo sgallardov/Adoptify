@@ -162,7 +162,7 @@ class _ReportFormState extends State<_ReportForm> {
       });
     }
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       setState(() => _locating = false);
       // Si la persona ya marcó un punto a mano mientras esperaba el GPS, no se lo cambiamos
@@ -367,7 +367,7 @@ class _ReportFormState extends State<_ReportForm> {
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
                       const SizedBox(width: AdoptifySpacing.sm),
-                      Expanded(child: _PickerHint(marked: position != null)),
+                      Expanded(child: _PickerHint(marked: position != null, locating: _locating)),
                     ],
                   ),
                   const Spacer(),
@@ -376,6 +376,7 @@ class _ReportFormState extends State<_ReportForm> {
                     child: MapButton(
                       icon: Icons.my_location,
                       tooltip: 'Usar mi ubicación',
+                      loadingTooltip: 'Buscando tu ubicación…',
                       loading: _locating,
                       onPressed: _locating ? null : _locate,
                     ),
@@ -737,9 +738,10 @@ class _PhotoPreview extends StatelessWidget {
 
 // Indicación sobre el mapa a pantalla completa
 class _PickerHint extends StatelessWidget {
-  const _PickerHint({required this.marked});
+  const _PickerHint({required this.marked, required this.locating});
 
   final bool marked;
+  final bool locating;
 
   @override
   Widget build(BuildContext context) {
@@ -753,7 +755,11 @@ class _PickerHint extends StatelessWidget {
         children: [
           Text('¿Dónde está la mascota?', style: textTheme.titleSmall),
           Text(
-            marked ? 'Punto marcado. Toca otro lugar para moverlo.' : 'Toca el mapa para marcar el punto.',
+            marked
+                ? 'Punto marcado. Toca otro lugar para moverlo.'
+                : locating
+                    ? 'Buscando tu ubicación… También puedes tocar el mapa para marcar el punto.'
+                    : 'Toca el mapa para marcar el punto.',
             style: textTheme.bodySmall,
           ),
         ],

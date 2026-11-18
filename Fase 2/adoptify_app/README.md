@@ -110,28 +110,38 @@ cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 
 ## Mapa y reportes (HU-15)
 Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
-naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
+naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación. Los pines de mascotas llevan un
+corazón blanco y borde blanco, y el mapa base va un poco menos saturado (60 %) en modo claro: así no se confunden con
+los íconos naranjos y rojos que trae OpenStreetMap.
 - **Mapa** (`/mapa`): a pantalla completa. Sin ubicación muestra todas las mascotas disponibles (`GET /animals`)
   y los reportes a 100 km de Santiago. Encima flotan:
-  - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes)
-    y al elegir una la muestra en el mapa; debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
+  - el **buscador**, que filtra las mascotas cargadas por nombre, especie o fundación (sin distinguir tildes).
+    Al tocar un resultado (o con Enter, el primero) se cierra la lista, se limpia el buscador, el mapa se centra en
+    la mascota y se abre su ficha; tocar fuera del buscador y de la lista la cierra. La lista va dentro de un
+    `TextFieldTapRegion`: en web, presionar el mouse sobre un resultado ya no le quita el foco al campo (lo que
+    cerraba la lista antes de que llegara el clic). Debajo, con "Usar mi ubicación", el radio (5 a 100 km) y "Ver todas";
   - el botón de **avisos** (HU-H): una píldora chica arriba a la derecha con la huella y el número de mascotas
     reportadas a menos de 5 km de tu ubicación (`GET /reports/nearby?radius_km=5`). Al tocarla se despliega una
     **lista** (alto máximo 40% de la pantalla) con foto, resumen, estado y distancia de cada aviso; tocar una fila
-    abre el detalle del reporte y la x o la píldora la cierran. La ubicación se pide sola al abrir el mapa; sin
-    permiso, la píldora dice "Activar ubicación" y al tocarla la pide. Si falla la consulta, dice "Reintentar".
+    abre el detalle del reporte y la x o la píldora la cierran. La ubicación se pide sola al abrir el mapa y,
+    mientras espera, la píldora dice "Buscando tu ubicación…". Sin permiso, o si el navegador o el teléfono no
+    responden la pregunta (`permissionTimeout`, 15 s; tope total `locationTimeout`, 20 s, en `core/location_service.dart`),
+    dice "Activar ubicación" y al tocarla la pide de nuevo; el mapa sigue funcionando y encuadra todo. Si falla la
+    consulta de avisos, dice "Reintentar". Las pantallas piden la ubicación con `currentLocation()`, que aplica el tope.
     *Decisión de diseño:* se eligió la lista desplegable (frente a una pantalla de avisos con filtros o a enfocar
     el mapa) porque lleva del conteo al aviso en un toque, sin pantalla nueva y ocupando menos mapa que la
     tarjeta anterior. El radio queda fijo en 5 km (`_alertsRadiusKm`); el mapa ya tiene su propio selector;
   - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
   - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
   - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
-  - **Capas**: leyenda de colores y opción de mostrar u ocultar mascotas, reportes y fundaciones;
+  - **Leyenda** (botón de información, arriba de Capas): qué significa cada pin, con los mismos dibujos del mapa;
+  - **Capas**: opción de mostrar u ocultar mascotas, reportes, fundaciones y veterinarias;
   - **Al abrir el mapa** (por ejemplo, después de iniciar sesión) se pide la ubicación y la cámara se centra en ti a nivel de
     barrio (zoom 14), con tu punto azul y sin filtrar por radio. Mientras llega no se encuadra todo el país (evita el salto);
     sin permiso, se encuadran las mascotas y reportes. Si mueves el mapa con el dedo, deja de reencuadrarse solo;
   - **Usar mi ubicación**: centra el mapa en ti con zoom de calles (16) y busca con `GET /animals/nearby` y
-    `GET /reports/nearby`; al cambiar el radio se encuadran los resultados;
+    `GET /reports/nearby`; al cambiar el radio se encuadran los resultados. Mientras busca, su tooltip dice
+    "Buscando tu ubicación…" y nunca queda cargando más que el tope de tiempo;
   - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
   - la atribución "© OpenStreetMap" (obligatoria por la licencia de OSM), mínima, bajo el botón de reportar.
 - `OsmTileLayer` (`shared/map/map_style.dart`) crea la capa de mosaicos recién cuando el mapa tiene tamaño y
@@ -139,7 +149,8 @@ naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación.
   flutter_map creaba y descartaba tandas de mosaicos y algunos quedaban cargando hasta mover el mapa. También
   usa un solo proveedor de mosaicos y reintenta si alguno falla por la red.
 - **Reportar** (`/reportar`): requiere sesión. Primero se abre un **mapa a pantalla completa** con tu ubicación
-  ya marcada (si diste permiso); tocar el mapa mueve el punto y **Confirmar ubicación** pasa al formulario. Ahí el
+  ya marcada (si diste permiso); mientras la busca, el aviso de arriba dice "Buscando tu ubicación…" y se puede
+  marcar a mano igual. Si no hay respuesta en 20 s, deja de esperar. Tocar el mapa mueve el punto y **Confirmar ubicación** pasa al formulario. Ahí el
   paso 1 muestra una vista previa con **Cambiar ubicación** (el botón atrás también vuelve al mapa, sin perder lo
   escrito). Luego, igual que la web: **¿Cómo es?** (tipo y tamaño con chips, color, peso aproximado, características), **¿Cómo está?** (estado y
   comportamiento opcional; en ambos se marcan varias opciones), **Comentarios** y **Foto**. Cada campo muestra su error; el mensaje dice qué campos revisar y la pantalla baja al primero.

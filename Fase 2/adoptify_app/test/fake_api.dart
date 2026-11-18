@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -859,13 +860,16 @@ Map<String, dynamic> _challenge(String id) => {
 
 // Ubicación simulada: devuelve un punto fijo o falla con el mensaje indicado
 class FakeLocation extends LocationService {
-  FakeLocation({this.position = const LatLng(-33.4378, -70.6505), this.error});
+  FakeLocation({this.position = const LatLng(-33.4378, -70.6505), this.error, this.hang = false});
 
   final LatLng position;
   final String? error;
+  // El navegador o el teléfono nunca responden el permiso: la consulta no termina
+  final bool hang;
 
   @override
   Future<LatLng> current() async {
+    if (hang) return Completer<LatLng>().future;
     if (error != null) throw LocationException(error!);
     return position;
   }

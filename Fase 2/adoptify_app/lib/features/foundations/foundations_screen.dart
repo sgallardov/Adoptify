@@ -47,7 +47,7 @@ class _FoundationsScreenState extends State<FoundationsScreen> {
   // Sin mostrar errores: si no hay ubicación, la lista queda por nombre
   Future<void> _detectOrigin() async {
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       _origin = position;
       _load();
