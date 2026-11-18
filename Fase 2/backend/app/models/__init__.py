@@ -9,5 +9,6 @@ from app.models.foundation_member import FoundationMember
 from app.models.login_challenge import LoginChallenge
 from app.models.adoption_application import AdoptionApplication
 from app.models.foster_application import FosterApplication
+from app.models.conversation import Conversation, Message
 
-__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember", "LoginChallenge", "AdoptionApplication", "FosterApplication"]
+__all__ = ["User", "Foundation", "Animal", "AbandonedDogReport", "ReportComment", "ReportLike", "AnimalFavorite", "VeterinaryClinic", "FoundationMember", "LoginChallenge", "AdoptionApplication", "FosterApplication", "Conversation", "Message"]

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import Brand from './Brand'
 import ThemeToggle from './ThemeToggle'
-import { ChevronRight, Heart, House, HousePlus, LogOut, Menu, PawPrint, Siren, Users, X } from 'lucide-react'
+import { ChevronRight, Heart, House, HousePlus, LogOut, Menu, MessageCircle, PawPrint, Siren, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
@@ -10,6 +10,7 @@ const navigation = [
   { to: '/animales', label: 'Mis casos', icon: PawPrint },
   { to: '/reportes', label: 'Reportes', icon: Siren },
   { to: '/hogares-temporales', label: 'Hogares temporales', icon: HousePlus },
+  { to: '/mensajes', label: 'Mensajes', icon: MessageCircle },
   { to: '/fundacion', label: 'Mi fundación', icon: Users },
 ]
 
@@ -33,7 +34,8 @@ export default function Layout() {
   const initials = (user?.full_name ?? '').split(' ').filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
   const isAnimalsPage = location.pathname.startsWith('/animales')
   const isReportsPage = location.pathname.startsWith('/reportes')
-  const title = isAnimalsPage ? 'Mis casos' : isReportsPage ? 'Reportes' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
+  const isMessagesPage = location.pathname.startsWith('/mensajes')
+  const title = isAnimalsPage ? 'Mis casos' : isReportsPage ? 'Reportes' : isMessagesPage ? 'Mensajes' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
 
   return (
     <div className="min-h-screen lg:pl-64">
@@ -62,7 +64,7 @@ export default function Layout() {
           <p className="text-sm text-base-500"><span className="hidden sm:inline">Portal de fundaciones <ChevronRight className="mx-2 inline" size={13} /></span><span className="font-medium text-base-800">{title}</span></p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 sm:inline">{isAnimalsPage || location.pathname === '/' ? 'Datos del backend' : 'Vista de ejemplo'}</span>
+          <span className="hidden shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 sm:inline">{isAnimalsPage || isMessagesPage || location.pathname === '/' ? 'Datos del backend' : 'Vista de ejemplo'}</span>
           <ThemeToggle />
         </div>
       </header>

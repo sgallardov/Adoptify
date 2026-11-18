@@ -5,6 +5,7 @@ export type FosterStatus = 'pending' | 'approved' | 'rejected'
 
 export type FosterApplication = {
   id: number
+  user_id: number
   full_name: string
   email: string
   phone: string

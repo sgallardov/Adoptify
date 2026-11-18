@@ -150,6 +150,7 @@ def _for_foundation(application: FosterApplication, user: User) -> FosterApplica
     decided_by = application.decided_by_foundation
     return FosterApplicationForFoundation(
         id=application.id,
+        user_id=application.user_id,
         full_name=application.user.full_name,
         email=application.user.email,
         phone=application.phone,
