@@ -17,6 +17,61 @@ Future<void> openFoundations(WidgetTester tester, FakeApi api) async {
 }
 
 void main() {
+  // Ancho de un teléfono común (412 dp): antes la franja de tres fotos se salía 32 px por la derecha
+  void phoneSize(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+  }
+
+  Future<Finder> scrollToStrip(WidgetTester tester, int foundationId) async {
+    final strip = find.byKey(ValueKey('animal-strip-$foundationId'));
+    await tester.scrollUntilVisible(strip, 200, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    return strip;
+  }
+
+  testWidgets('con más de 2 mascotas la franja es un carrusel que no se desborda', (tester) async {
+    phoneSize(tester);
+    await openFoundations(tester, FakeApi());
+    final strip = await scrollToStrip(tester, 3);
+    expect(tester.takeException(), isNull);
+
+    // Se mide la tarjeta completa (foto y nombre), no solo el texto
+    final canela = find.ancestor(of: find.descendant(of: strip, matching: find.text('Canela')), matching: find.byType(InkWell)).first;
+    // La tercera queda asomada a la derecha; al deslizar el carrusel aparece completa
+    final stripBox = tester.getRect(strip);
+    expect(tester.getRect(canela).right, greaterThan(stripBox.right));
+    await tester.drag(strip, const Offset(-300, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(canela).right, lessThanOrEqualTo(stripBox.right));
+  });
+
+  testWidgets('con 2 mascotas o menos la franja queda quieta', (tester) async {
+    phoneSize(tester);
+    await openFoundations(tester, FakeApi());
+    final list = tester.widget<ListView>(find.byKey(const ValueKey('animal-strip-1')));
+    expect(list.physics, isA<NeverScrollableScrollPhysics>());
+  });
+
+  testWidgets('tocar una foto abre su ficha y al volver queda la fundación', (tester) async {
+    phoneSize(tester);
+    await openFoundations(tester, FakeApi());
+    final strip = await scrollToStrip(tester, 3);
+    await tester.tap(find.descendant(of: strip, matching: find.text('Mora')));
+    await tester.pumpAndSettle();
+
+    // Ficha de la mascota
+    expect(find.text('Mora'), findsWidgets);
+    expect(find.byTooltip('Volver'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+    // Al volver se ve el perfil de la fundación, no la lista
+    expect(find.widgetWithText(AppBar, 'Perfil de fundación'), findsOneWidget);
+    expect(find.text('Huellas del Sur'), findsWidgets);
+  });
+
   testWidgets('lista las fundaciones con sus mascotas en adopción', (
     tester,
   ) async {

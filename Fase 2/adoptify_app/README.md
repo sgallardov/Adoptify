@@ -159,6 +159,9 @@ La elección se guarda en el dispositivo (`shared_preferences`) y está disponib
 ## Fundaciones
 `/fundaciones` lista las fundaciones (`GET /foundations`) con su comuna, descripción, contacto (teléfono,
 correo y dirección, seleccionables) y una fila con sus mascotas en adopción. Se actualiza deslizando hacia abajo.
+Con hasta 2 mascotas la fila queda quieta; con más se desliza como carrusel (se ven dos fotos y media, para que se
+note que hay más). Tocar una foto abre el perfil de la fundación y, encima, la ficha de esa mascota: al volver desde
+la ficha se llega al perfil de la fundación.
 Si el teléfono entrega tu ubicación, las pide con `lat`/`lng` y quedan de la más cercana a la más lejana, con la distancia en cada tarjeta ("a 4,2 km"); sin permiso, quedan por nombre y sin mostrar errores.
 La versión web de esta vista queda pendiente.
 

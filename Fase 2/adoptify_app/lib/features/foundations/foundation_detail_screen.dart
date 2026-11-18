@@ -170,10 +170,14 @@ class _VerifiedLabel extends StatelessWidget {
     children: [
       Icon(Icons.verified, size: 17, color: context.colors.primary),
       const SizedBox(width: AdoptifySpacing.xs),
-      Text(
-        'Fundación verificada',
-        style: Theme.of(context).textTheme.labelMedium
-            ?.copyWith(color: context.colors.primaryDark),
+      Flexible(
+        child: Text(
+          'Fundación verificada',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: context.colors.primaryDark),
+        ),
       ),
     ],
   );

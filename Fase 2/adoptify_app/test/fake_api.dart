@@ -568,6 +568,15 @@ class FakeApi {
                 'photo_url':
                     'https://images.unsplash.com/photo-1558788353-f76d92427f16',
               },
+              // Tercera mascota: la franja de fotos se llena y se prueba que no se desborde
+              {
+                ...luna,
+                'id': 14,
+                'name': 'Canela',
+                'age_months': 8,
+                'size': 'pequeño',
+                'public_commune': 'La Florida',
+              },
             ],
           },
           {
