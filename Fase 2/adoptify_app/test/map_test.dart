@@ -98,7 +98,7 @@ void main() {
       );
 
       await tapAndSettle(tester, find.byKey(const ValueKey('alert-1')));
-      expect(find.text('Comentarios'), findsOneWidget);
+      expect(find.text('Lo que contó quien reportó'), findsOneWidget);
     },
   );
 
@@ -204,8 +204,8 @@ void main() {
       );
 
       // Solo están en el detalle, no en la ficha sobre el mapa
-      expect(find.text('Comentarios'), findsOneWidget);
-      expect(find.text('Ubicación'), findsOneWidget);
+      expect(find.text('Lo que contó quien reportó'), findsOneWidget);
+      expect(find.text('Último avistamiento'), findsOneWidget);
       expect(find.text('Reportado · 28-10-2026'), findsWidgets);
       // El reporte sí conserva su mini mapa: la ubicación sirve para el rescate
       expect(find.byType(FlutterMap), findsOneWidget);
@@ -228,7 +228,7 @@ void main() {
       final backButton = find.byTooltip('Volver');
       await tester.ensureVisible(backButton);
       await tapAndSettle(tester, backButton);
-      expect(find.text('Comentarios'), findsNothing);
+      expect(find.text('Lo que contó quien reportó'), findsNothing);
       expect(find.text('Mascota reportada'), findsOneWidget);
     },
   );
@@ -330,7 +330,7 @@ void main() {
       tester,
       find.text('“Perro café con collar rojo cerca del paradero”').first,
     );
-    expect(find.text('Comentarios'), findsOneWidget);
+    expect(find.text('Lo que contó quien reportó'), findsOneWidget);
 
     await tapAndSettle(tester, find.byKey(const ValueKey('hero-photo')));
     expect(find.byType(InteractiveViewer), findsOneWidget);
@@ -338,7 +338,7 @@ void main() {
     await tapAndSettle(tester, find.widgetWithIcon(MapButton, Icons.close));
     expect(find.byType(InteractiveViewer), findsNothing);
     // Sigue en el detalle, no volvió hasta el mapa
-    expect(find.text('Comentarios'), findsOneWidget);
+    expect(find.text('Lo que contó quien reportó'), findsOneWidget);
   });
 
   testWidgets(

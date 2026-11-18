@@ -24,7 +24,7 @@ export default function VeterinaryMap() {
     <p className="mt-1 text-sm text-base-600">Disponibilidad referencial. Confirma por teléfono antes de acudir.</p>
     {error && <div className="mt-4"><Feedback kind="error" title="No pudimos cargar las veterinarias." actionLabel="Reintentar" onAction={() => setAttempt(value => value + 1)} /></div>}
     {items === null && !error && <div className="mt-4"><Feedback kind="loading" title="Cargando veterinarias…" compact /></div>}
-    {items && <MapContainer center={SANTIAGO} zoom={11} scrollWheelZoom className="relative z-0 mt-4 h-80 w-full overflow-hidden rounded-2xl border border-base-200">
+    {items && <MapContainer center={SANTIAGO} zoom={11} scrollWheelZoom className="relative z-0 mt-4 h-[42rem] w-full overflow-hidden rounded-2xl border border-base-200">
       <TileLayer url={OSM_TILES} attribution={OSM_ATTRIBUTION} maxZoom={19} />
       {items.map(clinic => <Marker key={clinic.id} position={[clinic.latitude, clinic.longitude]} icon={clinicIcon}>
         <Popup><strong>{clinic.name}</strong><br />{[clinic.address, clinic.commune].filter(Boolean).join(', ') || 'Dirección no informada'}

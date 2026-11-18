@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../shared/external_links.dart';
 import '../../shared/widgets/animal_photo.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/foundation_avatar.dart';
@@ -151,10 +152,18 @@ class _ProfileHeader extends StatelessWidget {
             Text('Contacto de la fundación', style: textTheme.titleSmall),
             if (foundation.phone != null) ...[
               const SizedBox(height: AdoptifySpacing.sm),
-              _InfoLine(icon: Icons.phone_outlined, text: foundation.phone!),
+              _InfoLine(
+                icon: Icons.phone_outlined,
+                text: foundation.phone!,
+                onTap: () => openExternal(context, phoneUri(foundation.phone!)),
+              ),
             ],
             const SizedBox(height: AdoptifySpacing.sm),
-            _InfoLine(icon: Icons.mail_outline, text: foundation.email),
+            _InfoLine(
+              icon: Icons.mail_outline,
+              text: foundation.email,
+              onTap: () => openExternal(context, mailUri(foundation.email)),
+            ),
           ],
         ],
       ),
@@ -184,24 +193,36 @@ class _VerifiedLabel extends StatelessWidget {
 }
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.icon, required this.text});
+  const _InfoLine({required this.icon, required this.text, this.onTap});
   final IconData icon;
   final String text;
+  // Con acción (llamar, escribir), el texto se ve como enlace
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, size: 18, color: context.colors.textMuted),
-      const SizedBox(width: AdoptifySpacing.sm),
-      Expanded(
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: context.colors.textMuted),
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final line = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: onTap == null ? colors.textMuted : colors.primary),
+        const SizedBox(width: AdoptifySpacing.sm),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: onTap == null ? colors.textMuted : colors.primaryDark,
+              decoration: onTap == null ? null : TextDecoration.underline,
+            ),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+    if (onTap == null) return line;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(padding: const EdgeInsets.symmetric(vertical: AdoptifySpacing.xs), child: line),
+    );
+  }
 }
 
 class _AdoptionAnimalCard extends StatelessWidget {

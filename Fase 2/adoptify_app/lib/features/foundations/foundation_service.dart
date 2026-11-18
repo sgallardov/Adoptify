@@ -117,6 +117,10 @@ class FoundationService {
     return [for (final item in data) Foundation.fromJson(item as Map<String, dynamic>)];
   }
 
+  // Perfil público por id (enlace /fundaciones/:id recargado)
+  Future<Foundation> fetchFoundation(int id) async =>
+      Foundation.fromJson(await _api.get('/foundations/$id') as Map<String, dynamic>);
+
   // Perfil de la fundación con sesión iniciada (vista de fundación)
   Future<Foundation> fetchMine() async =>
       Foundation.fromJson(await _api.get('/foundations/me') as Map<String, dynamic>);

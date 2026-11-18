@@ -236,6 +236,23 @@ class FakeApi {
       return _json(200, reports[index]);
     }
 
+    // Detalle público por id (enlaces recargables /animales/:id y /fundaciones/:id)
+    final byId = RegExp(r'^/(animals|foundations)/(\d+)$').firstMatch(request.url.path);
+    if (byId != null) {
+      final id = int.parse(byId.group(2)!);
+      if (byId.group(1) == 'animals') {
+        final found = [luna, rocky].where((animal) => animal['id'] == id);
+        return found.isEmpty ? _json(404, {'detail': 'Animal no encontrado.'}) : _json(200, found.first);
+      }
+      if (id != 1) return _json(404, {'detail': 'Fundación no encontrada.'});
+      return _json(200, {
+        'id': 1, 'name': 'Fundación Patitas', 'description': foundationDescription,
+        'address': 'Av. Siempre Viva 123', 'commune': 'Providencia', 'city': 'Santiago',
+        'phone': '+56 9 1111 2222', 'email': 'hola@patitas.cl', 'is_verified': true,
+        'photo_url': foundationPhoto, 'latitude': -33.43, 'longitude': -70.61, 'animals': [luna],
+      });
+    }
+
     // Comentarios anónimos y "me enteré" de un reporte
     final social = RegExp(r'^/reports/(\d+)/(comments|likes)$')
         .firstMatch(request.url.path);

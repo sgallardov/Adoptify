@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import '../../core/api_client.dart';
+import '../../shared/external_links.dart';
 
 // Clínica veterinaria para emergencias (GET /veterinaries, datos de OpenStreetMap o alta administrativa)
 class VetClinic {
@@ -43,12 +44,9 @@ class VetClinic {
   }
 
   // Ruta en Google Maps (app o navegador) desde donde estés hasta la clínica
-  Uri get directionsUrl => Uri.https('www.google.com', '/maps/dir/', {
-        'api': '1',
-        'destination': '${position.latitude},${position.longitude}',
-      });
+  Uri get directionsUrl => directionsUri(position);
 
-  Uri? get phoneUrl => phone == null ? null : Uri(scheme: 'tel', path: phone!.replaceAll(' ', ''));
+  Uri? get phoneUrl => phone == null ? null : phoneUri(phone!);
 }
 
 class ClinicService {

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/theme.dart';
 import '../../core/location_service.dart';
+import '../../shared/external_links.dart';
 import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/animal_photo.dart';
@@ -417,20 +417,7 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // Abre Google Maps, el marcador del teléfono u otra app. Si no hay ninguna, avisa sin romper el mapa.
-  Future<void> _open(Uri url) async {
-    var opened = false;
-    try {
-      opened = await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No pudimos abrir esa opción en este dispositivo.'),
-        ),
-      );
-    }
-  }
+  Future<void> _open(Uri url) => openExternal(context, url);
 
   void _clearSelection() {
     _searchFocus.unfocus();

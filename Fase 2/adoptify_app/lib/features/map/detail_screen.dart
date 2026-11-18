@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../shared/external_links.dart';
 import '../../shared/map/map_controls.dart';
 import '../../shared/map/map_style.dart';
 import '../../shared/widgets/content_width.dart';
@@ -316,7 +317,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             Text(report.features!, style: textTheme.bodyLarge),
                           ],
                           const SizedBox(height: AdoptifySpacing.lg),
-                          Text('Comentarios', style: textTheme.titleSmall),
+                          Text('Lo que contó quien reportó', style: textTheme.titleSmall),
                           const SizedBox(height: AdoptifySpacing.xs),
                           Text(
                             '“${report.description}”',
@@ -332,8 +333,12 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             ),
                           ],
                           const SizedBox(height: AdoptifySpacing.xl),
-                          const Text('Último avistamiento'),
-                          _LocationSection(position: report.position, pin: MapPins.reportFor(report.species)),
+                          _LocationSection(
+                            position: report.position,
+                            pin: MapPins.reportFor(report.species),
+                            title: 'Último avistamiento',
+                            directions: true,
+                          ),
                           const SizedBox(height: AdoptifySpacing.lg),
                           _CommentsSection(
                             key: _commentsKey,
@@ -599,7 +604,8 @@ class _CommentComposer extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.sm, AdoptifySpacing.sm),
-          child: !loggedIn
+          child: ContentWidth(
+            child: !loggedIn
               ? OutlinedButton(
                   onPressed: () => context.push('/login'),
                   child: const Text('Inicia sesión para comentar'),
@@ -636,6 +642,7 @@ class _CommentComposer extends StatelessWidget {
                     ],
                   ),
                 ),
+          ),
         ),
       ),
     );
@@ -831,21 +838,32 @@ class _IconLine extends StatelessWidget {
 
 // Título "Ubicación" + coordenadas para copiar + mapa chico, igual en el detalle de animal y de reporte
 class _LocationSection extends StatelessWidget {
-  const _LocationSection({required this.position, required this.pin});
+  const _LocationSection({required this.position, required this.pin, this.title = 'Ubicación', this.directions = false});
 
   final LatLng position;
   final Widget pin;
+  final String title;
+  // Botón "Cómo llegar" que abre la ruta en la app de mapas
+  final bool directions;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Ubicación', style: Theme.of(context).textTheme.titleSmall),
+        Text(title, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: AdoptifySpacing.xs),
         _Coordinates(position: position),
         const SizedBox(height: AdoptifySpacing.sm),
         _MiniMap(position: position, pin: pin),
+        if (directions) ...[
+          const SizedBox(height: AdoptifySpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => openExternal(context, directionsUri(position)),
+            icon: const Icon(Icons.directions, size: 18),
+            label: const Text('Cómo llegar'),
+          ),
+        ],
       ],
     );
   }
