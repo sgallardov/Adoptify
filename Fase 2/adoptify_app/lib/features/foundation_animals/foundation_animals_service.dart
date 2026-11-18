@@ -56,17 +56,22 @@ class ManagedAnimal {
 }
 
 class InterestedPerson {
-  const InterestedPerson({required this.userId, required this.fullName, required this.favoritedAt});
+  const InterestedPerson({required this.userId, required this.fullName, required this.favoritedAt, this.matchScore});
 
   factory InterestedPerson.fromJson(Map<String, dynamic> json) => InterestedPerson(
         userId: json['user_id'] as int,
         fullName: json['full_name'] as String,
         favoritedAt: DateTime.parse(json['favorited_at'] as String).toLocal(),
+        matchScore: (json['match_score'] as num?)?.toDouble(),
       );
 
   final int userId;
   final String fullName;
   final DateTime favoritedAt;
+  // 0-100; null si la persona no completó "Quiero adoptar"
+  final double? matchScore;
+
+  String get matchLabel => matchScore == null ? 'Sin ficha de adopción' : '${matchScore!.round()}% de match';
 }
 
 class AnimalInterested {
@@ -123,6 +128,10 @@ class FoundationAnimalsService {
     final response = await _api.get('/animals/interested') as List<dynamic>;
     return response.map((item) => AnimalInterested.fromJson(item as Map<String, dynamic>)).toList();
   }
+
+  // Interesados de un solo animal: el backend responde 403 si es de otra fundación
+  Future<AnimalInterested> interestedIn(int animalId) async =>
+      AnimalInterested.fromJson(await _api.get('/animals/$animalId/interested') as Map<String, dynamic>);
 
   Future<List<FoundationApplication>> applications() async {
     final response = await _api.get('/adoption-applications/foundation') as List<dynamic>;

@@ -19,7 +19,7 @@ class FoundationChatScreen extends StatelessWidget {
         title: interestedUserId == null ? 'Próximamente' : 'Conversación preparada',
         message: interestedUserId == null
             ? 'Aquí vas a conversar con postulantes que tu fundación haya invitado.'
-            : 'Invitaste a una persona postulante${animalId == null ? '' : ' para uno de tus animales'}. El chat se creará cuando implementemos HU-G2; por ahora no se ha enviado ningún mensaje.',
+            : 'Elegiste conversar con una persona interesada${animalId == null ? '' : ' en uno de tus animales'}. El chat estará disponible pronto; por ahora no se ha enviado ningún mensaje.',
       ),
     );
   }

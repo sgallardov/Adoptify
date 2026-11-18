@@ -17,6 +17,14 @@ Future<void> openFoundation(WidgetTester tester) async {
 // El título de la pantalla abierta (la barra inferior repite el nombre de la pestaña)
 Finder screenTitle(String title) => find.widgetWithText(AppBar, title);
 
+// Inicio → Mis animales. El acceso queda bajo la barra inferior en la pantalla de prueba: se desplaza antes
+Future<void> openMyAnimals(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Mis animales'));
+  await tester.pumpAndSettle();
+}
+
 GoRouter routerOf(WidgetTester tester) =>
     tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig! as GoRouter;
 
@@ -50,16 +58,37 @@ void main() {
   testWidgets('la fundación ve los interesados desde la card de cada animal sin crear un chat automático', (tester) async {
     await openFoundation(tester);
 
-    await tester.tap(find.text('Mis animales'));
-    await tester.pumpAndSettle();
+    await openMyAnimals(tester);
     expect(screenTitle('Mis animales'), findsOneWidget);
-    await tester.tap(find.text('1 interesado'));
+    // La card de cada animal muestra cuántos lo marcaron con el corazón
+    expect(find.text('2 interesados'), findsOneWidget);
+    expect(find.text('0 interesados'), findsOneWidget);
+    await tester.tap(find.text('2 interesados'));
     await tester.pumpAndSettle();
 
     expect(screenTitle('Personas interesadas'), findsOneWidget);
     expect(find.text('Luna'), findsOneWidget);
     expect(find.text('Matías Adoptante'), findsOneWidget);
-    expect(find.text('Iniciar conversación'), findsOneWidget);
+    expect(find.text('83% de match'), findsOneWidget);
+    expect(find.text('Sin ficha de adopción'), findsOneWidget);
+    expect(find.text('Conversar'), findsNWidgets(2));
+
+    // Conversar abre el chat con esa persona (sin crear mensajes hasta HU-G2)
+    await tester.tap(find.text('Conversar').first);
+    await tester.pumpAndSettle();
+    expect(screenTitle('Chat'), findsOneWidget);
+    expect(find.text('Conversación preparada'), findsOneWidget);
+  });
+
+  testWidgets('un animal sin interesados muestra el estado vacío', (tester) async {
+    await openFoundation(tester);
+    await openMyAnimals(tester);
+    await tester.tap(find.text('0 interesados'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rocky'), findsOneWidget);
+    expect(find.text('Aún nadie lo ha marcado como favorito.'), findsOneWidget);
+    expect(find.text('Conversar'), findsNothing);
   });
 
   testWidgets('cada pestaña abre su pantalla', (tester) async {

@@ -120,7 +120,8 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
                         onEdit: () => context.push('/fundacion/mis-animales/${animal.id}/editar', extra: animal),
                         onStatus: () => _changeStatus(animal),
                         interestCount: overview?.interestCount(animal.id) ?? 0,
-                        onInterested: () => context.push('/fundacion/postulaciones?animal_id=${animal.id}'),
+                        onInterested: () => context.push('/fundacion/interesados?animal_id=${animal.id}'),
+                        onApplications: () => context.push('/fundacion/postulaciones?animal_id=${animal.id}'),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
@@ -172,6 +173,7 @@ class _AnimalCard extends StatelessWidget {
     required this.onStatus,
     required this.interestCount,
     required this.onInterested,
+    required this.onApplications,
   });
 
   final ManagedAnimal animal;
@@ -180,6 +182,7 @@ class _AnimalCard extends StatelessWidget {
   final VoidCallback onStatus;
   final int interestCount;
   final VoidCallback onInterested;
+  final VoidCallback onApplications;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -207,9 +210,15 @@ class _AnimalCard extends StatelessWidget {
                     _StatusChip(label: animal.statusLabel),
                     const SizedBox(height: AdoptifySpacing.xs),
                     TextButton.icon(
+                      key: ValueKey('interested-${animal.id}'),
                       onPressed: onInterested,
                       icon: const Icon(Icons.favorite_outline, size: 18),
-                      label: Text(interestCount == 0 ? 'Ver postulaciones' : '$interestCount lo guardaron · Ver postulaciones'),
+                      label: Text('$interestCount ${interestCount == 1 ? 'interesado' : 'interesados'}'),
+                    ),
+                    TextButton.icon(
+                      onPressed: onApplications,
+                      icon: const Icon(Icons.assignment_outlined, size: 18),
+                      label: const Text('Ver postulaciones'),
                     ),
                     const SizedBox(height: AdoptifySpacing.md),
                     Row(

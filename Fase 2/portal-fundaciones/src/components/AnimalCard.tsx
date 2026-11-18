@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { ArrowUpRight, PawPrint } from 'lucide-react'
+import { ArrowUpRight, Heart, PawPrint } from 'lucide-react'
 import type { Animal } from '../data/demo'
 
 export function AnimalPhoto({ animal, large = false }: { animal: Animal; large?: boolean }) {
@@ -18,7 +18,8 @@ export function StatusBadge({ status }: { status: Animal['status'] }) {
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${color}`}><span className="size-1.5 rounded-full bg-current" />{status}</span>
 }
 
-export default function AnimalCard({ animal }: { animal: Animal }) {
+// interestedCount: personas que lo marcaron con el corazón (undefined mientras no se conoce)
+export default function AnimalCard({ animal, interestedCount }: { animal: Animal; interestedCount?: number }) {
   return (
     <Link to={`/animales/${animal.id}`} className="group overflow-hidden rounded-2xl border border-base-200 bg-surface transition-shadow hover:shadow-md">
       <AnimalPhoto animal={animal} />
@@ -26,6 +27,7 @@ export default function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex items-center justify-between gap-2"><h3 className="text-xl font-bold tracking-tight">{animal.name}</h3><StatusBadge status={animal.status} /></div>
         <p className="mt-2 text-sm text-base-500">{animal.age} · {animal.gender} · {animal.size}</p>
         <div className="mt-5 flex items-center justify-between border-t border-base-100 pt-4 text-xs">
+          {interestedCount !== undefined && <span className="flex items-center gap-1 text-base-600"><Heart size={14} aria-hidden="true" className="text-brand-600" />{interestedCount} {interestedCount === 1 ? 'interesado' : 'interesados'}</span>}
           <span className="flex items-center gap-1 font-semibold text-brand-700">Ver perfil <ArrowUpRight size={15} /></span>
         </div>
       </div>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Heart } from 'lucide-react'
+import { Heart, MessageCircle, UserRound } from 'lucide-react'
 import Feedback from './Feedback'
-import { fetchInterested } from '../services/interested'
+import { fetchAnimalInterested, formatMatch } from '../services/interested'
 import type { InterestedPerson } from '../services/interested'
 import { errorMessage } from '../services/api'
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
 
 export default function InterestedSection({ animalId }: { animalId: number }) {
   const [people, setPeople] = useState<InterestedPerson[] | null>(null)
@@ -18,11 +20,8 @@ export default function InterestedSection({ animalId }: { animalId: number }) {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchInterested(controller.signal)
-      .then(groups => {
-        const group = groups.find(item => item.animal_id === animalId)
-        if (!controller.signal.aborted) setPeople(group?.interested ?? [])
-      })
+    fetchAnimalInterested(animalId, controller.signal)
+      .then(group => { if (!controller.signal.aborted) setPeople(group.interested) })
       .catch(failure => {
         if (!controller.signal.aborted) setError(errorMessage(failure, 'No pudimos cargar las personas interesadas.'))
       })
@@ -30,13 +29,29 @@ export default function InterestedSection({ animalId }: { animalId: number }) {
   }, [animalId, attempt])
 
   return <section className="mt-6 border-t border-base-100 pt-6" aria-labelledby="interested-title">
-    <div className="flex items-center gap-2"><Heart size={18} className="text-brand-600" /><h2 id="interested-title" className="font-semibold">Personas interesadas</h2></div>
-    <p className="mt-1 text-sm text-base-500">Los favoritos muestran interés general. Para contactar a alguien, revisa sus postulaciones más abajo.</p>
+    <div className="flex items-center gap-2"><Heart size={18} className="text-brand-600" /><h2 id="interested-title" className="font-semibold">Interesados</h2></div>
+    <p className="mt-1 text-sm text-base-500">Personas que marcaron a este animal con el corazón. Un favorito no inicia un chat: tú decides cuándo conversar.</p>
     <div className="mt-4">
       {error && <Feedback kind="error" title={error} actionLabel="Reintentar" onAction={retry} compact />}
       {!error && people === null && <Feedback kind="loading" title="Cargando personas interesadas…" compact />}
-      {!error && people?.length === 0 && <Feedback kind="empty" title="Aún nadie lo ha guardado" description="Los favoritos son una señal de interés, no una postulación." compact />}
-      {!error && people != null && people.length > 0 && <div className="rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-900">♡ {people.length} persona{people.length === 1 ? '' : 's'} guardaron a este animal.</div>}
+      {!error && people?.length === 0 && <Feedback kind="empty" title="Aún nadie lo ha marcado como favorito" description="Cuando alguien lo guarde con el corazón, aparecerá aquí." compact />}
+      {!error && people != null && people.length > 0 && <>
+        <ul className="space-y-3" aria-label="Lista de interesados">
+          {people.map(person => <li key={person.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-base-200 bg-base-50 p-4">
+            <UserRound size={20} aria-hidden="true" className="shrink-0 text-brand-700" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{person.full_name}</p>
+              <p className="text-xs text-base-500">Favorito desde el {formatDate(person.favorited_at)}</p>
+            </div>
+            <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-800">{formatMatch(person.match_score)}</span>
+            {/* El chat del portal llega con HU-G2: el botón queda visible pero deshabilitado */}
+            <button type="button" disabled aria-describedby="chat-pending" className="button-secondary inline-flex items-center gap-1 opacity-60">
+              <MessageCircle size={16} aria-hidden="true" />Conversar
+            </button>
+          </li>)}
+        </ul>
+        <p id="chat-pending" className="mt-3 text-xs text-base-500">El chat con interesados estará disponible pronto.</p>
+      </>}
     </div>
   </section>
 }

@@ -110,41 +110,60 @@ async def managed_animals(current_user: User = Depends(get_current_user), db: As
 async def interested_animals(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Lista los likes recibidos por los animales gestionables, sin revelar datos de contacto."""
     _require_foundation_staff(current_user)
-    statement = (
-        select(
-            Animal.id,
-            Animal.name,
-            Animal.status,
-            AnimalFavorite.user_id,
-            AnimalFavorite.created_at,
-            User.full_name,
-            User.role,
-        )
-        .outerjoin(AnimalFavorite, AnimalFavorite.animal_id == Animal.id)
-        .outerjoin(User, User.id == AnimalFavorite.user_id)
-        .order_by(Animal.id, AnimalFavorite.created_at.desc())
-    )
+    statement = select(Animal).order_by(Animal.id)
     if current_user.role != "admin":
         statement = statement.where(Animal.foundation_id == current_user.foundation_id)
     try:
-        rows = (await db.execute(statement)).all()
+        animals = (await db.execute(statement)).scalars().all()
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudieron consultar las personas interesadas.") from exc
+    return await _interested_for(animals, db)
 
-    grouped: dict[int, AnimalInterestedResponse] = {}
+
+@router.get(
+    "/{animal_id}/interested",
+    response_model=AnimalInterestedResponse,
+    responses={403: {"description": "El animal pertenece a otra fundación"}, 404: {"description": "Animal no encontrado"}},
+)
+async def interested_in_animal(
+    animal_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """Interesados de un animal; otra fundación recibe 403."""
+    animal = await _get_owned_animal(animal_id, current_user, db)
+    return (await _interested_for([animal], db))[0]
+
+
+async def _interested_for(animals, db: AsyncSession) -> list[AnimalInterestedResponse]:
+    """Agrupa los favoritos de adoptantes por animal, con su porcentaje de match y sin datos de contacto."""
+    ids = [animal.id for animal in animals]
+    rows = []
+    if ids:
+        try:
+            rows = (
+                await db.execute(
+                    select(AnimalFavorite.animal_id, AnimalFavorite.created_at, User.id, User.full_name, User.preferences)
+                    .join(User, User.id == AnimalFavorite.user_id)
+                    .where(AnimalFavorite.animal_id.in_(ids), User.role == "adopter")
+                    .order_by(AnimalFavorite.created_at.desc())
+                )
+            ).all()
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail="No se pudieron consultar las personas interesadas.") from exc
+
+    by_id = {animal.id: animal for animal in animals}
+    grouped = {
+        animal.id: AnimalInterestedResponse(
+            animal_id=animal.id, animal_name=animal.name, animal_status=animal.status, interested=[]
+        )
+        for animal in animals
+    }
     for row in rows:
-        if row.id not in grouped:
-            grouped[row.id] = AnimalInterestedResponse(
-                animal_id=row.id,
-                animal_name=row.name,
-                animal_status=row.status,
-                interested=[],
-            )
-        # Solo los adoptantes son posibles candidatos. No se agrega ningún dato adicional de User.
-        if row.user_id is not None and row.role == "adopter":
-            grouped[row.id].interested.append(
-                InterestedUserResponse(user_id=row.user_id, full_name=row.full_name, favorited_at=row.created_at)
-            )
+        preferences = row.preferences or {}
+        # Sin la ficha "Quiero adoptar" no hay con qué comparar: el match queda vacío
+        score = calculate_match_score(preferences, by_id[row.animal_id]) if "adoption_profile" in preferences else None
+        grouped[row.animal_id].interested.append(
+            InterestedUserResponse(user_id=row.id, full_name=row.full_name, favorited_at=row.created_at, match_score=score)
+        )
     return list(grouped.values())
 
 
