@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import { Link, useParams } from 'react-router'
-import { ArrowLeft, MessageCircle, Send, UserRound } from 'lucide-react'
+import { ArrowLeft, ClipboardList, MessageCircle, Send, UserRound } from 'lucide-react'
 import Feedback from '../components/Feedback'
 import PageHeading from '../components/PageHeading'
 import { errorMessage } from '../services/api'
+import { sendAdoptionForm } from '../services/adoptionForm'
+import { formatAnswer } from '../services/adoptionFormEditor'
 import {
   CONVERSATIONS_POLL_MS, MAX_MESSAGE_LENGTH, MESSAGES_POLL_MS,
   fetchConversations, fetchMessages, sendMessage,
@@ -107,6 +109,7 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [sendingForm, setSendingForm] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const lastId = messages?.at(-1)?.id
 
@@ -146,6 +149,24 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
     }
   }
 
+  async function sendForm() {
+    if (sendingForm || !window.confirm(`¿Enviar tu formulario de adopción a ${conversation.user_name}?`)) return
+    setSendingForm(true)
+    setSendError('')
+    try {
+      const message = await sendAdoptionForm(conversation.id)
+      setMessages(current => merge(current, [message]))
+      onSent(message)
+    } catch (failure) {
+      setSendError(errorMessage(failure, 'No se pudo enviar el formulario. Inténtalo de nuevo.'))
+    } finally {
+      setSendingForm(false)
+    }
+  }
+
+  // Formularios ya respondidos (el aviso de respuesta llega como un mensaje aparte)
+  const answeredForms = new Set(messages?.filter(message => message.kind === 'form_answers').map(message => message.form?.id))
+
   // Enter envía; Shift + Enter agrega una línea
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -158,7 +179,10 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
     <header className="flex items-center gap-3 border-b border-base-200 px-4 py-3.5">
       <Link to="/mensajes" aria-label="Volver a la lista de conversaciones" className="rounded-lg p-1.5 text-base-500 hover:bg-base-100 lg:hidden"><ArrowLeft size={18} /></Link>
       <UserRound size={20} aria-hidden="true" className="text-brand-700" />
-      <h2 className="font-semibold">{conversation.user_name}</h2>
+      <h2 className="flex-1 font-semibold">{conversation.user_name}</h2>
+      <button type="button" className="button-secondary" onClick={sendForm} disabled={messages === null || sendingForm}>
+        <ClipboardList size={16} aria-hidden="true" />{sendingForm ? 'Enviando…' : 'Enviar formulario'}
+      </button>
     </header>
     <div className="max-h-[28rem] min-h-[18rem] flex-1 overflow-y-auto px-4 py-5" aria-live="polite" aria-label={`Mensajes con ${conversation.user_name}`}>
       {error && <Feedback kind="error" title={error} actionLabel="Reintentar" onAction={() => { setError(''); setAttempt(value => value + 1) }} compact />}
@@ -168,6 +192,15 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
         {messages.map(message => <li key={message.id} className={`flex ${message.from_foundation ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${message.from_foundation ? 'bg-brand-600 text-on-accent' : 'bg-base-100 text-base-900'}`}>
             <p className="whitespace-pre-wrap break-words">{message.body}</p>
+            {message.kind === 'form' && message.form && <p className={`mt-1 text-xs font-medium ${message.from_foundation ? 'text-on-accent/85' : 'text-base-600'}`}>
+              {message.form.questions.length} {message.form.questions.length === 1 ? 'pregunta' : 'preguntas'} · {answeredForms.has(message.form.id) || message.form.answers ? 'Respondido' : 'Esperando respuestas'}
+            </p>}
+            {message.kind === 'form_answers' && message.form?.answers && <dl className="mt-3 space-y-2 rounded-xl bg-surface px-3 py-2.5 text-base-900">
+              {message.form.questions.map((question, index) => <div key={index}>
+                <dt className="text-xs font-semibold text-base-600">{question.label}</dt>
+                <dd className="whitespace-pre-wrap break-words">{formatAnswer(message.form!.answers![index] ?? null)}</dd>
+              </div>)}
+            </dl>}
             <p className={`mt-1 text-right text-[11px] ${message.from_foundation ? 'text-on-accent/75' : 'text-base-500'}`}>
               {message.from_foundation && !message.mine ? 'Tu fundación · ' : ''}{shortDate(message.created_at)}
             </p>

@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { FormRequest } from './adoptionForm'
 
 export const MAX_MESSAGE_LENGTH = 1000
 // Sondeo (HU-G2): sin WebSockets. Más seguido dentro del chat abierto que en la lista
@@ -24,6 +25,9 @@ export type Message = {
   created_at: string
   from_foundation: boolean
   mine: boolean
+  // form: la fundación envió su formulario; form_answers: el adoptante lo respondió (HU-G3)
+  kind: 'text' | 'form' | 'form_answers'
+  form: FormRequest | null
 }
 
 // Abre el chat con un interesado o postulado; si ya existía, la API devuelve el mismo

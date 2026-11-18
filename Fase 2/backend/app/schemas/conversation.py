@@ -1,6 +1,10 @@
 from datetime import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
+
+from app.schemas.adoption_form import FormRequestOut
 
 MAX_MESSAGE_LENGTH = 1000
 
@@ -48,3 +52,6 @@ class MessageOut(BaseModel):
     # True si lo escribió alguien de la fundación; así cada lado sabe de qué color pintarlo
     from_foundation: bool
     mine: bool
+    # form: la fundación envió su formulario; form_answers: el adoptante lo respondió (HU-G3)
+    kind: Literal["text", "form", "form_answers"] = "text"
+    form: FormRequestOut | None = None

@@ -6,12 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.endpoints.auth import get_current_user
 from app.db.database import get_db
 from app.models.adoption_application import AdoptionApplication
+from app.models.adoption_form import AdoptionFormRequest
 from app.models.animal import Animal
 from app.models.animal_favorite import AnimalFavorite
 from app.models.conversation import Conversation, Message
 from app.models.foster_application import FosterApplication
 from app.models.foundation import Foundation
 from app.models.user import User
+from app.schemas.adoption_form import FormRequestOut
 from app.schemas.conversation import ConversationCreate, ConversationOut, LastMessage, MessageCreate, MessageOut
 
 router = APIRouter()
@@ -29,13 +31,21 @@ def _is_participant(user: User, conversation: Conversation) -> bool:
     return conversation.user_id == user.id or _is_foundation_side(user, conversation)
 
 
-def _message_out(message: Message, conversation: Conversation, current_user: User) -> MessageOut:
+def _form_out(form: AdoptionFormRequest) -> FormRequestOut:
+    return FormRequestOut(id=form.id, questions=form.questions, answers=form.answers, answered_at=form.answered_at)
+
+
+def _message_out(
+    message: Message, conversation: Conversation, current_user: User, form: AdoptionFormRequest | None = None
+) -> MessageOut:
     return MessageOut(
         id=message.id,
         body=message.body,
         created_at=message.created_at,
         from_foundation=message.sender_user_id != conversation.user_id,
         mine=message.sender_user_id == current_user.id,
+        kind=message.kind,
+        form=None if form is None else _form_out(form),
     )
 
 
@@ -184,9 +194,18 @@ async def list_messages(
         query = query.where(Message.id > after_id)
     try:
         messages = (await db.execute(query.order_by(Message.id.desc()).limit(MESSAGES_PAGE))).scalars().all()
+        form_ids = {message.form_request_id for message in messages if message.form_request_id is not None}
+        forms = {} if not form_ids else {
+            form.id: form for form in (await db.execute(
+                select(AdoptionFormRequest).where(AdoptionFormRequest.id.in_(form_ids))
+            )).scalars()
+        }
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudieron cargar los mensajes.") from exc
-    return [_message_out(message, conversation, current_user) for message in reversed(messages)]
+    return [
+        _message_out(message, conversation, current_user, forms.get(message.form_request_id))
+        for message in reversed(messages)
+    ]
 
 
 @router.post(

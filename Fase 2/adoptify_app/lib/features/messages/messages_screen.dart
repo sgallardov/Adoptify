@@ -11,9 +11,13 @@ import '../auth/auth_controller.dart';
 import 'messages_service.dart';
 
 // Pestaña "Mensajes" del adoptante (HU-G2): conversaciones que le abrieron las fundaciones.
+// La fundación la ve como su pestaña "Chat", con sus interesados y postulados.
 // Se actualiza sola cada 15 s mientras la pestaña está a la vista.
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
+  const MessagesScreen({super.key, this.openWithUserId});
+
+  // Fundación: al entrar abre (o recupera) el chat con esta persona, desde "Conversar"
+  final int? openWithUserId;
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -26,6 +30,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Timer? _timer;
 
   MessagesService get _service => MessagesService(AuthScope.of(context).api);
+  bool get _isFoundation => AuthScope.of(context).user?.isFoundation ?? false;
 
   @override
   void didChangeDependencies() {
@@ -34,6 +39,26 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _started = true;
     _load();
     _timer = Timer.periodic(conversationsPollInterval, (_) => _poll());
+    _openWith(widget.openWithUserId);
+  }
+
+  @override
+  void didUpdateWidget(MessagesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openWithUserId != oldWidget.openWithUserId) _openWith(widget.openWithUserId);
+  }
+
+  Future<void> _openWith(int? userId) async {
+    if (userId == null) return;
+    try {
+      final conversation = await _service.open(userId);
+      if (mounted) await _open(conversation);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage(error, 'No se pudo abrir la conversación.'))),
+      );
+    }
   }
 
   @override
@@ -65,7 +90,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Future<void> _open(Conversation conversation) async {
-    await context.push('/mensajes/${conversation.id}', extra: conversation);
+    await context.push('${_isFoundation ? '/fundacion' : ''}/mensajes/${conversation.id}', extra: conversation);
     // Al volver, la lista muestra al tiro lo que se respondió
     if (mounted) _poll();
   }
@@ -73,8 +98,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   Widget build(BuildContext context) {
     final items = _items;
+    final isFoundation = _isFoundation;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mensajes')),
+      appBar: AppBar(title: Text(isFoundation ? 'Chat' : 'Mensajes')),
       body: _error != null && items == null
           ? ListView(children: [
               ComingSoon(icon: Icons.cloud_off, title: 'No pudimos cargar', message: _error!),
@@ -88,12 +114,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: items.isEmpty
-                      ? ListView(children: const [
+                      ? ListView(children: [
                           ComingSoon(
                             icon: Icons.chat_bubble_outline,
-                            title: 'Aún no tienes mensajes',
-                            message: 'Cuando una fundación quiera conversar contigo sobre una mascota o un hogar '
-                                'temporal, la conversación aparecerá aquí.',
+                            title: isFoundation ? 'Aún no tienes conversaciones' : 'Aún no tienes mensajes',
+                            message: isFoundation
+                                ? 'Abre una desde los interesados de tus animales o desde las postulaciones, '
+                                    'con el botón Conversar.'
+                                : 'Cuando una fundación quiera conversar contigo sobre una mascota o un hogar '
+                                    'temporal, la conversación aparecerá aquí.',
                           ),
                         ])
                       : ContentWidth(
@@ -102,7 +131,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
                             itemCount: items.length,
                             separatorBuilder: (_, _) => const SizedBox(height: AdoptifySpacing.md),
                             itemBuilder: (context, index) =>
-                                _ConversationTile(conversation: items[index], onTap: () => _open(items[index])),
+                                _ConversationTile(
+                                  conversation: items[index],
+                                  isFoundation: isFoundation,
+                                  onTap: () => _open(items[index]),
+                                ),
                           ),
                         ),
                 ),
@@ -111,9 +144,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
 }
 
 class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({required this.conversation, required this.onTap});
+  const _ConversationTile({required this.conversation, required this.isFoundation, required this.onTap});
 
   final Conversation conversation;
+  // La fundación ve el nombre de la persona; el adoptante, el de la fundación
+  final bool isFoundation;
   final VoidCallback onTap;
 
   @override
@@ -121,7 +156,7 @@ class _ConversationTile extends StatelessWidget {
     final colors = context.colors;
     final textTheme = Theme.of(context).textTheme;
     final last = conversation.lastMessage;
-    final preview = last == null ? 'Sin mensajes todavía' : '${last.fromFoundation ? '' : 'Tú: '}${last.body}';
+    final preview = last == null ? 'Sin mensajes todavía' : '${last.fromFoundation == isFoundation ? 'Tú: ' : ''}${last.body}';
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
@@ -138,14 +173,14 @@ class _ConversationTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: colors.primarySoft,
-                child: Icon(Icons.volunteer_activism, color: colors.primaryText),
+                child: Icon(isFoundation ? Icons.person_outline : Icons.volunteer_activism, color: colors.primaryText),
               ),
               const SizedBox(width: AdoptifySpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(conversation.foundationName, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(isFoundation ? conversation.userName : conversation.foundationName, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
                     Text(preview, style: textTheme.bodySmall?.copyWith(color: colors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
