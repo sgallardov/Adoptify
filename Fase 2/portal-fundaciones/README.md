@@ -39,6 +39,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis casos): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre y filtros por especie y estado.
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de match; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
+- `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
 - `/fundacion`: perfil de la organización de ejemplo y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
 - Sidebar en escritorio y menú desplegable en pantallas pequeñas.
 - Etiquetas accesibles, navegación por teclado y estados sin resultados.
@@ -164,8 +165,19 @@ envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 (especie, tamaños, cuántos a la vez, días máximos), espacio y disponibilidad. Filtros Pendientes, Aprobadas,
 No aprobadas y Todas, con conteo. **Aprobar** y **Rechazar** en las pendientes; **Volver a pendiente** solo en las que
 decidió la propia fundación (`PATCH /foster-applications/{id}`). El estado es compartido entre fundaciones: si otra ya
-decidió, se muestra quién y no hay botones. "Abrir chat" espera HU-G2 (`CHAT_ENABLED` en
-`pages/FosterApplications.tsx`). Textos en `services/fosterLabels.ts`.
+decidió, se muestra quién y no hay botones. **Conversar** abre el chat con el postulante (HU-G2). Textos en
+`services/fosterLabels.ts`.
+
+## Mensajes (HU-G2)
+`/mensajes` (ítem del menú) muestra a la izquierda las conversaciones de la fundación, con el último mensaje, y a la
+derecha el chat elegido (`/mensajes/:id`). En pantallas pequeñas se ve una cosa a la vez, con botón para volver.
+El chat se abre con **Conversar** desde la sección Interesados de cada animal (*Mis casos*) o desde *Hogares
+temporales*; si ya existía, se retoma el mismo (`hooks/useOpenChat.ts`). Enter envía y Shift + Enter agrega una
+línea; el límite es de 1000 caracteres, con contador.
+
+Sin WebSockets: `hooks/usePolling.ts` pide la lista cada 15 s y los mensajes nuevos del chat abierto cada 10 s
+(`after_id`), solo mientras la pestaña está visible. Un fallo del sondeo no borra lo que ya se ve. Llamadas en
+`services/conversations.ts`, pantalla en `pages/Messages.tsx`.
 
 ## Modo oscuro
 

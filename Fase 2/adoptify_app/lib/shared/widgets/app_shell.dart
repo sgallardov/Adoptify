@@ -21,17 +21,24 @@ class NavItem {
   final bool highlighted;
 }
 
-// Vista de adoptante: Fundaciones, Mapa, Match y Perfil, en el mismo orden que las ramas de app/router.dart
+// Vista de adoptante: Fundaciones, Mensajes, Mapa, Match y Perfil, en el mismo orden que las ramas de app/router.dart
 const _userItems = [
   NavItem(label: 'Fundaciones', icon: Icons.volunteer_activism_outlined, activeIcon: Icons.volunteer_activism),
+  NavItem(
+    label: 'Mensajes',
+    icon: Icons.chat_bubble_outline,
+    activeIcon: Icons.chat_bubble,
+    tooltip: 'Conversaciones con fundaciones',
+  ),
   NavItem(label: 'Mapa', icon: Icons.map_outlined, activeIcon: Icons.map),
   NavItem(label: 'Match', icon: Icons.favorite_border, activeIcon: Icons.favorite),
   NavItem(label: 'Perfil', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 
-// Vista de fundación: Inicio, Chat y Perfil. Publicar un animal vive en su propio flujo desde Inicio.
+// Vista de fundación: Inicio, Mapa, Chat y Perfil. Publicar un animal vive en su propio flujo desde Inicio.
 const _foundationItems = [
   NavItem(label: 'Inicio', icon: Icons.home_outlined, activeIcon: Icons.home),
+  NavItem(label: 'Mapa', icon: Icons.map_outlined, activeIcon: Icons.map, tooltip: 'Mapa de reportes'),
   NavItem(
     label: 'Chat',
     icon: Icons.chat_bubble_outline,

@@ -404,7 +404,7 @@ class FoundationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _FoundationIdentity(foundation: foundation, accent: accent),
-                if (animals.isNotEmpty) _AnimalStrip(animals: animals),
+                if (animals.isNotEmpty) _AnimalStrip(foundation: foundation),
                 Padding(
                   padding: const EdgeInsets.all(AdoptifySpacing.lg),
                   child: Column(
@@ -419,23 +419,38 @@ class FoundationCard extends StatelessWidget {
                         ),
                         const SizedBox(height: AdoptifySpacing.md),
                       ],
+                      // Flexibles: con letra grande o pantallas angostas se recortan en vez de desbordarse
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _AvailabilityBadge(
-                            count: animals.length,
-                            accent: accent,
+                          Flexible(
+                            child: _AvailabilityBadge(
+                              count: animals.length,
+                              accent: accent,
+                            ),
                           ),
-                          const Spacer(),
-                          Text(
-                            'Ver fundación',
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(color: colors.primaryDark),
-                          ),
-                          const SizedBox(width: AdoptifySpacing.xs),
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 18,
-                            color: colors.primaryDark,
+                          const SizedBox(width: AdoptifySpacing.sm),
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Ver fundación',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.labelLarge
+                                        ?.copyWith(color: colors.primaryDark),
+                                  ),
+                                ),
+                                const SizedBox(width: AdoptifySpacing.xs),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  size: 18,
+                                  color: colors.primaryDark,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -524,31 +539,48 @@ class _FoundationIdentity extends StatelessWidget {
   }
 }
 
+// Fotos de las mascotas de la fundación. Hasta 2 caben quietas; con más se deslizan como carrusel y la
+// última queda asomada, para que se note que hay más. Tocar una abre la fundación y encima la ficha de esa
+// mascota: al volver desde la ficha se llega a la fundación.
 class _AnimalStrip extends StatelessWidget {
-  const _AnimalStrip({required this.animals});
-  final List<Animal> animals;
+  const _AnimalStrip({required this.foundation});
+  final Foundation foundation;
+
+  void _open(BuildContext context, Animal animal) {
+    final router = GoRouter.of(context);
+    router.push('/fundaciones/${foundation.id}', extra: foundation);
+    router.push('/animales/${animal.id}', extra: animal);
+  }
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final visible = animals.take(3).toList();
-      final width = ((constraints.maxWidth - (AdoptifySpacing.sm * 2)) / 3)
-          .clamp(92.0, 190.0);
+      final animals = foundation.animals;
+      final carousel = animals.length > 2;
+      // El ancho útil descuenta el margen lateral de la fila; sin mínimo fijo, así en pantallas angostas
+      // las fotos se achican en vez de salirse por la derecha.
+      final available = constraints.maxWidth - AdoptifySpacing.lg * 2;
+      // En carrusel se ven dos fotos y media; si no, tres columnas como antes
+      final width = carousel
+          ? ((available - AdoptifySpacing.sm * 2) / 2.5).clamp(0.0, 190.0)
+          : ((available - AdoptifySpacing.sm * 2) / 3).clamp(0.0, 190.0);
+      final height = width + AdoptifySpacing.xxl + AdoptifySpacing.xs;
       return Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AdoptifySpacing.lg,
-          AdoptifySpacing.lg,
-          AdoptifySpacing.lg,
-          0,
-        ),
+        padding: const EdgeInsets.only(top: AdoptifySpacing.lg),
         child: SizedBox(
-          height: width + 36,
-          child: Row(
-            children: [
-              for (var index = 0; index < visible.length; index++) ...[
-                if (index > 0) const SizedBox(width: AdoptifySpacing.sm),
-                _AnimalMiniCard(animal: visible[index], size: width),
-              ],
-            ],
+          height: height,
+          child: ListView.separated(
+            key: ValueKey('animal-strip-${foundation.id}'),
+            scrollDirection: Axis.horizontal,
+            physics: carousel ? null : const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
+            itemCount: animals.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AdoptifySpacing.sm),
+            itemBuilder: (context, index) => _AnimalMiniCard(
+              animal: animals[index],
+              size: width,
+              onTap: () => _open(context, animals[index]),
+            ),
           ),
         ),
       );
@@ -557,24 +589,34 @@ class _AnimalStrip extends StatelessWidget {
 }
 
 class _AnimalMiniCard extends StatelessWidget {
-  const _AnimalMiniCard({required this.animal, required this.size});
+  const _AnimalMiniCard({required this.animal, required this.size, required this.onTap});
   final Animal animal;
   final double size;
+  final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimalPhoto(url: animal.photoUrl, size: size),
-        const SizedBox(height: AdoptifySpacing.xs),
-        Text(
-          animal.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelMedium,
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Ver a ${animal.name}',
+    excludeSemantics: true,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AdoptifyRadius.md),
+      child: SizedBox(
+        width: size,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimalPhoto(url: animal.photoUrl, size: size),
+            const SizedBox(height: AdoptifySpacing.xs),
+            Text(
+              animal.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }

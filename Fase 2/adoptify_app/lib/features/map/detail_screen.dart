@@ -12,6 +12,7 @@ import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/network_photo.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
+import '../foundations/foundation_service.dart';
 import 'map_service.dart';
 
 // Ficha completa de una mascota o un reporte, a pantalla completa: se abre al tocar la tarjeta
@@ -97,8 +98,13 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   bool _liking = false;
   bool _started = false;
   AppUser? _user;
+  // Acciones de fundación (HU-L): el reporte se actualiza con la respuesta de cada acción
+  late DogReport _report = widget.report;
+  int? _myFoundationId;
+  bool _acting = false;
 
-  DogReport get report => widget.report;
+  DogReport get report => _report;
+  bool get _canManage => (_user?.isFoundation ?? false) && report.status != 'resolved';
 
   @override
   void didChangeDependencies() {
@@ -109,8 +115,49 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
       _started = true;
       _user = user;
       _loadSocial();
+      if (user?.isFoundation ?? false) _loadMyFoundation();
     }
   }
+
+  // Id de la fundación de la cuenta, para saber si el caso tomado es suyo. Si falla, solo no se ofrece deshacer.
+  Future<void> _loadMyFoundation() async {
+    try {
+      final mine = await FoundationService(AuthScope.of(context).api).fetchMine();
+      if (mounted) setState(() => _myFoundationId = mine.id);
+    } catch (_) {}
+  }
+
+  // Ejecuta una acción sobre el reporte. Ante 409 (ya tomado o resuelto) o 403 muestra el motivo del servidor
+  // y vuelve a leer el reporte para que la pantalla refleje el estado real sin romperse.
+  Future<void> _run(Future<DogReport> Function() action, String done, String failed) async {
+    if (_acting) return;
+    setState(() => _acting = true);
+    try {
+      final updated = await action();
+      if (!mounted) return;
+      setState(() => _report = updated);
+      _showError(done);
+    } catch (error) {
+      _showError(errorMessage(error, failed));
+      if (error is ApiException && (error.statusCode == 409 || error.statusCode == 403)) {
+        try {
+          final fresh = await _service.fetchReport(report.id);
+          if (mounted) setState(() => _report = fresh);
+        } catch (_) {}
+      }
+    } finally {
+      if (mounted) setState(() => _acting = false);
+    }
+  }
+
+  void _follow() => _run(() => _service.markSeen(report.id), 'Marcaste el reporte para seguimiento.',
+      'No pudimos marcar el reporte.');
+
+  void _take() => _run(() => _service.takeReport(report.id), 'Tomaste el caso: ahora está En rescate.',
+      'No pudimos tomar el reporte.');
+
+  void _untake() => _run(() => _service.untakeReport(report.id), 'Deshiciste la toma del caso.',
+      'No pudimos deshacer la toma.');
 
   @override
   void dispose() {
@@ -228,6 +275,17 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             _IconLine(icon: Icons.visibility_outlined, text: 'Una fundación ya vio este reporte'),
                             const SizedBox(height: AdoptifySpacing.sm),
                           ],
+                          if (_canManage) ...[
+                            _FoundationActions(
+                              busy: _acting,
+                              taken: report.takenByFoundationId != null,
+                              mine: report.takenByFoundationId != null && report.takenByFoundationId == _myFoundationId,
+                              onFollow: _follow,
+                              onTake: _take,
+                              onUntake: _untake,
+                            ),
+                            const SizedBox(height: AdoptifySpacing.md),
+                          ],
                           if (report.summary.isNotEmpty) Text(report.summary, style: textTheme.titleMedium),
                           if (report.conditionLabel.isNotEmpty) ...[
                             const SizedBox(height: AdoptifySpacing.xs),
@@ -279,6 +337,55 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Acciones de HU-C para cuentas de fundación. Si otra fundación ya tomó el caso solo queda el seguimiento.
+class _FoundationActions extends StatelessWidget {
+  const _FoundationActions({
+    required this.busy,
+    required this.taken,
+    required this.mine,
+    required this.onFollow,
+    required this.onTake,
+    required this.onUntake,
+  });
+
+  final bool busy;
+  final bool taken;
+  final bool mine;
+  final VoidCallback onFollow;
+  final VoidCallback onTake;
+  final VoidCallback onUntake;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AdoptifySpacing.sm,
+      runSpacing: AdoptifySpacing.sm,
+      children: [
+        OutlinedButton.icon(
+          key: const ValueKey('follow-report'),
+          onPressed: busy ? null : onFollow,
+          icon: const Icon(Icons.visibility_outlined),
+          label: const Text('Marcar para seguimiento'),
+        ),
+        if (!taken)
+          FilledButton.icon(
+            key: const ValueKey('take-report'),
+            onPressed: busy ? null : onTake,
+            icon: const Icon(Icons.volunteer_activism_outlined),
+            label: const Text('Lo tomamos'),
+          )
+        else if (mine)
+          OutlinedButton.icon(
+            key: const ValueKey('untake-report'),
+            onPressed: busy ? null : onUntake,
+            icon: const Icon(Icons.undo),
+            label: const Text('Deshacer toma'),
+          ),
+      ],
     );
   }
 }

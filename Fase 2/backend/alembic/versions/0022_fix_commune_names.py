@@ -4,16 +4,16 @@ Corrige la escritura de las comunas ya guardadas en animals.public_commune
 ("Aisen" -> "Aysén", "Chillan" -> "Chillán", ...), igual que el catálogo
 communes.json. Solo cambia texto: no hay tablas nuevas ni puntos distintos.
 
-Revision ID: 0021
-Revises: 0020
+Revision ID: 0022
+Revises: 0021
 """
 import sqlalchemy as sa
 from alembic import op
 
 from app.services.commune_renames import COMMUNE_RENAMES
 
-revision = "0021"
-down_revision = "0020"
+revision = "0022"
+down_revision = "0021"
 branch_labels = None
 depends_on = None
 

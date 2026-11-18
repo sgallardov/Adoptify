@@ -218,7 +218,14 @@ Inicio de sesión único con dos tipos de cuenta, que corresponden a las pestañ
 * `POST /api/v1/reports/{id}/seen`: una cuenta `foundation` vinculada puede marcar un aviso como visto sin cambiar su estado.
 * `PUT /api/v1/reports/{id}/taken`: registra a su fundación como responsable y pasa el estado a `in_rescue`. Si otra fundación ya lo tomó, devuelve `409`.
 * `DELETE /api/v1/reports/{id}/taken`: solo la fundación que tomó el caso puede deshacerlo; vuelve el estado a `reported`.
-* Los reportes resueltos no admiten esas marcas (`409`). `GET /reports/nearby` y `GET /reports/{id}` incluyen `foundation_name`, `seen_at` y `taken_at`, pero nunca `reporter_id`.
+* Los reportes resueltos no admiten esas marcas (`409`). `GET /reports/nearby` y `GET /reports/{id}` incluyen `foundation_name`, `taken_by_foundation_id`, `seen_at` y `taken_at`, pero nunca `reporter_id`. La app compara `taken_by_foundation_id` con el id de su fundación (`GET /foundations/me`) para ofrecer "Deshacer toma".
+* Solo las cuentas con rol `foundation` vinculadas a una fundación pueden marcar: un `admin` recibe `403`.
+
+#### App móvil: vista de fundación (HU-L)
+* La barra de fundación es Inicio, Mapa, Chat y Perfil. `/fundacion/mapa` reutiliza `MapScreen`; los detalles se abren dentro del área de fundación (`/fundacion/reportes/:id`, `/fundacion/animales/:id`, `/fundacion/directorio/:id`) para que `sessionRedirect` no la expulse.
+* En el detalle del reporte, la fundación ve "Marcar para seguimiento" y "Lo tomamos" (o "Deshacer toma" si el caso es suyo). Si otra fundación lo tomó solo queda el seguimiento; un reporte resuelto no muestra acciones y una cuenta de adoptante nunca las ve. Ante `409` o `403` se muestra el mensaje del servidor y se vuelve a leer el reporte.
+* La fundación no ve el botón "Reportar mascota": gestiona reportes, no los crea.
+* **Decisión sobre el seguimiento por varias fundaciones:** "visto" sigue guardando una sola fundación por reporte (la última reemplaza a la anterior). Es una marca informativa de "alguien ya lo vio", no una lista de seguimiento; lo que da exclusividad es "tomado", que es único por reporte. No se crea la tabla `report_follows` (ni migración ni RLS) hasta que haya un caso real de varias fundaciones siguiendo el mismo reporte; si aparece, bastaría `report_follows (report_id, foundation_id)` con clave única y RLS activada.
 
 ### HU-12: Módulo de fundaciones (backend)
 Cada fundación gestiona solo sus propios animales.
@@ -259,7 +266,7 @@ Un adoptante postula para recibir temporalmente a animales rescatados. Tabla `fo
 * **General:** no lleva `foundation_id`; la ven todas las fundaciones. **Una por cuenta** (`user_id` único): se edita mientras está en revisión y se puede retirar.
 * **Decisión: estado global.** Si dos fundaciones contactan a la misma persona, la postulación tiene un solo estado (`pending`, `approved` o `rejected`), y se registra qué fundación decidió (`decided_by_foundation_id`, `decided_at`). Se eligió por simple de mostrar al adoptante y porque la postulación es general. Si más adelante se necesita una decisión por fundación, se agrega la tabla `foster_decisions(application_id, foundation_id, status)` sin cambiar esta.
 * **Quién decide:** el estado es global, pero una decisión ya tomada solo la cambia la fundación que la tomó; las demás ven "Aprobada por Fundación X". Los administradores pueden ver la API, pero no deciden (no tienen fundación).
-* **Privacidad:** la dirección y el teléfono solo los ven el adoptante dueño y las fundaciones (portal, página **Hogares temporales**). El botón "Abrir chat" está listo en el portal detrás de `CHAT_ENABLED` y se activa cuando exista HU-G2.
+* **Privacidad:** la dirección y el teléfono solo los ven el adoptante dueño y las fundaciones (portal, página **Hogares temporales**). Cada postulación trae el `user_id` del postulante para abrir el chat (botón **Conversar**, HU-G2).
 
 ### HU-16: Subida de imágenes (backend)
 * `POST /api/v1/uploads` (requiere token, cualquier rol): recibe `multipart/form-data` con el campo `file` y devuelve `201` con `{"url": "..."}` para guardarla en `photo_url` de un animal o reporte.
@@ -382,6 +389,13 @@ Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
 En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha
 guarda el favorito) y el corazón de la barra abre la lista de favoritos.
 
+**HU-N (ficha desde Match y favoritos):** las tarjetas de `/animals/match` y `/animals/favorites`
+incluyen `status` (un favorito puede estar ya adoptado). En la app, "Ver ficha" en la tarjeta y
+tocar una fila de favoritos abren `/animales/:id` (descripción, raza, sexo y energía; desde ahí
+se postula). Los descartes ("Pasar") se guardan **en el dispositivo** por usuario
+(`shared_preferences`, clave `match_discarded_<id>`) y "Ver descartados" los devuelve al mazo.
+Bajo 40 % de compatibilidad la tarjeta va al final con el rótulo "Poco compatible".
+
 ### Interesados por animal (HU-G1)
 
 Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales:
@@ -391,7 +405,21 @@ Un favorito expresa interés, pero **no crea un chat automáticamente**. La fund
 
 Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.
 
-Mientras HU-G2 no esté implementada, **Conversar** en la app solo abre la pestaña Chat con ese `user_id` (sin crear mensajes), y en el portal el botón aparece deshabilitado.
+En el portal, **Conversar** abre (o retoma) el chat con esa persona (HU-G2). En la app, por ahora solo abre la pestaña Chat con ese `user_id` (sin crear mensajes).
+
+### Chat entre fundación y adoptante (HU-G2)
+
+Una sola conversación por par fundación-usuario (`conversations`, único por `foundation_id, user_id`), **sin relación con un animal**: si la persona se interesa en otro animal de la misma fundación, se sigue en la misma. Los mensajes (`messages`: `sender_user_id`, `body` de 1 a 1000 caracteres, `created_at`) se borran con la conversación. Migración `0021`, ambas tablas con RLS.
+
+| Endpoint | Descripción |
+|---|---|
+| `POST /api/v1/conversations` | Solo cuentas `foundation` (`403` para adoptantes y demás). Body `{"user_id"}`. La persona debe estar vinculada a la fundación: dio like a uno de sus animales, postuló a uno de ellos o postuló como hogar temporal (general, la ven todas); si no, `403`. `404` si el `user_id` no es de un adoptante. Crea la conversación (`201`) o devuelve la existente (`200`). |
+| `GET /api/v1/conversations` | Las propias: la fundación ve las de su fundación (cualquier socio con cuenta), el adoptante las suyas. Cada una con `user_name`, `foundation_name` y `last_message`; primero las de actividad más reciente. |
+| `GET /api/v1/conversations/{id}/messages` | Solo los dos participantes; cualquier otra cuenta recibe `404` (no se revela que existe). Sin `after_id` entrega los últimos 200; con `?after_id=` solo los posteriores, para el sondeo. Cada mensaje trae `from_foundation` y `mine`. |
+| `POST /api/v1/conversations/{id}/messages` | Solo los dos participantes (`404` para otros). `{"body"}` de 1 a 1000 caracteres, sin contar espacios al borde; vacío o más largo, `422`. El adoptante responde en las existentes, no abre nuevas. |
+
+* **Sin WebSockets: sondeo.** El portal pide la lista cada 15 s y el chat abierto cada 10 s (solo lo nuevo, con `after_id`), y solo mientras la pestaña está visible. Así un mensaje aparece en 10 s o menos. Se eligió por simple y porque cada consulta a Supabase cuesta ~55 ms; si el uso crece, se puede pasar a WebSockets sin cambiar las tablas.
+* **Alcance actual:** vista de chat en el portal (`/mensajes`) y pestaña **Mensajes** del adoptante en la app, con el mismo sondeo. La pestaña Chat de la fundación en la app sigue con el esqueleto.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 
@@ -418,10 +446,10 @@ En el formulario de animales, elegir la comuna que verá el público. Es opciona
 los animales existentes conservan su punto privado y quedan con «Zona no informada»
 hasta que su fundación complete la comuna. El formulario usa `GET /api/v1/animals/communes`.
 
-**Nombres de comunas (migración 0021):** el catálogo `communes.json` venía de GeoNames con
+**Nombres de comunas (migración 0022):** el catálogo `communes.json` venía de GeoNames con
 varios nombres mal escritos ("Aisen", "Chillan", "Peñalolen", "O Higgins"...). Se corrigieron
 65 a la escritura oficial ("Aysén", "Chillán", "Peñalolén", "O'Higgins"); la lista está en
-`services/commune_renames.py` y los puntos no cambian. La migración `0021` actualiza los
+`services/commune_renames.py` y los puntos no cambian. La migración `0022` actualiza los
 animales que ya tenían guardado un nombre antiguo (aplicarla también en la BD compartida,
 la persona responsable). La API solo acepta los nombres corregidos.
 

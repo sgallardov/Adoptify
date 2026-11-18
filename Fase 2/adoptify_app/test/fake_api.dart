@@ -133,6 +133,37 @@ class FakeApi {
     ],
   };
   final otherLikes = <int, int>{1: 2};
+
+  // Chat de Matías (HU-G2): la fundación le abrió una conversación y le escribió primero
+  bool conversationsFail = false;
+  final conversations = <Map<String, dynamic>>[
+    {'id': 5, 'foundation_id': 1, 'foundation_name': 'Fundación Patitas', 'user_id': 1,
+     'user_name': 'Matías Adoptante', 'created_at': '2026-11-15T12:00:00Z'},
+  ];
+  final chatMessages = <int, List<Map<String, dynamic>>>{
+    5: [
+      {'id': 1, 'body': '¡Hola Matías! ¿Te gustaría conocer a Luna?', 'created_at': '2026-11-15T12:05:00Z',
+       'from_foundation': true, 'mine': false},
+    ],
+  };
+  var _nextMessageId = 100;
+
+  // La fundación escribe desde el portal: llega a la app en la siguiente vuelta del sondeo
+  void foundationWrites(int conversationId, String body) {
+    chatMessages[conversationId]!.add({'id': _nextMessageId++, 'body': body, 'created_at': '2026-11-15T12:30:00Z',
+      'from_foundation': true, 'mine': false});
+  }
+
+  Map<String, dynamic> _conversationJson(Map<String, dynamic> conversation) {
+    final messages = chatMessages[conversation['id']] ?? const [];
+    final last = messages.isEmpty ? null : messages.last;
+    return {
+      ...conversation,
+      'last_message': last == null
+          ? null
+          : {'body': last['body'], 'created_at': last['created_at'], 'from_foundation': last['from_foundation']},
+    };
+  }
   final myLikes = <int>{};
 
   late final AuthController auth = AuthController(
@@ -160,6 +191,46 @@ class FakeApi {
         ? <String, dynamic>{}
         : jsonDecode(request.body) as Map<String, dynamic>;
     final loggedIn = request.headers['Authorization'] == 'Bearer $validToken';
+
+    // Lectura de un reporte y acciones de la fundación (HU-C), con los mismos errores que el backend
+    final mark = RegExp(r'^/reports/(\d+)(?:/(seen|taken))?$').firstMatch(request.url.path);
+    if (mark != null) {
+      final index = reports.indexWhere((report) => report['id'] == int.parse(mark.group(1)!));
+      if (index == -1) return _json(404, {'detail': 'Reporte no encontrado.'});
+      if (mark.group(2) == null) return _json(200, reports[index]);
+      if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+        return _json(403, {'detail': 'Solo una fundación vinculada puede gestionar reportes.'});
+      }
+      final report = reports[index];
+      if (report['status'] == 'resolved') {
+        return _json(409, {'detail': 'Un reporte resuelto no admite nuevas marcas.'});
+      }
+      final owner = report['taken_by_foundation_id'];
+      if (mark.group(2) == 'seen') {
+        reports[index] = {...report, 'seen_at': '2026-11-03T10:00:00Z'};
+      } else if (request.method == 'PUT') {
+        if (owner != null && owner != 1) return _json(409, {'detail': 'Otra fundación ya tomó este reporte.'});
+        reports[index] = {
+          ...report,
+          'status': 'in_rescue',
+          'taken_by_foundation_id': 1,
+          'foundation_name': 'Fundación Patitas',
+          'taken_at': '2026-11-03T10:00:00Z',
+        };
+      } else {
+        if (owner != 1) {
+          return _json(403, {'detail': 'Solo la fundación que tomó el caso puede deshacerlo.'});
+        }
+        reports[index] = {
+          ...report,
+          'status': 'reported',
+          'taken_by_foundation_id': null,
+          'foundation_name': null,
+          'taken_at': null,
+        };
+      }
+      return _json(200, reports[index]);
+    }
 
     // Comentarios anónimos y "me enteré" de un reporte
     final social = RegExp(r'^/reports/(\d+)/(comments|likes)$')
@@ -278,6 +349,27 @@ class FakeApi {
       final id = int.parse(favorite.group(1)!);
       request.method == 'PUT' ? favorites.add(id) : favorites.remove(id);
       return http.Response('', 204);
+    }
+
+    // Chat (HU-G2): solo Matías participa; cualquier otra cuenta recibe 404, como en el backend
+    final chat = RegExp(r'^/conversations/(\d+)/messages$').firstMatch(request.url.path);
+    if (chat != null) {
+      if (!loggedIn) return _json(404, {'detail': 'Conversación no encontrada.'});
+      final messages = chatMessages[int.parse(chat.group(1)!)];
+      if (messages == null) return _json(404, {'detail': 'Conversación no encontrada.'});
+      if (request.method == 'POST') {
+        final message = {'id': _nextMessageId++, 'body': (body['body'] as String).trim(),
+          'created_at': '2026-11-15T12:20:00Z', 'from_foundation': false, 'mine': true};
+        messages.add(message);
+        return _json(201, message);
+      }
+      final after = int.tryParse(request.url.queryParameters['after_id'] ?? '');
+      return _json(200, [for (final m in messages) if (after == null || (m['id'] as int) > after) m]);
+    }
+    if (request.url.path == '/conversations') {
+      if (!loggedIn) return _json(200, <Object>[]);
+      if (conversationsFail) return _json(503, {'detail': 'No se pudieron cargar las conversaciones.'});
+      return _json(200, [for (final c in conversations) _conversationJson(c)]);
     }
 
     switch (request.url.path) {
@@ -499,6 +591,15 @@ class FakeApi {
                 'public_commune': 'La Florida',
                 'photo_url':
                     'https://images.unsplash.com/photo-1558788353-f76d92427f16',
+              },
+              // Tercera mascota: la franja de fotos se llena y se prueba que no se desborde
+              {
+                ...luna,
+                'id': 14,
+                'name': 'Canela',
+                'age_months': 8,
+                'size': 'pequeño',
+                'public_commune': 'La Florida',
               },
             ],
           },

@@ -1,6 +1,6 @@
 """Nombres del catálogo GeoNames corregidos a la escritura oficial (Subdere).
 
-Lo usan la migración 0021, que actualiza los animales ya guardados, y sus tests.
+Lo usan la migración 0022, que actualiza los animales ya guardados, y sus tests.
 Solo se corrigen tildes, eñes, apóstrofos y nombres mal escritos; los puntos no cambian.
 """
 

@@ -87,9 +87,9 @@ void main() {
     expect(login.body, isNot(contains('account_type')));
     expect(api.storage.token, foundationToken);
 
-    // Cae en el inicio de fundación, sin barra ni mapa de adoptante
+    // Cae en el inicio de fundación, con su propia barra (incluye Mapa, HU-L) y sin la de adoptante
     expect(find.widgetWithText(AppBar, 'Inicio'), findsOneWidget);
-    expect(find.text('Mapa'), findsNothing);
+    expect(find.text('Fundaciones'), findsNothing);
     expect(find.text('Match'), findsNothing);
 
     // Desde Perfil puede cerrar sesión y vuelve al login

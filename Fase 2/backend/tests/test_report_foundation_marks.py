@@ -53,6 +53,7 @@ async def test_foundation_can_see_take_and_undo_a_report(async_client, report_wo
     assert taken.status_code == 200
     assert taken.json()["status"] == "in_rescue"
     assert taken.json()["foundation_name"] == report_world["foundations"][0].name
+    assert taken.json()["taken_by_foundation_id"] == report_world["foundations"][0].id
     assert "reporter_id" not in taken.json()
     public = await async_client.get(f"/api/v1/reports/{report_id}")
     assert public.status_code == 200
@@ -63,6 +64,7 @@ async def test_foundation_can_see_take_and_undo_a_report(async_client, report_wo
     assert undone.status_code == 200
     assert undone.json()["status"] == "reported"
     assert undone.json()["foundation_name"] is None
+    assert undone.json()["taken_by_foundation_id"] is None
 
 
 async def test_permissions_and_resolved_conflict(async_client, report_world, db_session: AsyncSession):

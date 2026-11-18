@@ -22,6 +22,9 @@ import '../features/map/map_screen.dart';
 import '../features/map/map_service.dart';
 import '../features/match/favorites_screen.dart';
 import '../features/match/match_screen.dart';
+import '../features/messages/chat_screen.dart';
+import '../features/messages/messages_screen.dart';
+import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
 import '../shared/widgets/app_shell.dart';
 
@@ -52,7 +55,7 @@ String? sessionRedirect(AuthController auth, String location) {
 
 // Rutas de la app. Las pestañas comparten la barra inferior (AppShell) y
 // cada una conserva su propio historial al cambiar de pestaña.
-// El orden de las ramas es el de la barra: Fundaciones, Mapa, Match, Perfil.
+// El orden de las ramas es el de la barra: Fundaciones, Mensajes, Mapa, Match, Perfil.
 GoRouter createAppRouter(AuthController auth) => GoRouter(
   initialLocation: _loading,
   refreshListenable: auth,
@@ -71,6 +74,15 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
             GoRoute(
               path: _foundationHome,
               builder: (context, state) => const FoundationHomeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            // Mismo mapa que ve el adoptante; la fundación además gestiona los reportes (HU-L)
+            GoRoute(
+              path: '/fundacion/mapa',
+              builder: (context, state) => MapScreen(refreshKey: state.extra),
             ),
           ],
         ),
@@ -100,6 +112,19 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
       path: _foundationAddAnimal,
       builder: (context, state) => const AddAnimalScreen(),
     ),
+    // Detalles abiertos desde el mapa de la fundación: dentro de /fundacion para que el redirect no la expulse
+    GoRoute(
+      path: '/fundacion/reportes/:id',
+      builder: (context, state) => ReportDetailScreen(report: state.extra as DogReport),
+    ),
+    GoRoute(
+      path: '/fundacion/animales/:id',
+      builder: (context, state) => AnimalDetailScreen(animal: state.extra as Animal),
+    ),
+    GoRoute(
+      path: '/fundacion/directorio/:id',
+      builder: (context, state) => FoundationDetailScreen(foundation: state.extra as Foundation),
+    ),
     GoRoute(
       path: '/fundacion/mis-animales',
       builder: (context, state) => const FoundationAnimalsScreen(),
@@ -125,6 +150,14 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
             GoRoute(
               path: '/fundaciones',
               builder: (context, state) => const FoundationsScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/mensajes',
+              builder: (context, state) => const MessagesScreen(),
             ),
           ],
         ),
@@ -162,6 +195,11 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/reportar',
       builder: (context, state) => const ReportScreen(),
+    ),
+    // Chat con una fundación (HU-G2), desde la pestaña Mensajes; la conversación viaja en `extra`
+    GoRoute(
+      path: '/mensajes/:id',
+      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
     ),
     // Se abre con el corazón de la pestaña Match
     GoRoute(
