@@ -121,6 +121,9 @@ def validation_message(error: dict) -> str:
     # Validadores propios: el texto ya está en español ("Value error, El nombre debe tener...")
     if kind in ("value_error", "assertion_error"):
         message = str(error.get("msg", ""))
+        # El validador de correos (email-validator) responde en inglés
+        if message.startswith("value is not a valid email address"):
+            return f"{_label(tuple(error.get('loc', ()))) or 'Correo'}: no es un correo válido."
         for prefix in ("Value error, ", "Assertion failed, "):
             if message.startswith(prefix):
                 return message[len(prefix):]

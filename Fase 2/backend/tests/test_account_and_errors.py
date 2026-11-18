@@ -142,6 +142,7 @@ async def test_validation_errors_are_in_spanish_and_keep_their_shape(async_clien
     messages = {item["loc"][-1]: item["msg"] for item in detail}
     assert messages["password"] == "Contraseña: es obligatorio."
     assert messages["full_name"] == "Nombre: es obligatorio."
+    assert messages["email"] == "Correo: no es un correo válido."
     assert not any("should" in item["msg"] or "required" in item["msg"] for item in detail)
 
 
