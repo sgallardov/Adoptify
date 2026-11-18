@@ -207,6 +207,8 @@ void main() {
       expect(find.text('Comentarios'), findsOneWidget);
       expect(find.text('Ubicación'), findsOneWidget);
       expect(find.text('Reportado · 28-10-2026'), findsWidgets);
+      // El reporte sí conserva su mini mapa: la ubicación sirve para el rescate
+      expect(find.byType(FlutterMap), findsOneWidget);
 
       // Coordenadas para copiar y pegar en otra app de rutas (con punto, no con coma).
       // El canal del portapapeles no responde solo en los tests: se simula para que no se quede esperando.
@@ -304,8 +306,11 @@ void main() {
       await tapAndSettle(tester, find.byKey(const ValueKey('animal-7')));
       await tapAndSettle(tester, find.text('Luna').first);
 
+      // La ficha del animal muestra solo la comuna: ni mapa ni coordenadas
       expect(find.text('Zona aproximada: Ñuñoa'), findsWidgets);
+      expect(find.byType(FlutterMap), findsNothing);
       expect(find.byTooltip('Copiar ubicación'), findsNothing);
+      expect(find.textContaining('-33.'), findsNothing);
       expect(find.text('Fundación Patitas'), findsWidgets);
 
       await tapAndSettle(tester, find.byTooltip('Volver'));
@@ -480,6 +485,12 @@ void main() {
       // Tocar la ficha abre la misma vista que la pestaña Fundaciones
       await tapAndSettle(tester, find.text('Ver fundación'));
       expect(find.text('Contacto de la fundación'), findsOneWidget);
+      // Ni el perfil ni la ficha de sus animales muestran mapa
+      expect(find.byType(FlutterMap), findsNothing);
+      await tester.ensureVisible(find.text('Luna').last);
+      await tapAndSettle(tester, find.text('Luna').last);
+      expect(find.text('Zona aproximada: Ñuñoa'), findsWidgets);
+      expect(find.byType(FlutterMap), findsNothing);
     },
   );
 

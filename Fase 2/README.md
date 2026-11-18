@@ -427,6 +427,9 @@ hasta que su fundación complete la comuna. El formulario usa `GET /api/v1/anima
   consultar puntos privados, con autenticación y autorización de propietario o admin.
 - Los avisos activos de rescate mantienen sus coordenadas exactas de avistamiento;
   al superponerse, su marcador tiene prioridad. Las sedes conservan su ubicación pública.
+- Las fichas de animales (app y portal) no muestran mapa ni coordenadas, solo la comuna
+  como texto (HU-J): el `commune_point` se usa únicamente para ubicar el pin en el mapa
+  general. El detalle de un reporte sí conserva su mini mapa, porque sirve para el rescate.
 - Referencias comunales: datos ADM3 de Chile de [GeoNames](https://www.geonames.org/),
   [extracto CL](https://download.geonames.org/export/dump/CL.zip) bajo
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). El catálogo local

@@ -65,8 +65,7 @@ function Detail({ record, onUpdate }: { record: AnimalResponse; onUpdate: (anima
         <dl className="grid grid-cols-2 gap-6 border-y border-base-100 py-6">
           {[['Edad', animal.age], ['Sexo', animal.gender], ['Tamaño', animal.size], ['Energía', `${animal.energy} de 5`]].map(([label, value]) => <div key={label}><dt className="text-xs text-base-500">{label}</dt><dd className="mt-1 text-sm font-semibold">{value}</dd></div>)}
         </dl>
-        <p className="mt-5 text-sm text-base-500">{record.latitude != null && record.longitude != null ? `Punto privado: ${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}` : 'Ubicación no registrada'}</p>
-        <p className="mt-1 text-sm text-base-500">Zona pública: {record.public_commune || 'Zona no informada'}</p>
+        <p className="mt-5 text-sm text-base-500">Zona pública: {record.public_commune || 'Zona no informada'}</p>
         <section className="mt-5 rounded-2xl bg-brand-50 p-4 text-sm text-brand-900">
           <h2 className="font-semibold">Lugar de resguardo privado</h2>
           <p className="mt-1">{keepingType} · {record.keeping_place_address || 'Sin información'}</p>
