@@ -370,7 +370,8 @@ Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 | `GET` | `/favorites` | Animales marcados con el corazón por el usuario. |
 | `PUT` | `/{animal_id}/favorite` | Marca un favorito (`204`). |
 | `DELETE` | `/{animal_id}/favorite` | Quita un favorito (`204`). |
-| `GET` | `/interested` | Solo fundación dueña o administrador: devuelve por cada animal los interesados (`user_id`, `full_name`, `favorited_at`), sin correo, teléfono ni RUT. |
+| `GET` | `/interested` | Solo fundación o administrador: devuelve por cada animal propio los interesados (`user_id`, `full_name`, `favorited_at`, `match_score`), sin correo, teléfono ni RUT. |
+| `GET` | `/{animal_id}/interested` | Igual, para un solo animal. Otra fundación o un adoptante reciben `403`; un id inexistente, `404`. |
 | `POST` | `/adoption-applications/animals/{animal_id}` | Adoptante: envía una postulación con una copia de su ficha “Quiero adoptar” y un mensaje opcional. Un favorito no crea una candidatura. |
 | `GET` | `/adoption-applications/mine` | Adoptante: consulta el estado de sus propias postulaciones. |
 | `DELETE` | `/adoption-applications/{id}` | Adoptante: retira una postulación abierta. |
@@ -383,7 +384,14 @@ guarda el favorito) y el corazón de la barra abre la lista de favoritos.
 
 ### Interesados por animal (HU-G1)
 
-Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales en el detalle del portal y en el acceso **Personas interesadas** de la app. Cada respuesta contiene únicamente el ID interno, nombre y fecha del favorito; no expone correo, teléfono ni RUT. La fundación decide de forma explícita cuándo usar “Iniciar conversación”. Mientras HU-G2 no esté implementada, esa acción solo prepara el destino de chat y no envía mensajes ni crea conversaciones.
+Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales:
+
+- **Portal:** la card de cada animal en *Mis casos* muestra cuántos interesados tiene, y el detalle (`/animales/:id`) trae la sección **Interesados** con nombre, fecha del favorito y porcentaje de match.
+- **App (vista fundación):** cada card de *Mis animales* tiene el botón **N interesados**, que abre `/fundacion/interesados?animal_id=…` con la misma información y el botón **Conversar**.
+
+Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.
+
+Mientras HU-G2 no esté implementada, **Conversar** en la app solo abre la pestaña Chat con ese `user_id` (sin crear mensajes), y en el portal el botón aparece deshabilitado.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 

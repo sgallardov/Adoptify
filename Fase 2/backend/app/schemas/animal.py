@@ -77,6 +77,8 @@ class InterestedUserResponse(BaseModel):
     user_id: int
     full_name: str
     favorited_at: datetime
+    # Compatibilidad 0-100 con el animal; null si la persona no completó "Quiero adoptar"
+    match_score: float | None = None
 
 
 class AnimalInterestedResponse(BaseModel):

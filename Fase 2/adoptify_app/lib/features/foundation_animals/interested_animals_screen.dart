@@ -26,7 +26,11 @@ class _InterestedAnimalsScreenState extends State<InterestedAnimalsScreen> {
     _groups ??= _load();
   }
 
-  Future<List<AnimalInterested>> _load() => FoundationAnimalsService(AuthScope.of(context).api).interested();
+  Future<List<AnimalInterested>> _load() async {
+    final service = FoundationAnimalsService(AuthScope.of(context).api);
+    final animalId = widget.animalId;
+    return animalId == null ? service.interested() : [await service.interestedIn(animalId)];
+  }
 
   void _reload() => setState(() => _groups = _load());
 
@@ -48,10 +52,7 @@ class _InterestedAnimalsScreenState extends State<InterestedAnimalsScreen> {
                   ],
                 );
               }
-              final allGroups = snapshot.data ?? const <AnimalInterested>[];
-              final groups = widget.animalId == null
-                  ? allGroups
-                  : allGroups.where((group) => group.animalId == widget.animalId).toList();
+              final groups = snapshot.data ?? const <AnimalInterested>[];
               if (groups.isEmpty) return const _NoAnimals();
               return ListView(
                 padding: const EdgeInsets.all(AdoptifySpacing.xl),
@@ -100,10 +101,10 @@ class _InterestedGroup extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(group.animalName, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AdoptifySpacing.xs),
-            Text(group.interested.isEmpty ? 'Aún no tiene likes.' : '${group.interested.length} persona${group.interested.length == 1 ? '' : 's'} interesada${group.interested.length == 1 ? '' : 's'}.', style: Theme.of(context).textTheme.bodySmall),
+            Text(group.interested.isEmpty ? 'Aún nadie lo ha marcado como favorito.' : '${group.interested.length} persona${group.interested.length == 1 ? '' : 's'} interesada${group.interested.length == 1 ? '' : 's'}.', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: AdoptifySpacing.md),
             if (group.interested.isEmpty)
-              Text('Cuando alguien marque a ${group.animalName} con un corazón, aparecerá aquí.', style: Theme.of(context).textTheme.bodyMedium)
+              Text('Cuando alguien marque a ${group.animalName} con el corazón, aparecerá aquí.', style: Theme.of(context).textTheme.bodyMedium)
             else
               for (final person in group.interested) ...[
                 _InterestedPerson(person: person, animalId: group.animalId),
@@ -130,10 +131,17 @@ class _InterestedPerson extends StatelessWidget {
         child: Row(children: [
           CircleAvatar(backgroundColor: context.colors.surface, foregroundColor: context.colors.primaryDark, child: const Icon(Icons.person_outline)),
           const SizedBox(width: AdoptifySpacing.md),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(person.fullName, style: Theme.of(context).textTheme.titleSmall), Text('Marcó favorito el $date', style: Theme.of(context).textTheme.bodySmall)])),
-          TextButton(
-            onPressed: () => context.push('/fundacion/chat?user_id=${person.userId}&animal_id=$animalId'),
-            child: const Text('Iniciar conversación'),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(person.fullName, style: Theme.of(context).textTheme.titleSmall),
+              Text('Marcó favorito el $date', style: Theme.of(context).textTheme.bodySmall),
+              Text(person.matchLabel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: context.colors.primaryDark)),
+            ]),
+          ),
+          TextButton.icon(
+            onPressed: () => context.go('/fundacion/chat?user_id=${person.userId}&animal_id=$animalId'),
+            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+            label: const Text('Conversar'),
           ),
         ]),
       ),

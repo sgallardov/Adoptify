@@ -10,6 +10,7 @@ import '../features/foundation_chat/foundation_chat_screen.dart';
 import '../features/foundation_animals/foundation_animals_screen.dart';
 import '../features/foundation_animals/foundation_animals_service.dart';
 import '../features/foundation_animals/application_candidates_screen.dart';
+import '../features/foundation_animals/interested_animals_screen.dart';
 import '../features/foundation_home/foundation_home_screen.dart';
 import '../features/foundation_profile/foundation_profile_screen.dart';
 import '../features/foundations/foundation_detail_screen.dart';
@@ -102,6 +103,11 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/fundacion/mis-animales',
       builder: (context, state) => const FoundationAnimalsScreen(),
+    ),
+    // Personas que marcaron con el corazón a un animal (o a todos, sin animal_id)
+    GoRoute(
+      path: '/fundacion/interesados',
+      builder: (context, state) => InterestedAnimalsScreen(animalId: int.tryParse(state.uri.queryParameters['animal_id'] ?? '')),
     ),
     GoRoute(
       path: '/fundacion/postulaciones',

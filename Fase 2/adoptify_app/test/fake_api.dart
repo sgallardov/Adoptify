@@ -90,7 +90,8 @@ class FakeApi {
       'animal_name': 'Luna',
       'animal_status': 'available',
       'interested': [
-        {'user_id': 1, 'full_name': 'Matías Adoptante', 'favorited_at': '2026-11-10T15:30:00Z'},
+        {'user_id': 1, 'full_name': 'Matías Adoptante', 'favorited_at': '2026-11-10T15:30:00Z', 'match_score': 82.5},
+        {'user_id': 2, 'full_name': 'Ana Sin Ficha', 'favorited_at': '2026-11-09T10:00:00Z', 'match_score': null},
       ],
     },
     {
@@ -233,6 +234,17 @@ class FakeApi {
           return http.Response('', 204);
       }
       return _json(200, [for (final m in members) if (m['foundation_id'] == 1) m]);
+    }
+
+    final interestedIn = RegExp(r'^/animals/(\d+)/interested$').firstMatch(request.url.path);
+    if (interestedIn != null) {
+      if (request.headers['Authorization'] != 'Bearer $foundationToken') {
+        return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
+      }
+      if (interestedFail) return _json(503, {'detail': 'No se pudieron consultar las personas interesadas.'});
+      final id = int.parse(interestedIn.group(1)!);
+      final group = interestedAnimals.where((g) => g['animal_id'] == id).firstOrNull;
+      return group == null ? _json(404, {'detail': 'Animal no encontrado.'}) : _json(200, group);
     }
 
     final favorite = RegExp(r'^/animals/(\d+)/favorite$')

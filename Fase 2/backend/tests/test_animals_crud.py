@@ -253,13 +253,59 @@ async def test_foundation_sees_only_safe_interested_users_for_its_animals(async_
     payload = response.json()
     assert [item["animal_id"] for item in payload] == [own.id]
     interested = payload[0]["interested"]
-    assert interested == [{"user_id": adopter.id, "full_name": adopter.full_name, "favorited_at": interested[0]["favorited_at"]}]
-    assert not {"email", "rut", "phone"}.intersection(interested[0])
+    # Sin "Quiero adoptar" el match queda vacío
+    assert interested == [{
+        "user_id": adopter.id, "full_name": adopter.full_name,
+        "favorited_at": interested[0]["favorited_at"], "match_score": None,
+    }]
+    assert not {"email", "rut", "phone", "rut_hash", "preferences"}.intersection(interested[0])
 
     # La otra fundación solo ve su propio animal, nunca los interesados del primero.
     other_response = await async_client.get("/api/v1/animals/interested", headers=world["headers"]["b"])
     assert [item["animal_id"] for item in other_response.json()] == [other.id]
     assert (await async_client.get("/api/v1/animals/interested", headers=world["headers"]["adopter"])).status_code == 403
+
+
+async def test_interested_of_one_animal_is_only_for_its_foundation(async_client, db_session, world):
+    own, _ = world["animals"]
+    adopter = world["users"]["adopter"]
+    url = f"/api/v1/animals/{own.id}/interested"
+
+    # Sin interesados: lista vacía, no error
+    empty = await async_client.get(url, headers=world["headers"]["a"])
+    assert empty.status_code == 200
+    assert empty.json() == {"animal_id": own.id, "animal_name": own.name, "animal_status": "available", "interested": []}
+
+    db_session.add(AnimalFavorite(user_id=adopter.id, animal_id=own.id))
+    await db_session.commit()
+    assert len((await async_client.get(url, headers=world["headers"]["a"])).json()["interested"]) == 1
+
+    # Otra fundación y el adoptante reciben 403; el administrador sí lo ve
+    assert (await async_client.get(url, headers=world["headers"]["b"])).status_code == 403
+    assert (await async_client.get(url, headers=world["headers"]["adopter"])).status_code == 403
+    assert (await async_client.get(url, headers=world["headers"]["admin"])).status_code == 200
+    assert (await async_client.get("/api/v1/animals/999999999/interested", headers=world["headers"]["a"])).status_code == 404
+
+    # Al quitar el favorito, desaparece de la lista
+    removed = await async_client.delete(f"/api/v1/animals/{own.id}/favorite", headers=world["headers"]["adopter"])
+    assert removed.status_code == 204
+    assert (await async_client.get(url, headers=world["headers"]["a"])).json()["interested"] == []
+
+
+async def test_interested_shows_match_score_with_adoption_profile(async_client, db_session, world):
+    own, _ = world["animals"]
+    adopter = world["users"]["adopter"]
+    # Gato pequeño de energía 2: coincide especie y tamaño, no la energía → (30 + 25) / 75
+    adopter.preferences = {
+        "adoption_profile": {"housing_type": "departamento"},
+        "preferred_species": "gato", "preferred_size": "pequeño", "preferred_energy_level": 5,
+    }
+    db_session.add(adopter)
+    db_session.add(AnimalFavorite(user_id=adopter.id, animal_id=own.id))
+    await db_session.commit()
+
+    response = await async_client.get(f"/api/v1/animals/{own.id}/interested", headers=world["headers"]["a"])
+    assert response.json()["interested"][0]["match_score"] == 73.33
 
 
 async def test_keeping_place_is_private_and_validated(async_client, world):
