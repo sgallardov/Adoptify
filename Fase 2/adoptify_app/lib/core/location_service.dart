@@ -1,5 +1,15 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
+// Si el navegador o el teléfono no responden el permiso, se deja de esperar a los 15 s
+const permissionTimeout = Duration(seconds: 15);
+// Tope de toda la consulta (permiso + GPS). Así ningún botón queda cargando para siempre.
+const locationTimeout = Duration(seconds: 20);
+
+const permissionTimeoutMessage =
+    'No recibimos respuesta al permiso de ubicación. Revisa la ventana del navegador o del teléfono e inténtalo de nuevo.';
 
 // Error de ubicación con el mensaje que se muestra al usuario
 class LocationException implements Exception {
@@ -18,7 +28,11 @@ class LocationService {
     }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+      // Algunos navegadores dejan la pregunta abierta sin responder nunca
+      permission = await Geolocator.requestPermission().timeout(
+        permissionTimeout,
+        onTimeout: () => throw LocationException(permissionTimeoutMessage),
+      );
     }
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       throw LocationException('No diste permiso para usar tu ubicación. Puedes activarlo en la configuración del teléfono.');
@@ -36,5 +50,20 @@ class LocationService {
       throw LocationException('No pudimos obtener tu ubicación. Inténtalo nuevamente.');
     }
     return LatLng(position.latitude, position.longitude);
+  }
+}
+
+// Lo que usan las pantallas: la ubicación con tope de tiempo. Cualquier falla llega como LocationException,
+// así cada pantalla solo maneja un tipo de error y su botón siempre deja de cargar.
+Future<LatLng> currentLocation() async {
+  try {
+    return await LocationService.instance.current().timeout(
+      locationTimeout,
+      onTimeout: () => throw LocationException(permissionTimeoutMessage),
+    );
+  } on LocationException {
+    rethrow;
+  } catch (_) {
+    throw LocationException('No pudimos obtener tu ubicación. Inténtalo nuevamente.');
   }
 }

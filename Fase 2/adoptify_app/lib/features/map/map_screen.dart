@@ -91,6 +91,8 @@ class _MapScreenState extends State<MapScreen> {
   bool _showClinics = true;
 
   int? _selectedAnimalId;
+  // Grupo de mascotas de una misma comuna abierto (ids, en el orden del pin)
+  List<int>? _selectedGroupIds;
   int? _selectedReportId;
   int? _selectedFoundationId;
   int? _selectedClinicId;
@@ -141,7 +143,7 @@ class _MapScreenState extends State<MapScreen> {
   // Sin permiso o sin señal, se queda en Santiago y aparece un aviso para reintentar.
   Future<void> _detectInitialLocation() async {
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       _centerOnUser = true;
       _setUserPosition(position);
@@ -309,7 +311,7 @@ class _MapScreenState extends State<MapScreen> {
       _geoError = null;
     });
     try {
-      final position = await LocationService.instance.current();
+      final position = await currentLocation();
       if (!mounted) return;
       _setUserPosition(position);
       setState(() {
@@ -320,6 +322,7 @@ class _MapScreenState extends State<MapScreen> {
         _selectedReportId = null;
         _selectedFoundationId = null;
         _selectedClinicId = null;
+        _selectedGroupIds = null;
         _locating = false;
       });
       // Se centra al tiro, sin esperar a que lleguen las mascotas y reportes del radio
@@ -345,6 +348,7 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
+        _selectedGroupIds = null;
     });
     _load();
   }
@@ -366,12 +370,39 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
+        _selectedGroupIds = null;
       _showAnimals = true;
     });
     if (animal.position != null && _mapReady) {
       _mapController.move(animal.position!, _mapController.camera.zoom);
     }
   }
+
+  // Pin con varias mascotas en el mismo punto: se abre la lista para elegir cuál ver
+  void _selectGroup(List<Animal> group) {
+    setState(() {
+      _selectedGroupIds = [for (final animal in group) animal.id];
+      _selectedAnimalId = null;
+      _selectedReportId = null;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
+    });
+  }
+
+  // Mascotas agrupadas por su punto en el mapa. Todas las de una comuna comparten el punto público
+  // (commune_point), así que quedarían una sobre otra y solo se podría tocar la de arriba.
+  List<List<Animal>> get _animalGroups {
+    final groups = <LatLng, List<Animal>>{};
+    for (final animal in _animals) {
+      final position = animal.position;
+      if (position != null) groups.putIfAbsent(position, () => []).add(animal);
+    }
+    return groups.values.toList();
+  }
+
+  // El grupo está marcado si está abierto o si contiene la mascota elegida (por ejemplo, desde el buscador)
+  bool _groupSelected(List<Animal> group) =>
+      group.any((animal) => animal.id == _selectedAnimalId || (_selectedGroupIds?.contains(animal.id) ?? false));
 
   // Elegir un resultado del buscador: se cierra la búsqueda y se muestra la mascota en el mapa
   void _pickResult(Animal animal) {
@@ -380,12 +411,23 @@ class _MapScreenState extends State<MapScreen> {
     _selectAnimal(animal);
   }
 
+  // Enter en el buscador elige el primer resultado; sin resultados la lista queda abierta con el aviso
+  void _pickFirstResult(String _) {
+    final first = _results.firstOrNull;
+    if (first != null) {
+      _pickResult(first);
+    } else {
+      _searchFocus.requestFocus();
+    }
+  }
+
   void _selectReport(DogReport report) {
     setState(() {
       _selectedReportId = report.id;
       _selectedAnimalId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
+        _selectedGroupIds = null;
     });
   }
 
@@ -395,12 +437,14 @@ class _MapScreenState extends State<MapScreen> {
       _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedClinicId = null;
+        _selectedGroupIds = null;
     });
   }
 
   void _selectClinic(VetClinic clinic) {
     setState(() {
       _selectedClinicId = clinic.id;
+      _selectedGroupIds = null;
       _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
@@ -429,6 +473,7 @@ class _MapScreenState extends State<MapScreen> {
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
+        _selectedGroupIds = null;
     });
   }
 
@@ -443,6 +488,15 @@ class _MapScreenState extends State<MapScreen> {
         )
         .take(5)
         .toList();
+  }
+
+  void _openLegend() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: context.colors.surface,
+      builder: (_) => const _LegendSheet(),
+    );
   }
 
   void _openLayers() {
@@ -472,7 +526,10 @@ class _MapScreenState extends State<MapScreen> {
             showOrigin: _origin != null,
             onAnimals: (value) => update(() {
               _showAnimals = value;
-              if (!value) _selectedAnimalId = null;
+              if (!value) {
+                _selectedAnimalId = null;
+                _selectedGroupIds = null;
+              }
             }),
             onReports: (value) => update(() {
               _showReports = value;
@@ -485,6 +542,7 @@ class _MapScreenState extends State<MapScreen> {
             onClinics: (value) => update(() {
               _showClinics = value;
               if (!value) _selectedClinicId = null;
+        _selectedGroupIds = null;
             }),
           );
         },
@@ -506,7 +564,15 @@ class _MapScreenState extends State<MapScreen> {
     final selectedClinic = _clinics
         .where((c) => c.id == _selectedClinicId)
         .firstOrNull;
+    final selectedGroup = _selectedGroupIds == null
+        ? null
+        : [
+            for (final id in _selectedGroupIds!)
+              ?_animals.where((animal) => animal.id == id).firstOrNull,
+          ];
+    final groupOpen = selectedGroup != null && selectedGroup.isNotEmpty;
     final hasSelection =
+        groupOpen ||
         selectedAnimal != null ||
         selectedReport != null ||
         selectedFoundation != null ||
@@ -535,9 +601,18 @@ class _MapScreenState extends State<MapScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _SearchBar(controller: _search, focusNode: _searchFocus),
+                      _SearchBar(
+                        controller: _search,
+                        focusNode: _searchFocus,
+                        onSubmitted: _pickFirstResult,
+                      ),
+                      // La lista cuenta como parte del campo: en web, presionar el mouse sobre un resultado ya no
+                      // le quita el foco al buscador (lo que cerraba la lista antes de que llegara el clic).
+                      // Tocar fuera de ambos sigue cerrándola.
                       if (searching)
-                        _SearchResults(results: _results, onPick: _pickResult)
+                        TextFieldTapRegion(
+                          child: _SearchResults(results: _results, onPick: _pickResult),
+                        )
                       else ...[
                         const SizedBox(height: AdoptifySpacing.sm),
                         Row(
@@ -545,16 +620,21 @@ class _MapScreenState extends State<MapScreen> {
                           children: [
                             Expanded(child: _buildStatus()),
                             const SizedBox(width: AdoptifySpacing.sm),
-                            _AlertsButton(
-                              key: const ValueKey('alerts-button'),
-                              count: _alerts?.length,
-                              open: _alertsOpen,
-                              loading: _detecting || _alertsLoading,
-                              hasLocation: _userPosition != null,
-                              onToggle: () =>
-                                  setState(() => _alertsOpen = !_alertsOpen),
-                              onActivate: _locating ? null : _locate,
-                              onRetry: _loadAlerts,
+                            // Ancho máximo: con letra grande el texto se recorta en vez de desbordar la fila
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 220),
+                              child: _AlertsButton(
+                                key: const ValueKey('alerts-button'),
+                                count: _alerts?.length,
+                                open: _alertsOpen,
+                                loading: _detecting || _alertsLoading,
+                                loadingLabel: _detecting ? 'Buscando tu ubicación…' : 'Buscando avisos…',
+                                hasLocation: _userPosition != null,
+                                onToggle: () =>
+                                    setState(() => _alertsOpen = !_alertsOpen),
+                                onActivate: _locating ? null : _locate,
+                                onRetry: _loadAlerts,
+                              ),
                             ),
                           ],
                         ),
@@ -604,13 +684,19 @@ class _MapScreenState extends State<MapScreen> {
             duration: const Duration(milliseconds: 180),
             right: AdoptifySpacing.lg,
             // Las fichas de fundación (foto arriba) y de veterinaria (botones) son más altas que las demás
-            bottom: selectedFoundation != null
+            bottom: selectedFoundation != null || groupOpen
                 ? 400
                 : selectedClinic != null
                 ? 340
                 : (hasSelection ? 260 : 96),
             child: Column(
               children: [
+                MapButton(
+                  icon: Icons.info_outline,
+                  tooltip: 'Leyenda del mapa',
+                  onPressed: _openLegend,
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
                 MapButton(
                   icon: Icons.layers_outlined,
                   tooltip: 'Capas',
@@ -622,6 +708,7 @@ class _MapScreenState extends State<MapScreen> {
                       ? Icons.my_location
                       : Icons.near_me_outlined,
                   tooltip: 'Usar mi ubicación',
+                  loadingTooltip: 'Buscando tu ubicación…',
                   active: _origin != null,
                   loading: _locating,
                   onPressed: _locating ? null : _locate,
@@ -641,7 +728,17 @@ class _MapScreenState extends State<MapScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (selectedAnimal != null) ...[
+                    if (groupOpen) ...[
+                      _AnimalGroupCard(
+                        animals: selectedGroup,
+                        onClose: _clearSelection,
+                        onOpen: (animal) => context.push(
+                          '$_base/animales/${animal.id}',
+                          extra: animal,
+                        ),
+                      ),
+                      const SizedBox(height: AdoptifySpacing.md),
+                    ] else if (selectedAnimal != null) ...[
                       _AnimalDetailCard(
                         animal: selectedAnimal,
                         onClose: _clearSelection,
@@ -711,7 +808,9 @@ class _MapScreenState extends State<MapScreen> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: AdoptifySpacing.sm),
-          Text('Buscando mascotas…', style: muted),
+          Flexible(
+            child: Text('Buscando mascotas…', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+          ),
         ],
       );
     } else if (_error) {
@@ -778,6 +877,7 @@ class _MapScreenState extends State<MapScreen> {
             setState(() {
               _clinicsInView = inView;
               if (!inView) _selectedClinicId = null;
+        _selectedGroupIds = null;
             });
           }
         },
@@ -813,24 +913,26 @@ class _MapScreenState extends State<MapScreen> {
                   ),
             // Tu ubicación: la del botón o la detectada al abrir el mapa
             if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
-            if (_showAnimals) ...[
-              for (final animal in _animals)
-                if (animal.position != null && animal.id != _selectedAnimalId)
-                  mapMarker(
-                    animal.position!,
-                    MapPins.animal,
-                    key: ValueKey('animal-${animal.id}'),
-                    onTap: () => _selectAnimal(animal),
-                  ),
-              for (final animal in _animals)
-                if (animal.position != null && animal.id == _selectedAnimalId)
-                  mapMarker(
-                    animal.position!,
-                    MapPins.selectedAnimal,
-                    key: ValueKey('animal-${animal.id}'),
-                    onTap: () => _selectAnimal(animal),
-                  ),
-            ],
+            // Una mascota sola en su punto lleva su pin; varias en el mismo punto, un pin con el número.
+            // Lo elegido (o el grupo que lo contiene) se dibuja al final para quedar encima.
+            if (_showAnimals)
+              for (final group in [
+                ..._animalGroups.where((g) => !_groupSelected(g)),
+                ..._animalGroups.where(_groupSelected),
+              ])
+                group.length == 1
+                    ? mapMarker(
+                        group.first.position!,
+                        group.first.id == _selectedAnimalId ? MapPins.selectedAnimal : MapPins.animal,
+                        key: ValueKey('animal-${group.first.id}'),
+                        onTap: () => _selectAnimal(group.first),
+                      )
+                    : mapMarker(
+                        group.first.position!,
+                        MapPins.animalGroup(group.length, selected: _groupSelected(group)),
+                        key: ValueKey('animal-group-${group.first.id}'),
+                        onTap: () => _selectGroup(group),
+                      ),
             // Un aviso de rescate debe poder tocarse incluso si coincide con una referencia comunal.
             if (_showReports)
               for (final report in _reports)
@@ -868,6 +970,7 @@ class _AlertsButton extends StatelessWidget {
     required this.count,
     required this.open,
     required this.loading,
+    required this.loadingLabel,
     required this.hasLocation,
     required this.onToggle,
     required this.onActivate,
@@ -877,6 +980,8 @@ class _AlertsButton extends StatelessWidget {
   final int? count;
   final bool open;
   final bool loading;
+  // Texto junto al indicador de carga: dice qué se está esperando
+  final String loadingLabel;
   final bool hasLocation;
   final VoidCallback onToggle;
   final VoidCallback? onActivate;
@@ -890,9 +995,19 @@ class _AlertsButton extends StatelessWidget {
     VoidCallback? onTap;
     String? label;
     if (loading) {
-      content = const SizedBox.square(
-        dimension: 16,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      label = loadingLabel;
+      content = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: AdoptifySpacing.sm),
+          Flexible(
+            child: Text(loadingLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.labelMedium),
+          ),
+        ],
       );
     } else if (hasLocation && count != null) {
       label =
@@ -924,7 +1039,9 @@ class _AlertsButton extends StatelessWidget {
         children: [
           Icon(Icons.my_location, size: 16, color: colors.primaryDark),
           const SizedBox(width: AdoptifySpacing.xs),
-          Text('Activar ubicación', style: textTheme.labelMedium),
+          Flexible(
+            child: Text('Activar ubicación', maxLines: 1, overflow: TextOverflow.ellipsis, style: textTheme.labelMedium),
+          ),
         ],
       );
       onTap = onActivate;
@@ -943,13 +1060,13 @@ class _AlertsButton extends StatelessWidget {
           child: Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md),
-            alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(99),
               border: Border.all(color: colors.border),
               boxShadow: AdoptifyShadows.soft,
             ),
-            child: content,
+            // widthFactor 1: la píldora mide lo justo de su contenido, no el ancho máximo que se le permite
+            child: Center(widthFactor: 1, child: content),
           ),
         ),
       ),
@@ -1080,10 +1197,11 @@ class _AlertsPanel extends StatelessWidget {
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.controller, required this.focusNode});
+  const _SearchBar({required this.controller, required this.focusNode, required this.onSubmitted});
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final ValueChanged<String> onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -1093,6 +1211,9 @@ class _SearchBar extends StatelessWidget {
         controller: controller,
         focusNode: focusNode,
         textInputAction: TextInputAction.search,
+        onSubmitted: onSubmitted,
+        // Tocar fuera del campo y de la lista (TextFieldTapRegion) cierra la búsqueda en web y en el teléfono
+        onTapOutside: (_) => focusNode.unfocus(),
         decoration: InputDecoration(
           hintText: 'Buscar mascota o fundación',
           prefixIcon: Icon(Icons.search, color: context.colors.textMuted),
@@ -1446,6 +1567,115 @@ class _AnimalDetailCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// Varias mascotas en la misma comuna: lista para elegir cuál abrir. Alto limitado; con muchas se desplaza.
+class _AnimalGroupCard extends StatelessWidget {
+  const _AnimalGroupCard({required this.animals, required this.onClose, required this.onOpen});
+
+  final List<Animal> animals;
+  final VoidCallback onClose;
+  final ValueChanged<Animal> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final zone = animals.first.commune;
+    return Container(
+      key: const ValueKey('animal-group-card'),
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.4),
+      decoration: mapSurface(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AdoptifySpacing.lg, AdoptifySpacing.sm, AdoptifySpacing.xs, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${animals.length} mascotas ${zone == null ? 'en esta zona' : 'en $zone'}',
+                    style: textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 20), tooltip: 'Cerrar'),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.lg),
+            child: Text(
+              'Comparten la ubicación aproximada de su comuna. Toca una para ver su ficha.',
+              style: textTheme.bodySmall?.copyWith(color: context.colors.textMuted),
+            ),
+          ),
+          Flexible(
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: AdoptifySpacing.sm),
+                children: [
+                  for (final animal in animals)
+                    ListTile(
+                      leading: AnimalPhoto(url: animal.photoUrl, size: 44),
+                      title: Text(animal.name, style: textTheme.titleSmall),
+                      subtitle: Text(
+                        [animal.summary, ?animal.foundationName].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => onOpen(animal),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Qué significa cada pin, con los mismos dibujos del mapa. Se abre con el botón de información.
+class _LegendSheet extends StatelessWidget {
+  const _LegendSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    Widget row(Widget pin, String title, String detail) => ListTile(
+      leading: SizedBox(width: 48, child: Center(child: pin)),
+      title: Text(title, style: textTheme.bodyMedium),
+      subtitle: Text(detail, style: textTheme.bodySmall),
+    );
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: AdoptifySpacing.lg),
+        child: Column(
+          key: const ValueKey('map-legend'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xl),
+              child: Text('Qué significa cada pin', style: textTheme.titleMedium),
+            ),
+            row(MapPins.animal, 'Mascota en adopción', 'Zona aproximada de su comuna, no la dirección exacta.'),
+            row(MapPins.animalGroup(3), 'Varias mascotas en la misma comuna', 'Toca el número para ver la lista.'),
+            row(MapPins.reportFor('perro'), 'Perro reportado', 'Un vecino lo vio en ese lugar.'),
+            row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
+            row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
+            row(const DropPin(width: 30, kind: DropKind.foundation), 'Fundación', 'Sede de la organización.'),
+            row(const DropPin(width: 30, kind: DropKind.clinic), 'Veterinaria', 'Aparecen al acercar el mapa.'),
+            row(MapPins.origin, 'Tu ubicación', 'Solo si diste permiso para usarla.'),
+          ],
+        ),
+      ),
     );
   }
 }

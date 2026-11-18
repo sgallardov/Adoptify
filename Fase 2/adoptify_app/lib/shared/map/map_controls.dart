@@ -21,6 +21,7 @@ class MapButton extends StatelessWidget {
     required this.onPressed,
     this.active = false,
     this.loading = false,
+    this.loadingTooltip,
   });
 
   final IconData icon;
@@ -28,15 +29,18 @@ class MapButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool active;
   final bool loading;
+  // Lo que se lee mientras carga (por ejemplo, "Buscando tu ubicación…"): así el círculo nunca queda mudo
+  final String? loadingTooltip;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final message = loading ? (loadingTooltip ?? tooltip) : tooltip;
     return Tooltip(
-      message: tooltip,
+      message: message,
       child: Semantics(
         button: true,
-        label: tooltip,
+        label: message,
         child: Material(
           color: active ? colors.primary : colors.surface,
           shape: CircleBorder(side: BorderSide(color: active ? colors.primary : colors.border)),

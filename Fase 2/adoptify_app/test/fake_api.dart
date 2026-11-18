@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -82,6 +83,8 @@ class FakeApi {
   Map<String, dynamic>? adoptionProfile;
   // Respuesta de POST /uploads: null devuelve la URL de la foto; si no, ese código de error
   int? uploadStatus;
+  // Mascotas extra en el mapa (por ejemplo, otras de la misma comuna que Luna)
+  final extraAnimals = <Map<String, dynamic>>[];
   // Ids marcados con el corazón en el match
   final favorites = <int>{};
   final interestedAnimals = <Map<String, dynamic>>[
@@ -432,7 +435,7 @@ class FakeApi {
       case '/animals':
         if (animalsFail)
           return _json(503, {'detail': 'No se pudo consultar los animales.'});
-        return _json(200, [luna, rocky]);
+        return _json(200, [luna, rocky, ...extraAnimals]);
       case '/animals/management':
         if (request.headers['Authorization'] != 'Bearer $foundationToken') {
           return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
@@ -461,7 +464,7 @@ class FakeApi {
       case '/animals/nearby':
         if (animalsFail)
           return _json(503, {'detail': 'No se pudo consultar los animales.'});
-        return _json(200, [luna]);
+        return _json(200, [luna, ...extraAnimals]);
       case '/users/me/adoption-profile':
         if (request.headers['Authorization'] != 'Bearer $validToken')
           return _json(401, {'detail': 'Not authenticated'});
@@ -835,13 +838,16 @@ Map<String, dynamic> _challenge(String id) => {
 
 // Ubicación simulada: devuelve un punto fijo o falla con el mensaje indicado
 class FakeLocation extends LocationService {
-  FakeLocation({this.position = const LatLng(-33.4378, -70.6505), this.error});
+  FakeLocation({this.position = const LatLng(-33.4378, -70.6505), this.error, this.hang = false});
 
   final LatLng position;
   final String? error;
+  // El navegador o el teléfono nunca responden el permiso: la consulta no termina
+  final bool hang;
 
   @override
   Future<LatLng> current() async {
+    if (hang) return Completer<LatLng>().future;
     if (error != null) throw LocationException(error!);
     return position;
   }
