@@ -73,6 +73,7 @@ class DogReport {
     this.foundationName,
     this.seenAt,
     this.takenAt,
+    this.takenByFoundationId,
   });
 
   factory DogReport.fromJson(Map<String, dynamic> json) => DogReport(
@@ -93,6 +94,7 @@ class DogReport {
         foundationName: json['foundation_name'] as String?,
         seenAt: json['seen_at'] == null ? null : DateTime.parse(json['seen_at'] as String).toLocal(),
         takenAt: json['taken_at'] == null ? null : DateTime.parse(json['taken_at'] as String).toLocal(),
+        takenByFoundationId: json['taken_by_foundation_id'] as int?,
       );
 
   final int id;
@@ -112,6 +114,7 @@ class DogReport {
   final String? foundationName;
   final DateTime? seenAt;
   final DateTime? takenAt;
+  final int? takenByFoundationId;
 
   String get statusLabel => reportStatuses[status] ?? status;
 
@@ -314,6 +317,17 @@ class MapService {
     final data = await _api.post('/reports', report.toJson());
     return DogReport.fromJson(data as Map<String, dynamic>);
   }
+
+  Future<DogReport> fetchReport(int reportId) async => _reportAction(await _api.get('/reports/$reportId'));
+
+  // Acciones de la fundación sobre un reporte (HU-C). Cada una devuelve el reporte ya actualizado.
+  Future<DogReport> markSeen(int reportId) async => _reportAction(await _api.post('/reports/$reportId/seen', {}));
+
+  Future<DogReport> takeReport(int reportId) async => _reportAction(await _api.put('/reports/$reportId/taken'));
+
+  Future<DogReport> untakeReport(int reportId) async => _reportAction(await _api.delete('/reports/$reportId/taken'));
+
+  DogReport _reportAction(Object? data) => DogReport.fromJson(data as Map<String, dynamic>);
 
   Future<List<ReportComment>> fetchComments(int reportId) async {
     final data = await _api.get('/reports/$reportId/comments') as List<dynamic>;
