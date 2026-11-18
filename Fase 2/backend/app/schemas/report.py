@@ -78,6 +78,8 @@ class ReportResponse(BaseModel):
     seen_at: datetime | None = None
     taken_at: datetime | None = None
     foundation_name: str | None = None
+    # Id público de la fundación que tomó el caso: la app lo compara con el de la cuenta para ofrecer "Deshacer toma"
+    taken_by_foundation_id: int | None = None
     latitude: float
     longitude: float
     created_at: datetime

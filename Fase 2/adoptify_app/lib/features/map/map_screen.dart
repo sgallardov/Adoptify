@@ -43,6 +43,10 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  // En la vista de fundación los detalles viven bajo /fundacion (HU-L)
+  bool get _isFoundationView => AuthScope.of(context).user?.isFoundation ?? false;
+  String get _base => _isFoundationView ? '/fundacion' : '';
+
   final _mapController = MapController();
   final _search = TextEditingController();
   final _searchFocus = FocusNode();
@@ -549,7 +553,7 @@ class _MapScreenState extends State<MapScreen> {
                             child: _AlertsPanel(
                               reports: _alerts!,
                               onOpen: (report) => context.push(
-                                '/reportes/${report.id}',
+                                '$_base/reportes/${report.id}',
                                 extra: report,
                               ),
                               onClose: () =>
@@ -621,7 +625,7 @@ class _MapScreenState extends State<MapScreen> {
                         animal: selectedAnimal,
                         onClose: _clearSelection,
                         onOpen: () => context.push(
-                          '/animales/${selectedAnimal.id}',
+                          '$_base/animales/${selectedAnimal.id}',
                           extra: selectedAnimal,
                         ),
                       ),
@@ -631,7 +635,7 @@ class _MapScreenState extends State<MapScreen> {
                         report: selectedReport,
                         onClose: _clearSelection,
                         onOpen: () => context.push(
-                          '/reportes/${selectedReport.id}',
+                          '$_base/reportes/${selectedReport.id}',
                           extra: selectedReport,
                         ),
                       ),
@@ -642,7 +646,9 @@ class _MapScreenState extends State<MapScreen> {
                         foundation: selectedFoundation,
                         onClose: _clearSelection,
                         onOpen: () => context.push(
-                          '/fundaciones/${selectedFoundation.id}',
+                          _isFoundationView
+                              ? '/fundacion/directorio/${selectedFoundation.id}'
+                              : '/fundaciones/${selectedFoundation.id}',
                           extra: selectedFoundation,
                         ),
                       ),
@@ -658,7 +664,8 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ],
-                    _ReportButton(onPressed: () => context.push('/reportar')),
+                    // La fundación gestiona reportes, no los crea (HU-L): el botón es solo de adoptantes
+                    if (!_isFoundationView) _ReportButton(onPressed: () => context.push('/reportar')),
                   ],
                 ),
               ),

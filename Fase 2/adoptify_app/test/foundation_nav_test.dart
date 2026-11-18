@@ -23,18 +23,19 @@ GoRouter routerOf(WidgetTester tester) =>
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('la fundación ve Inicio, Chat y Perfil, en ese orden', (tester) async {
+  testWidgets('la fundación ve Inicio, Mapa, Chat y Perfil, en ese orden', (tester) async {
     await openFoundation(tester);
 
     final home = tester.getCenter(find.text('Inicio').last).dx;
+    final map = tester.getCenter(find.text('Mapa')).dx;
     final chat = tester.getCenter(find.text('Chat')).dx;
     final profile = tester.getCenter(find.text('Perfil')).dx;
-    expect(home, lessThan(chat));
+    expect(home, lessThan(map));
+    expect(map, lessThan(chat));
     expect(chat, lessThan(profile));
 
     // Nada de la barra de adoptante
     expect(find.text('Fundaciones'), findsNothing);
-    expect(find.text('Mapa'), findsNothing);
     expect(find.text('Match'), findsNothing);
   });
 
@@ -145,7 +146,6 @@ void main() {
     routerOf(tester).go('/mapa');
     await tester.pumpAndSettle();
     expect(screenTitle('Inicio'), findsOneWidget);
-    expect(find.text('Mapa'), findsNothing);
 
     // /fundaciones es la pestaña de adoptante, no parte del área de fundación
     routerOf(tester).go('/fundaciones');

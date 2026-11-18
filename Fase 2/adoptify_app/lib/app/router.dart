@@ -73,6 +73,15 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
         ),
         StatefulShellBranch(
           routes: [
+            // Mismo mapa que ve el adoptante; la fundación además gestiona los reportes (HU-L)
+            GoRoute(
+              path: '/fundacion/mapa',
+              builder: (context, state) => MapScreen(refreshKey: state.extra),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
             GoRoute(
               path: '/fundacion/chat',
               builder: (context, state) => const FoundationChatScreen(),
@@ -93,6 +102,19 @@ GoRouter createAppRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: _foundationAddAnimal,
       builder: (context, state) => const AddAnimalScreen(),
+    ),
+    // Detalles abiertos desde el mapa de la fundación: dentro de /fundacion para que el redirect no la expulse
+    GoRoute(
+      path: '/fundacion/reportes/:id',
+      builder: (context, state) => ReportDetailScreen(report: state.extra as DogReport),
+    ),
+    GoRoute(
+      path: '/fundacion/animales/:id',
+      builder: (context, state) => AnimalDetailScreen(animal: state.extra as Animal),
+    ),
+    GoRoute(
+      path: '/fundacion/directorio/:id',
+      builder: (context, state) => FoundationDetailScreen(foundation: state.extra as Foundation),
     ),
     GoRoute(
       path: '/fundacion/mis-animales',
