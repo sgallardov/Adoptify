@@ -39,7 +39,9 @@ void main() {
 
       // HU-R: las mascotas en adopción se ven en Fundaciones y Match, no en el mapa
       expect(find.byKey(const ValueKey('animal-7')), findsNothing);
-      expect(api.requests.where((r) => r.url.path.startsWith('/animals')), isEmpty);
+      // HU-X: /animals solo se pide para el buscador; el mapa no dibuja pines de mascotas en adopción
+      final markerKeys = [for (final layer in tester.widgetList<MarkerLayer>(find.byType(MarkerLayer))) for (final m in layer.markers) '${m.key}'];
+      expect(markerKeys.where((k) => k.contains('animal')), isEmpty);
       expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
       final markers = tester
           .widget<MarkerLayer>(find.byType(MarkerLayer))
@@ -326,9 +328,9 @@ void main() {
       expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
       expect(find.byTooltip('Cerrar'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField), 'Luna');
+      await tester.enterText(find.byType(TextField), 'zzzz');
       await tester.pumpAndSettle();
-      expect(find.text('No encontramos reportes, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
+      expect(find.text('No encontramos reportes, mascotas, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
     },
   );
 

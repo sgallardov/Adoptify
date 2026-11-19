@@ -323,6 +323,12 @@ class MapService {
     return data.map((item) => DogReport.fromJson(item as Map<String, dynamic>)).toList();
   }
 
+  // Mascotas en adopción: ya no van en el mapa (HU-R), pero el buscador las encuentra y abre su ficha
+  Future<List<Animal>> fetchAnimals() async {
+    final data = await _api.get('/animals') as List<dynamic>;
+    return data.map((item) => Animal.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
   Future<DogReport> createReport(NewReport report) async {
     final data = await _api.post('/reports', report.toJson());
     return DogReport.fromJson(data as Map<String, dynamic>);

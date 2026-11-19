@@ -73,7 +73,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'perro negro herido');
       await tester.pumpAndSettle();
       expect(find.textContaining('Reporte ·'), findsNothing);
-      expect(find.text('No encontramos reportes, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
+      expect(find.text('No encontramos reportes, mascotas, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'grecia nunoa');
       await tester.pumpAndSettle();
@@ -83,6 +83,22 @@ void main() {
       await tester.enterText(find.byType(TextField), 'patitas');
       await tester.pumpAndSettle();
       expect(find.textContaining('Fundación ·'), findsWidgets);
+    });
+
+    testWidgets('perro muestra los reportes y las mascotas en adopción de esa especie', (tester) async {
+      await openMap(tester, FakeApi());
+      await tester.enterText(find.byType(TextField), 'perro');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Reporte ·'), findsOneWidget);
+      // Luna está disponible; Rocky ya fue adoptado y no aparece
+      expect(find.widgetWithText(ListTile, 'Luna'), findsOneWidget);
+      expect(find.textContaining('En adopción ·'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Rocky'), findsNothing);
+
+      // Tocar la mascota abre su ficha
+      await tester.tap(find.widgetWithText(ListTile, 'Luna'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FlutterMap), findsNothing);
     });
 
     testWidgets('elegir un reporte o una veterinaria centra el mapa y abre su tarjeta', (tester) async {

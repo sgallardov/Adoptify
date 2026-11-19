@@ -71,6 +71,9 @@ class _MapScreenState extends State<MapScreen> {
   String? _geoError;
 
   List<DogReport> _reports = [];
+  // Para el buscador: reportes a 100 km (aunque estén fuera del radio elegido) y mascotas en adopción
+  List<DogReport> _searchReports = [];
+  List<Animal> _animals = [];
   bool _loading = true;
   bool _error = false;
   int _request = 0;
@@ -117,10 +120,23 @@ class _MapScreenState extends State<MapScreen> {
       _load();
       _detectInitialLocation();
       _loadFoundations();
+      _loadSearchData();
     }
   }
 
   // Si falla, el mapa sigue funcionando sin los pines de fundaciones
+  // Si falla, el buscador sigue con lo que muestra el mapa
+  Future<void> _loadSearchData() async {
+    try {
+      final reports = await _service.fetchNearbyReports(_userPosition ?? santiago, _defaultReportsRadiusKm);
+      if (mounted) setState(() => _searchReports = reports);
+    } catch (_) {}
+    try {
+      final animals = await _service.fetchAnimals();
+      if (mounted) setState(() => _animals = [for (final a in animals) if (a.status != 'adopted') a]);
+    } catch (_) {}
+  }
+
   Future<void> _loadFoundations() async {
     try {
       final foundations = await _foundationService.fetchFoundations();
@@ -393,8 +409,16 @@ class _MapScreenState extends State<MapScreen> {
     _searchFocus.unfocus();
     var zoom = _mapReady ? _mapController.camera.zoom : _clinicsMinZoom;
     switch (hit.item) {
+      case final Animal animal:
+        // Las mascotas en adopción no tienen pin (HU-R): se abre su ficha
+        context.push('$_base/animales/${animal.id}', extra: animal);
+        return;
       case final DogReport report:
-        setState(() => _showReports = true);
+        setState(() {
+          _showReports = true;
+          // Un reporte fuera del radio elegido se agrega para que se vea su pin y su tarjeta
+          if (!_reports.any((r) => r.id == report.id)) _reports = [..._reports, report];
+        });
         _selectReport(report);
       case final Foundation foundation:
         setState(() => _showFoundations = true);
@@ -480,8 +504,9 @@ class _MapScreenState extends State<MapScreen> {
       return words.every(folded.contains);
     }
 
+    final reports = {for (final r in _searchReports) r.id: r, for (final r in _reports) r.id: r}.values;
     return [
-      for (final report in _reports)
+      for (final report in reports)
         if (matches(_reportSearchText(report)))
           _SearchHit(
             kind: _HitKind.report,
@@ -507,6 +532,15 @@ class _MapScreenState extends State<MapScreen> {
             subtitle: clinic.place ?? (clinic.emergency ? 'Urgencias' : ''),
             position: clinic.position,
             item: clinic,
+          ),
+      for (final animal in _animals)
+        if (matches(_animalSearchText(animal)))
+          _SearchHit(
+            kind: _HitKind.animal,
+            title: animal.name,
+            subtitle: [animal.summary, ?animal.foundationName].join(' · '),
+            position: animal.position ?? santiago,
+            item: animal,
           ),
     ].take(_maxResults).toList();
   }
@@ -908,7 +942,20 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-const _maxResults = 8;
+const _maxResults = 10;
+
+String _animalSearchText(Animal animal) => [
+      animal.name,
+      animal.species,
+      animal.size,
+      animal.statusLabel,
+      'adopcion',
+      ?animal.breed,
+      ?animal.gender,
+      ?animal.foundationName,
+      ?animal.commune,
+      ?animal.description,
+    ].join(' ');
 
 // Todo lo que se puede buscar de un reporte: valores y sus etiquetas en español
 String _reportSearchText(DogReport report) => [
@@ -926,6 +973,7 @@ String _reportSearchText(DogReport report) => [
 
 enum _HitKind {
   report('Reporte'),
+  animal('En adopción'),
   foundation('Fundación'),
   clinic('Veterinaria');
 
@@ -1216,7 +1264,7 @@ class _SearchBar extends StatelessWidget {
         // Tocar fuera del campo y de la lista (TextFieldTapRegion) cierra la búsqueda en web y en el teléfono
         onTapOutside: (_) => focusNode.unfocus(),
         decoration: InputDecoration(
-          hintText: 'Buscar reporte, fundación o veterinaria',
+          hintText: 'Buscar perro, gato, fundación, veterinaria…',
           prefixIcon: Icon(Icons.search, color: context.colors.textMuted),
           suffixIcon: controller.text.isEmpty
               ? null
@@ -1247,6 +1295,7 @@ class _SearchResults extends StatelessWidget {
         child: Center(
           child: switch (hit.item) {
             final DogReport report => MapPins.reportFor(report.species, taken: report.isTaken),
+            final Animal animal => AnimalPhoto(url: animal.photoUrl, size: 40),
             final Foundation foundation => FoundationAvatar(
                 name: foundation.name,
                 photoUrl: foundation.photoUrl,
@@ -1271,7 +1320,7 @@ class _SearchResults extends StatelessWidget {
               child: Semantics(
                 liveRegion: true,
                 child: Text(
-                  'No encontramos reportes, fundaciones ni veterinarias con esas palabras.',
+                  'No encontramos reportes, mascotas, fundaciones ni veterinarias con esas palabras.',
                   style: textTheme.bodyMedium,
                 ),
               ),
