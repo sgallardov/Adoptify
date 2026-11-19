@@ -227,12 +227,12 @@ entra al portal (`403` con "Esta cuenta es de adoptante. Inicia sesión desde la
 
 #### App móvil: vista de fundación (HU-L)
 * La barra de fundación es Inicio, Mapa, Chat y Perfil. `/fundacion/mapa` reutiliza `MapScreen`; los detalles se abren dentro del área de fundación (`/fundacion/reportes/:id`, `/fundacion/animales/:id`, `/fundacion/directorio/:id`) para que `sessionRedirect` no la expulse.
-
-#### App móvil: buscador del mapa (HU-X)
-* El buscador de `MapScreen` busca por palabras (todas deben aparecer, en cualquier orden, sin tildes ni mayúsculas) en lo que ya cargó el mapa: reportes (especie, tamaño, color, estados, condiciones, características, comportamiento y descripción), fundaciones (nombre y lugar) y veterinarias (nombre y dirección). No hay endpoint nuevo. Muestra hasta 8 resultados con su tipo (Reporte, Fundación, Veterinaria); al elegir uno (toque, clic o Enter para el primero) enciende su capa, centra el mapa (acercando lo justo para ver las veterinarias) y abre su tarjeta.
 * En el detalle del reporte, la fundación ve "Marcar para seguimiento" y "Lo tomamos" (o "Deshacer toma" si el caso es suyo). Si otra fundación lo tomó solo queda el seguimiento; un reporte resuelto no muestra acciones y una cuenta de adoptante nunca las ve. Ante `409` o `403` se muestra el mensaje del servidor y se vuelve a leer el reporte.
 * La fundación no ve el botón "Reportar mascota": gestiona reportes, no los crea.
 * **Decisión sobre el seguimiento por varias fundaciones:** "visto" sigue guardando una sola fundación por reporte (la última reemplaza a la anterior). Es una marca informativa de "alguien ya lo vio", no una lista de seguimiento; lo que da exclusividad es "tomado", que es único por reporte. No se crea la tabla `report_follows` (ni migración ni RLS) hasta que haya un caso real de varias fundaciones siguiendo el mismo reporte; si aparece, bastaría `report_follows (report_id, foundation_id)` con clave única y RLS activada.
+
+#### App móvil: buscador del mapa (HU-X)
+* El buscador de `MapScreen` busca por palabras (todas deben aparecer, en cualquier orden, sin tildes ni mayúsculas) en lo que ya cargó el mapa: reportes (especie, tamaño, color, estados, condiciones, características, comportamiento y descripción), fundaciones (nombre y lugar) y veterinarias (nombre y dirección). No hay endpoint nuevo. Muestra hasta 8 resultados con su tipo (Reporte, Fundación, Veterinaria); al elegir uno (toque, clic o Enter para el primero) enciende su capa, centra el mapa (acercando lo justo para ver las veterinarias) y abre su tarjeta.
 
 ### HU-12: Módulo de fundaciones (backend)
 Cada fundación gestiona solo sus propios animales.
