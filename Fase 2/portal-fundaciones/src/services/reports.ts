@@ -8,6 +8,9 @@ export type Report = {
   latitude: number; longitude: number; created_at: string; distance_km?: number
 }
 
+export const reportStatusLabels: Record<Report['status'], string> = { reported: 'Reportado', in_rescue: 'En rescate', resolved: 'Resuelto' }
+
+// Igual que el mapa de la app sin ubicación: 100 km alrededor de Santiago
 const santiago = { lat: -33.4489, lng: -70.6693, radius_km: 100 }
 
 export async function fetchReports(signal: AbortSignal): Promise<Report[]> {

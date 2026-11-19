@@ -194,8 +194,8 @@ class MapDot extends StatelessWidget {
 class MapPins {
   // Mascota en adopción: círculo naranjo con un corazón blanco y borde blanco. El ícono y el borde la
   // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
-  // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36); veterinarias y fundaciones van
-  // chicas (24) y atenuadas, y crecen al seleccionarlas
+  // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36); las veterinarias van chicas (24)
+  // y atenuadas, y crecen al seleccionarlas. Las fundaciones no tienen pin en el mapa.
   static const animal = AnimalPin(size: 32);
   static final report = MapDot(color: AdoptifyColors.light.report, size: reportSize);
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
@@ -213,14 +213,8 @@ class MapPins {
 
   static const double reportSize = 36;
 
-  // Fundaciones y veterinarias: gota chica y atenuada para no tapar los avisos; seleccionada crece y se ve plena
-  static const foundation = DropPin(width: 24, kind: DropKind.foundation);
-  static const selectedFoundation = DropPin(
-    width: 40,
-    kind: DropKind.foundation,
-    selected: true,
-  );
-  // Veterinarias: mismo tamaño que las fundaciones, gota roja con una cruz roja sobre blanco
+  // Veterinarias: gota roja chica y atenuada, con una cruz roja sobre blanco, para no tapar los avisos;
+  // seleccionada crece y se ve plena
   static const clinic = DropPin(width: 24, kind: DropKind.clinic);
   static const selectedClinic = DropPin(
     width: 40,
@@ -380,9 +374,9 @@ class CatPawPainter extends CustomPainter {
   bool shouldRepaint(CatPawPainter oldDelegate) => oldDelegate.color != color;
 }
 
-// Pin de gota: con una huella marca la sede de una fundación y con una cruz roja, una veterinaria. Se distingue de los puntos de
-// mascotas y reportes, y su punta queda justo sobre la ubicación (ver dropMarker).
-enum DropKind { foundation, clinic }
+// Pin de gota: con una cruz roja marca una veterinaria. Se distingue de los puntos de mascotas y reportes,
+// y su punta queda justo sobre la ubicación (ver dropMarker).
+enum DropKind { clinic }
 
 class DropPin extends StatelessWidget {
   const DropPin({
@@ -402,7 +396,6 @@ class DropPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (kind) {
-      DropKind.foundation => AdoptifyColors.light.foundation,
       DropKind.clinic => AdoptifyColors.light.report,
     };
     final onColor = AdoptifyColors.light.onAccent;
@@ -422,11 +415,6 @@ class DropPin extends StatelessWidget {
               height: width * 0.66,
               decoration: BoxDecoration(color: onColor, shape: BoxShape.circle),
               child: switch (kind) {
-                DropKind.foundation => Icon(
-                  Icons.pets,
-                  size: symbol,
-                  color: color,
-                ),
                 DropKind.clinic => Center(
                   child: CustomPaint(
                     size: Size.square(symbol),
