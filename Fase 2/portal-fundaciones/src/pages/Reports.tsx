@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import { HandHeart, Undo2 } from 'lucide-react'
-import { fetchMyFoundationId, fetchReports, takeReport, untakeReport } from '../services/reports'
+import { fetchMyFoundationId, fetchReports, reportStatusLabels, takeReport, untakeReport } from '../services/reports'
 import { reportAction } from '../services/reportActions'
 import type { Report } from '../services/reports'
 import { errorMessage } from '../services/api'
 import Feedback from '../components/Feedback'
 import PageHeading from '../components/PageHeading'
-import VeterinaryMap from '../components/VeterinaryMap'
-
-const labels = { reported: 'Reportado', in_rescue: 'En rescate', resolved: 'Resuelto' }
+import ReportsMap from '../components/ReportsMap'
 
 export default function Reports() {
   const [reports, setReports] = useState<Report[] | null>(null)
@@ -16,6 +14,8 @@ export default function Reports() {
   const [busy, setBusy] = useState<number | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [myFoundationId, setMyFoundationId] = useState<number | null>(null)
+  // Reporte elegido en el mapa: su tarjeta se resalta
+  const [highlighted, setHighlighted] = useState<number | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,14 +45,21 @@ export default function Reports() {
     catch (cause) { setError(errorMessage(cause, 'No se pudo actualizar el reporte.')) }
     finally { setBusy(null) }
   }
+  // "Ver reporte" en el popup del mapa: lleva a su tarjeta (con el foco, para seguir con el teclado)
+  function showReport(id: number) {
+    setHighlighted(id)
+    const card = document.getElementById(`reporte-${id}`)
+    card?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    card?.focus({ preventScroll: true })
+  }
   return <>
     <PageHeading eyebrow="Respuesta coordinada" title="Reportes cercanos" description="Toma un caso para coordinar su rescate; si te equivocaste, puedes deshacer la toma. Los casos de otra fundación no se pueden tomar." />
-    <VeterinaryMap />
+    <ReportsMap reports={reports} onShowReport={showReport} />
     {error && <div className="mb-5"><Feedback kind="error" title={error} actionLabel="Reintentar" onAction={() => setAttempt(value => value + 1)} /></div>}
     {reports === null && !error && <Feedback kind="loading" title="Cargando reportes…" />}
     {reports?.length === 0 && <Feedback kind="empty" title="No hay reportes cercanos" description="Los nuevos avisos aparecerán aquí." />}
-    <div className="grid gap-4 lg:grid-cols-2">{reports?.map(report => <article key={report.id} className="rounded-2xl border border-base-200 bg-surface p-5">
-      <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold capitalize">{report.species ?? 'Mascota'} · {report.size ?? 'Tamaño no informado'}</h2><p className="mt-1 text-sm text-base-500">{labels[report.status]}</p></div><span className="rounded-full bg-danger-50 px-3 py-1 text-xs font-semibold text-danger-700">#{report.id}</span></div>
+    <div className="grid gap-4 lg:grid-cols-2">{reports?.map(report => <article key={report.id} id={`reporte-${report.id}`} tabIndex={-1} className={`scroll-mt-6 rounded-2xl border bg-surface p-5 outline-none ${highlighted === report.id ? 'border-brand-500 ring-2 ring-brand-500' : 'border-base-200'}`}>
+      <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold capitalize">{report.species ?? 'Mascota'} · {report.size ?? 'Tamaño no informado'}</h2><p className="mt-1 text-sm text-base-500">{reportStatusLabels[report.status]}</p></div><span className="rounded-full bg-danger-50 px-3 py-1 text-xs font-semibold text-danger-700">#{report.id}</span></div>
       <p className="mt-4 text-sm leading-6 text-base-700">{report.description}</p>
       {report.foundation_name && <p className="mt-3 text-sm font-medium text-success-800">Caso tomado por {report.foundation_name}</p>}
       {!report.foundation_name && report.seen_at && <p className="mt-3 text-sm text-base-600">Una fundación ya vio este reporte.</p>}

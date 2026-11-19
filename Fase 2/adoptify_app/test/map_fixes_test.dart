@@ -31,7 +31,7 @@ void main() {
   tearDown(() => LocationService.instance = LocationService());
 
   group('buscador', () {
-    testWidgets('tocar un resultado cierra la lista, limpia el buscador y abre la ficha', (tester) async {
+    testWidgets('tocar un resultado cierra la lista, limpia el buscador y abre lo elegido', (tester) async {
       await openMap(tester, FakeApi());
       await tester.enterText(find.byType(TextField), 'patitas');
       await tester.pumpAndSettle();
@@ -43,11 +43,12 @@ void main() {
       await press.up();
       await tester.pumpAndSettle();
 
+      // Las fundaciones no tienen pin en el mapa: se abre su perfil
+      expect(find.text('Contacto de la fundación'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsNothing);
       expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
-      // Ficha de la fundación abierta en el mapa
-      expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
-      expect(find.byTooltip('Cerrar'), findsOneWidget);
     }, variant: _platforms);
 
     testWidgets('Enter elige el primer resultado', (tester) async {
@@ -58,7 +59,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsNothing);
-      expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
+      expect(find.text('Contacto de la fundación'), findsOneWidget);
     });
 
     // HU-X: búsqueda por palabras en reportes, fundaciones y veterinarias
@@ -196,7 +197,7 @@ void main() {
 
       final legend = find.byKey(const ValueKey('map-legend'));
       expect(find.text('Qué significa cada pin'), findsOneWidget);
-      for (final item in ['Perro reportado', 'Gato reportado', 'Fundación', 'Veterinaria']) {
+      for (final item in ['Perro reportado', 'Gato reportado', 'Veterinaria']) {
         expect(find.descendant(of: legend, matching: find.text(item)), findsOneWidget);
       }
       // HU-R: el mapa ya no muestra mascotas en adopción

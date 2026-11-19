@@ -42,6 +42,8 @@
   --color-surface: #ffffff;
   /* Texto e íconos sobre fondos de color (botones, pines, banners): blanco en ambos modos */
   --color-on-accent: #ffffff;
+  /* Insignia de "caso tomado" en los pines: el mismo verde en ambos modos (successStrong de la app) */
+  --color-success-strong: #15803d;
 }
 
 /* Modo oscuro: mismos nombres de color, valores para fondo oscuro.
