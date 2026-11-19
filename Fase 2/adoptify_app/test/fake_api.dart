@@ -67,6 +67,9 @@ class FakeApi {
   bool offline = false;
   bool animalsFail = false;
   bool reportsFail = false;
+  // Los reportes nuevos quedan fuera del radio: /reports/nearby no los devuelve, pero GET /reports/{id} sí
+  bool newReportsOutsideRadius = false;
+  final _outsideRadius = <int>{};
   bool interestedFail = false;
   bool foundationsFail = false;
   // Nombre y contraseña de Matías: se pueden cambiar desde el Perfil
@@ -901,7 +904,7 @@ class FakeApi {
         ]));
       case '/reports/nearby':
         if (reportsFail) return _json(503, {'detail': 'No se pudo consultar los reportes.'});
-        return _json(200, reports);
+        return _json(200, reports.where((report) => !_outsideRadius.contains(report['id'])).toList());
       case '/reports':
         if (request.headers['Authorization'] != 'Bearer $validToken') {
           return _json(401, {'detail': 'Not authenticated'});
@@ -926,6 +929,7 @@ class FakeApi {
           'created_at': '2026-10-29T12:00:00Z',
         };
         reports.add({...report, 'distance_km': 0.1});
+        if (newReportsOutsideRadius) _outsideRadius.add(report['id'] as int);
         return _json(201, report);
     }
     return _json(404, {'detail': 'Not Found'});

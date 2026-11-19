@@ -89,6 +89,8 @@ class _MapScreenState extends State<MapScreen> {
   bool _showClinics = true;
 
   int? _selectedReportId;
+  // Reporte recién publicado desde /reportar (llega como refreshKey): al cargar se muestra y se selecciona
+  int? _newReportId;
   int? _selectedFoundationId;
   int? _selectedClinicId;
 
@@ -111,6 +113,7 @@ class _MapScreenState extends State<MapScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_request == 0) {
+      _newReportId = _reportIdOf(widget.refreshKey);
       _load();
       _detectInitialLocation();
       _loadFoundations();
@@ -195,7 +198,42 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void didUpdateWidget(MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.refreshKey != oldWidget.refreshKey) _load();
+    if (widget.refreshKey != oldWidget.refreshKey) {
+      _newReportId = _reportIdOf(widget.refreshKey);
+      _load();
+    }
+  }
+
+  static int? _reportIdOf(Object? refreshKey) => refreshKey is int ? refreshKey : null;
+
+  // Tu reporte recién publicado se ve siempre, aunque quede fuera del radio elegido (el radio filtra
+  // alrededor de tu ubicación, pero el punto del reporte se marca donde está la mascota). Se selecciona
+  // y el mapa se mueve hasta él, para que veas que quedó publicado.
+  Future<void> _showNewReport(int reportId, int request) async {
+    var report = _reports.where((r) => r.id == reportId).firstOrNull;
+    if (report == null) {
+      try {
+        report = await _service.fetchReport(reportId);
+      } catch (_) {
+        if (mounted && request == _request) _fitToPoints();
+        return;
+      }
+      if (!mounted || request != _request) return;
+    }
+    final found = report;
+    setState(() {
+      if (!_reports.any((r) => r.id == found.id)) _reports = [..._reports, found];
+      _showReports = true;
+      _selectedReportId = found.id;
+      _selectedFoundationId = null;
+      _selectedClinicId = null;
+      // Que un encuadre posterior (radio, ubicación) no lo saque de la vista
+      _autoFit = false;
+    });
+    if (_mapReady) {
+      final zoom = _mapController.camera.zoom;
+      _mapController.move(found.position, zoom < _userZoom ? _userZoom : zoom);
+    }
   }
 
   @override
@@ -230,7 +268,13 @@ class _MapScreenState extends State<MapScreen> {
         _reports = reports;
         _loading = false;
       });
-      _fitToPoints();
+      final newReportId = _newReportId;
+      _newReportId = null;
+      if (newReportId != null) {
+        await _showNewReport(newReportId, request);
+      } else {
+        _fitToPoints();
+      }
     } catch (_) {
       if (!mounted || request != _request) return;
       setState(() {
@@ -811,7 +855,13 @@ class _MapScreenState extends State<MapScreen> {
         },
         onMapReady: () {
           _mapReady = true;
-          _fitToPoints();
+          // Si tu reporte recién publicado llegó antes que el mapa, se centra en él
+          final selected = _reports.where((r) => r.id == _selectedReportId).firstOrNull;
+          if (!_autoFit && selected != null) {
+            _mapController.move(selected.position, _userZoom);
+          } else {
+            _fitToPoints();
+          }
         },
       ),
       children: [
