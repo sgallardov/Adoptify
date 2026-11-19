@@ -48,6 +48,37 @@ class Conversation {
   );
 }
 
+// Pregunta automática del cuestionario de adopción (HU-G3). Al apretar "Conversar" junto a un
+// interesado, el chat le hace las preguntas de la fundación una a una; el adoptante responde aquí.
+class QuestionInfo {
+  const QuestionInfo({
+    required this.formId,
+    required this.index,
+    required this.total,
+    required this.kind,
+    required this.options,
+    required this.required,
+  });
+
+  final int formId;
+  // 0 = primera pregunta
+  final int index;
+  final int total;
+  // text | yes_no | choice
+  final String kind;
+  final List<String> options;
+  final bool required;
+
+  factory QuestionInfo.fromJson(Map<String, dynamic> json) => QuestionInfo(
+    formId: json['form_id'] as int,
+    index: json['index'] as int,
+    total: json['total'] as int,
+    kind: json['kind'] as String,
+    options: [for (final option in json['options'] as List<dynamic>? ?? const []) option as String],
+    required: json['required'] as bool? ?? true,
+  );
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -55,6 +86,8 @@ class ChatMessage {
     required this.createdAt,
     required this.fromFoundation,
     required this.mine,
+    this.kind = 'text',
+    this.question,
   });
 
   final int id;
@@ -62,6 +95,9 @@ class ChatMessage {
   final DateTime createdAt;
   final bool fromFoundation;
   final bool mine;
+  // text | question (pregunta automática del cuestionario) | answer (respuesta del adoptante)
+  final String kind;
+  final QuestionInfo? question;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
     id: json['id'] as int,
@@ -69,10 +105,21 @@ class ChatMessage {
     createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     fromFoundation: json['from_foundation'] as bool,
     mine: json['mine'] as bool,
+    kind: json['kind'] as String? ?? 'text',
+    question: json['question'] == null ? null : QuestionInfo.fromJson(json['question'] as Map<String, dynamic>),
   );
 }
 
-// Llamadas de /conversations. El adoptante solo lee y responde: las conversaciones las abre una fundación.
+// La pregunta que espera respuesta: la última pregunta automática, si después no llegó su respuesta
+ChatMessage? pendingQuestion(List<ChatMessage> messages) {
+  for (final message in messages.reversed) {
+    if (message.kind == 'answer') return null;
+    if (message.kind == 'question' && message.question != null) return message;
+  }
+  return null;
+}
+
+// Llamadas de /conversations. Las conversaciones las abre una fundación; el adoptante lee y responde.
 class MessagesService {
   MessagesService(this._api);
 
@@ -95,6 +142,20 @@ class MessagesService {
   Future<ChatMessage> send(int conversationId, String body) async {
     final data = await _api.post('/conversations/$conversationId/messages', {'body': body});
     return ChatMessage.fromJson(data as Map<String, dynamic>);
+  }
+
+  // Fundación: abre (o recupera) el chat con una persona interesada o postulada. Con animalId
+  // ("Conversar" desde los interesados de una mascota) empieza el cuestionario de adopción, una sola vez.
+  Future<Conversation> open(int userId, {int? animalId}) async {
+    final data = await _api.post('/conversations', {'user_id': userId, 'animal_id': ?animalId});
+    return Conversation.fromJson(data as Map<String, dynamic>);
+  }
+
+  // Adoptante: responde la pregunta pendiente (true/false, una alternativa o texto; null salta una
+  // opcional). Devuelve su respuesta y la siguiente pregunta, o el cierre si era la última.
+  Future<List<ChatMessage>> answer(int conversationId, int formId, Object? answer) async {
+    final data = await _api.post('/conversations/$conversationId/forms/$formId/answer', {'answer': answer}) as List<dynamic>;
+    return [for (final item in data) ChatMessage.fromJson(item as Map<String, dynamic>)];
   }
 }
 

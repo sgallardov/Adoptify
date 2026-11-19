@@ -253,10 +253,10 @@ async def test_foundation_sees_only_safe_interested_users_for_its_animals(async_
     payload = response.json()
     assert [item["animal_id"] for item in payload] == [own.id]
     interested = payload[0]["interested"]
-    # Sin "Quiero adoptar" el match queda vacío
+    # Sin "Quiero adoptar" el match queda vacío; sin "Conversar" no hay cuestionario (HU-G3)
     assert interested == [{
         "user_id": adopter.id, "full_name": adopter.full_name,
-        "favorited_at": interested[0]["favorited_at"], "match_score": None,
+        "favorited_at": interested[0]["favorited_at"], "match_score": None, "questionnaire": None,
     }]
     assert not {"email", "rut", "phone", "rut_hash", "preferences"}.intersection(interested[0])
 

@@ -69,7 +69,7 @@ async def world(async_client: AsyncClient, db_session: AsyncSession):
     for key, u in users.items():
         response = await async_client.post("/api/v1/auth/login", json={"email": u.email, "password": PASSWORD})
         headers[key] = {"Authorization": f"Bearer {response.json()['access_token']}"}
-    yield {"foundations": foundations, "users": users, "headers": headers}
+    yield {"foundations": foundations, "users": users, "headers": headers, "animals": animals}
 
     await db_session.execute(delete(Animal).where(Animal.foundation_id.in_([f.id for f in foundations])))
     await db_session.execute(delete(User).where(User.id.in_([u.id for u in users.values()])))

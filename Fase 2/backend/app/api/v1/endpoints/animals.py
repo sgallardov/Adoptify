@@ -9,9 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.endpoints.auth import get_current_user, get_optional_user
 from app.db.database import get_db
+from app.models.adoption_form import AdoptionFormRequest
 from app.models.animal import Animal
 from app.models.animal_favorite import AnimalFavorite
+from app.models.conversation import Conversation
 from app.models.user import User
+from app.schemas.adoption_form import QuestionnaireSummary
 from app.schemas.animal import (
     AnimalCreate,
     AnimalInterestedResponse,
@@ -23,6 +26,7 @@ from app.schemas.animal import (
     PublicAnimalResponse,
 )
 from app.services.communes import COMMUNES
+from app.services.adoption_questionnaire import flagged_list
 from app.services.match import calculate_match_score
 
 router = APIRouter()
@@ -150,6 +154,13 @@ async def _interested_for(animals, db: AsyncSession) -> list[AnimalInterestedRes
         except SQLAlchemyError as exc:
             raise HTTPException(status_code=503, detail="No se pudieron consultar las personas interesadas.") from exc
 
+        try:
+            summaries = await _questionnaires_for(ids, db)
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=503, detail="No se pudieron consultar las personas interesadas.") from exc
+    else:
+        summaries = {}
+
     by_id = {animal.id: animal for animal in animals}
     grouped = {
         animal.id: AnimalInterestedResponse(
@@ -162,9 +173,28 @@ async def _interested_for(animals, db: AsyncSession) -> list[AnimalInterestedRes
         # Sin la ficha "Quiero adoptar" no hay con qué comparar: el match queda vacío
         score = calculate_match_score(preferences, by_id[row.animal_id]) if "adoption_profile" in preferences else None
         grouped[row.animal_id].interested.append(
-            InterestedUserResponse(user_id=row.id, full_name=row.full_name, favorited_at=row.created_at, match_score=score)
+            InterestedUserResponse(
+                user_id=row.id, full_name=row.full_name, favorited_at=row.created_at, match_score=score,
+                questionnaire=summaries.get((row.animal_id, row.id)),
+            )
         )
     return list(grouped.values())
+
+
+async def _questionnaires_for(animal_ids: list[int], db: AsyncSession) -> dict[tuple[int, int], QuestionnaireSummary]:
+    """Estado del cuestionario de adopción (HU-G3) por (animal, persona)."""
+    rows = (await db.execute(
+        select(AdoptionFormRequest, Conversation.user_id)
+        .join(Conversation, Conversation.id == AdoptionFormRequest.conversation_id)
+        .where(AdoptionFormRequest.animal_id.in_(animal_ids))
+    )).all()
+    return {
+        (form.animal_id, user_id): QuestionnaireSummary(
+            id=form.id, answered=len(form.answers), total=len(form.questions), completed=form.completed,
+            flagged=sum(flagged_list(form)), decision=form.decision,
+        )
+        for form, user_id in rows
+    }
 
 
 @router.get("/management/{animal_id}", response_model=AnimalResponse)

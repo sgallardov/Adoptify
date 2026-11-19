@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { QuestionKind } from './adoptionForm'
 
 export const MAX_MESSAGE_LENGTH = 1000
 // Sondeo (HU-G2): sin WebSockets. Más seguido dentro del chat abierto que en la lista
@@ -24,11 +25,18 @@ export type Message = {
   created_at: string
   from_foundation: boolean
   mine: boolean
+  // question: pregunta automática del cuestionario; answer: respuesta del adoptante (HU-G3)
+  kind: 'text' | 'question' | 'answer'
+  question: QuestionInfo | null
 }
 
-// Abre el chat con un interesado o postulado; si ya existía, la API devuelve el mismo
-export async function openConversation(userId: number): Promise<Conversation> {
-  return (await api.post<Conversation>('/conversations', { user_id: userId })).data
+// Solo en las preguntas automáticas; index parte en 0
+export type QuestionInfo = { form_id: number; animal_id: number; index: number; total: number; kind: QuestionKind; options: string[]; required: boolean }
+
+// Abre el chat con un interesado o postulado; si ya existía, la API devuelve el mismo.
+// Con animalId (Conversar desde los interesados de una mascota) empieza el cuestionario de adopción, una sola vez.
+export async function openConversation(userId: number, animalId?: number): Promise<Conversation> {
+  return (await api.post<Conversation>('/conversations', animalId === undefined ? { user_id: userId } : { user_id: userId, animal_id: animalId })).data
 }
 
 export async function fetchConversations(signal: AbortSignal): Promise<Conversation[]> {

@@ -26,6 +26,8 @@ class Foundation(Base):
     # Foto de perfil: referencia storage:<archivo> o enlace externo, igual que photo_url de animales
     photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # False: usa las preguntas de adopción sugeridas; True: las que guardó en su editor (HU-G3)
+    adoption_form_customized: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     # Ubicación geográfica de la sede de la fundación (SRID 4326: WGS84 GPS estándar)
     location = mapped_column(

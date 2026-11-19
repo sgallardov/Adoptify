@@ -40,7 +40,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/animales` (Mis casos): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre y filtros por especie y estado.
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de compatibilidad, "83 % compatible"; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
 - `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
-- `/fundacion`: perfil de la organización de ejemplo y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
+- `/fundacion`: perfil de la organización de ejemplo, sección **Preguntas de adopción** (HU-G3: parte con 8 sugeridas; texto, sí/no o alternativas, con la respuesta que no cumple) y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
 - Sidebar en escritorio y menú desplegable en pantallas pequeñas.
 - Etiquetas accesibles, navegación por teclado y estados sin resultados.
 
@@ -178,6 +178,14 @@ línea; el límite es de 1000 caracteres, con contador.
 Sin WebSockets: `hooks/usePolling.ts` pide la lista cada 15 s y los mensajes nuevos del chat abierto cada 10 s
 (`after_id`), solo mientras la pestaña está visible. Un fallo del sondeo no borra lo que ya se ve. Llamadas en
 `services/conversations.ts`, pantalla en `pages/Messages.tsx`.
+
+**Cuestionario de adopción (HU-G3):** **Conversar** en los Interesados de una mascota (`/animales/:id`) abre el chat
+y le hace a la persona las preguntas de *Mi fundación* una a una; en el chat se ven como "Pregunta automática 3 de 8".
+Junto a la persona aparece el avance ("Respondiendo 3 de 8") y, al terminar, **Ver postulación**: un pop-up
+(`components/QuestionnaireDialog.tsx`, `<dialog>` nativo) con las respuestas, las que no cumplen en rojo y los botones
+**Aceptar** / **Rechazar**, que muestran un mensaje predeterminado editable antes de enviarlo por el chat. La tarjeta de
+Mis casos muestra **N por revisar**. Llamadas en `services/adoptionForm.ts`; validación, mensajes y estados en
+`services/adoptionFormEditor.ts` (pruebas en `tests/adoptionForm.test.mjs`; `npm test` necesita Node 22.6 o más).
 
 ## Modo oscuro
 

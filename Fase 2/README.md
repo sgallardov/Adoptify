@@ -425,7 +425,7 @@ Un favorito expresa interés, pero **no crea un chat automáticamente**. La fund
 
 Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.
 
-En el portal, **Conversar** abre (o retoma) el chat con esa persona (HU-G2). En la app, por ahora solo abre la pestaña Chat con ese `user_id` (sin crear mensajes).
+**Conversar** abre (o retoma) el chat con esa persona (HU-G2), en el portal y en la app.
 
 ### Chat entre fundación y adoptante (HU-G2)
 
@@ -439,7 +439,47 @@ Una sola conversación por par fundación-usuario (`conversations`, único por `
 | `POST /api/v1/conversations/{id}/messages` | Solo los dos participantes (`404` para otros). `{"body"}` de 1 a 1000 caracteres, sin contar espacios al borde; vacío o más largo, `422`. El adoptante responde en las existentes, no abre nuevas. |
 
 * **Sin WebSockets: sondeo.** El portal pide la lista cada 15 s y el chat abierto cada 10 s (solo lo nuevo, con `after_id`), y solo mientras la pestaña está visible. Así un mensaje aparece en 10 s o menos. Se eligió por simple y porque cada consulta a Supabase cuesta ~55 ms; si el uso crece, se puede pasar a WebSockets sin cambiar las tablas.
-* **Alcance actual:** vista de chat en el portal (`/mensajes`) y pestaña **Mensajes** del adoptante en la app, con el mismo sondeo. La pestaña Chat de la fundación en la app sigue con el esqueleto.
+* **Alcance actual:** vista de chat en el portal (`/mensajes`), pestaña **Mensajes** del adoptante y pestaña **Chat** de la fundación en la app (misma lista y chat, `/fundacion/mensajes/:id`), con el mismo sondeo.
+
+### Cuestionario de adopción por chat (HU-G3)
+
+Al apretar **Conversar** junto a una persona interesada en una mascota (portal: Mis casos → ficha → Interesados;
+app: Mis animales → interesados), el chat le hace **las preguntas de la fundación una a una**. Cada respuesta se
+guarda y llega la siguiente; al terminar, la fundación abre **Ver postulación** (pop-up en el portal), ve las
+respuestas con las que **no cumplen marcadas en rojo** y la **acepta o rechaza** con un mensaje predeterminado que
+puede editar. Nada se rechaza solo: decide la fundación.
+
+* **Preguntas sugeridas:** toda fundación parte con 8 (`services/adoption_questionnaire.py`, `DEFAULT_QUESTIONS`):
+  mayor de 18, hogar de acuerdo, vivienda que permite mascotas, cierre seguro, gastos y Ley Cholito, qué haría si se
+  cambia, visita y seguimiento (las 7 filtran) y por qué quiere adoptar (texto). Se editan en **Mi fundación →
+  Preguntas de adopción**; "Volver a las sugeridas" las restablece. Sin preguntas, Conversar solo abre el chat.
+* **Una sola vez por persona y mascota** (`UNIQUE (conversation_id, animal_id)`); tampoco empieza otro mientras la
+  persona responde uno en la misma conversación. Cada cuestionario guarda una **copia** de las preguntas: editarlas
+  después no lo cambia.
+* **Migración `0023`** (idempotente; la primera versión de HU-G3 ya estaba en la BD compartida), tablas con RLS:
+  * `foundations.adoption_form_customized`: `false` usa las sugeridas.
+  * `adoption_form_questions`: `label` (hasta 200), `kind` (`text` | `yes_no` | `choice`), `options` (solo `choice`,
+    2 a 10), `required` y `flagged_answers` (lo que no cumple: `false`/`true` o alternativas; al menos una alternativa
+    debe cumplir). Máximo 20.
+  * `adoption_form_requests`: `conversation_id`, `animal_id`, `questions` (copia), `answers` (crece de a una),
+    `answered_at`, `decision` (`accepted` | `rejected`) y `decided_at`.
+  * `messages.kind`: `text` | `question` (pregunta automática, sin remitente) | `answer`. Las preguntas traen
+    `question: {form_id, animal_id, index, total, kind, options, required}` para mostrar los botones.
+
+| Endpoint | Descripción |
+|---|---|
+| `POST /api/v1/conversations` | Con `animal_id` (opcional) empieza el cuestionario de esa mascota: saludo y primera pregunta. `404` si la mascota no es de la fundación. |
+| `GET / PUT / DELETE /api/v1/foundations/me/adoption-form` | Ver (`customized` indica si son propias), reemplazar o volver a las sugeridas. `403` para adoptantes; `422` con preguntas inválidas. |
+| `POST /api/v1/conversations/{id}/forms/{form_id}/answer` | Solo el adoptante. `{"answer": true \| "texto" \| null}` responde la pregunta pendiente (`null` salta una opcional). Devuelve su respuesta y la siguiente pregunta (o el cierre). `422` si no corresponde al tipo, `409` si ya terminó. |
+| `GET /api/v1/adoption-form-requests/{id}` | Solo la fundación de la mascota: preguntas, respuestas y `flagged` (cuál no cumple). Sin contacto ni RUT; otra fundación recibe `404`. |
+| `POST /api/v1/adoption-form-requests/{id}/decision` | `{"decision": "accepted" \| "rejected", "message": "..."}`. Envía el mensaje por el chat y deja la decisión; `409` si faltan respuestas o ya se decidió. |
+
+`GET /animals/interested` y `/animals/{id}/interested` traen por persona `questionnaire: {id, answered, total,
+completed, flagged, decision}` (o `null`), y la tarjeta de Mis casos muestra **N por revisar**.
+
+* **App (adoptante):** en el chat, las preguntas de sí o no y de alternativas se responden con botones (reemplazan
+  al campo de texto) y las abiertas escribiendo; "Prefiero no responder" salta las opcionales.
+* **App (fundación):** "Conversar" en los interesados manda `animal_id`. Ver la postulación es solo en el portal.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 

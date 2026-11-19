@@ -148,18 +148,85 @@ class FakeApi {
     {'id': 5, 'foundation_id': 1, 'foundation_name': 'Fundación Patitas', 'user_id': 1,
      'user_name': 'Matías Adoptante', 'created_at': '2026-11-15T12:00:00Z'},
   ];
+  // "mine" no se guarda: depende de quién mira (Matías o la fundación)
   final chatMessages = <int, List<Map<String, dynamic>>>{
     5: [
       {'id': 1, 'body': '¡Hola Matías! ¿Te gustaría conocer a Luna?', 'created_at': '2026-11-15T12:05:00Z',
-       'from_foundation': true, 'mine': false},
+       'from_foundation': true},
     ],
   };
   var _nextMessageId = 100;
 
+  // Cuestionario de adopción de la fundación (HU-G3) y los empezados con "Conversar", por id
+  final formQuestions = <Map<String, dynamic>>[
+    {'label': '¿Vives en casa o departamento?', 'kind': 'choice', 'options': ['Casa', 'Departamento'], 'required': true},
+    {'label': '¿Todos en tu hogar están de acuerdo?', 'kind': 'yes_no', 'options': <String>[], 'required': true},
+    {'label': 'Cuéntanos de tus mascotas anteriores', 'kind': 'text', 'options': <String>[], 'required': false},
+  ];
+  final formRequests = <int, Map<String, dynamic>>{};
+  var _nextFormId = 1;
+  static const questionnaireFinished =
+      '¡Gracias por responder! Enviamos tus respuestas a la fundación; te contaremos por aquí cómo sigue tu postulación.';
+
   // La fundación escribe desde el portal: llega a la app en la siguiente vuelta del sondeo
   void foundationWrites(int conversationId, String body) {
     chatMessages[conversationId]!.add({'id': _nextMessageId++, 'body': body, 'created_at': '2026-11-15T12:30:00Z',
-      'from_foundation': true, 'mine': false});
+      'from_foundation': true});
+  }
+
+  // "Conversar" desde los interesados de una mascota: como el backend, el cuestionario empieza una sola vez
+  // por persona y mascota, y no si hay otro a medias en la conversación. Devuelve el id o null.
+  int? startQuestionnaire(int conversationId, int animalId) {
+    final existing = formRequests.values.where((form) => form['conversation_id'] == conversationId);
+    if (formQuestions.isEmpty ||
+        existing.any((form) => form['animal_id'] == animalId || form['answered_at'] == null)) {
+      return null;
+    }
+    final form = <String, dynamic>{'id': _nextFormId++, 'conversation_id': conversationId, 'animal_id': animalId,
+      'questions': [for (final q in formQuestions) {...q}], 'answers': <Object?>[], 'answered_at': null};
+    formRequests[form['id'] as int] = form;
+    chatMessages[conversationId]!.add({'id': _nextMessageId++, 'from_foundation': true, 'automatic': true,
+      'body': '¡Hola, Matías! Gracias por tu interés en Luna. Antes de seguir, te haremos '
+          '${formQuestions.length} preguntas cortas para conocerte. Responde aquí mismo.',
+      'created_at': '2026-11-15T12:40:00Z'});
+    _askQuestion(form, 0);
+    return form['id'] as int;
+  }
+
+  void _askQuestion(Map<String, dynamic> form, int index) {
+    final question = (form['questions'] as List<dynamic>)[index] as Map<String, dynamic>;
+    chatMessages[form['conversation_id']]!.add({'id': _nextMessageId++, 'body': question['label'],
+      'created_at': '2026-11-15T12:41:00Z', 'from_foundation': true, 'automatic': true, 'kind': 'question',
+      'form_id': form['id'], 'index': index});
+  }
+
+  Map<String, dynamic> _messageJson(Map<String, dynamic> message, {required bool asFoundation}) {
+    final form = formRequests[message['form_id']];
+    final index = message['index'] as int?;
+    final question = form == null || index == null ? null : (form['questions'] as List<dynamic>)[index] as Map<String, dynamic>;
+    return {
+      'id': message['id'], 'body': message['body'], 'created_at': message['created_at'],
+      'from_foundation': message['from_foundation'],
+      // Los mensajes automáticos no son de nadie: ni Matías ni la fundación los ven como propios
+      'mine': message['automatic'] != true && message['from_foundation'] == asFoundation,
+      'kind': message['kind'] ?? 'text',
+      'question': question == null || message['kind'] != 'question' ? null : {
+        'form_id': form!['id'], 'animal_id': form['animal_id'], 'index': index, 'total': (form['questions'] as List).length,
+        'kind': question['kind'], 'options': question['options'], 'required': question['required'],
+      },
+    };
+  }
+
+  String? _answerError(Map<String, dynamic> question, Object? answer) {
+    if (answer is String && answer.trim().isEmpty) {
+      answer = null;
+    }
+    if (answer == null) {
+      return question['required'] == true ? 'Esta pregunta es obligatoria.' : null;
+    }
+    if (question['kind'] == 'yes_no' && answer is! bool) return 'Responde sí o no.';
+    if (question['kind'] == 'choice' && !(question['options'] as List).contains(answer)) return 'Elige una de las alternativas.';
+    return null;
   }
 
   Map<String, dynamic> _conversationJson(Map<String, dynamic> conversation) {
@@ -376,23 +443,73 @@ class FakeApi {
       return http.Response('', 204);
     }
 
-    // Chat (HU-G2): solo Matías participa; cualquier otra cuenta recibe 404, como en el backend
-    final chat = RegExp(r'^/conversations/(\d+)/messages$').firstMatch(request.url.path);
+    // Chat (HU-G2): participan Matías y la fundación de prueba; cualquier otra cuenta recibe 404, como en el backend
+    final asFoundation = request.headers['Authorization'] == 'Bearer $foundationToken';
+    final inChat = loggedIn || asFoundation;
+    final chat = RegExp(r'^/conversations/(\d+)/(messages|forms/(\d+)/answer)$').firstMatch(request.url.path);
     if (chat != null) {
-      if (!loggedIn) return _json(404, {'detail': 'Conversación no encontrada.'});
-      final messages = chatMessages[int.parse(chat.group(1)!)];
-      if (messages == null) return _json(404, {'detail': 'Conversación no encontrada.'});
+      final conversationId = int.parse(chat.group(1)!);
+      final messages = chatMessages[conversationId];
+      if (!inChat || messages == null) return _json(404, {'detail': 'Conversación no encontrada.'});
+      // Responder la pregunta pendiente del cuestionario (HU-G3)
+      if (chat.group(3) != null) {
+        if (asFoundation) return _json(403, {'detail': 'Solo quien postula puede responder el cuestionario.'});
+        final form = formRequests[int.parse(chat.group(3)!)];
+        if (form == null || form['conversation_id'] != conversationId) {
+          return _json(404, {'detail': 'Cuestionario no encontrado.'});
+        }
+        if (form['answered_at'] != null) return _json(409, {'detail': 'Ya respondiste todas las preguntas.'});
+        final answers = form['answers'] as List<Object?>;
+        final questions = form['questions'] as List<dynamic>;
+        final question = questions[answers.length] as Map<String, dynamic>;
+        var answer = body['answer'];
+        final error = _answerError(question, answer);
+        if (error != null) return _json(422, {'detail': error});
+        if (answer is String) answer = answer.trim();
+        if (answer == '') answer = null;
+        answers.add(answer);
+        final before = messages.length;
+        messages.add({'id': _nextMessageId++, 'from_foundation': false, 'kind': 'answer', 'form_id': form['id'],
+          'created_at': '2026-11-15T12:45:00Z',
+          'body': answer == null ? 'Prefiero no responder' : answer is bool ? (answer ? 'Sí' : 'No') : answer});
+        if (answers.length < questions.length) {
+          _askQuestion(form, answers.length);
+        } else {
+          form['answered_at'] = '2026-11-15T12:50:00Z';
+          messages.add({'id': _nextMessageId++, 'from_foundation': true, 'automatic': true,
+            'body': questionnaireFinished, 'created_at': '2026-11-15T12:50:00Z'});
+        }
+        return _json(201, [for (final m in messages.sublist(before)) _messageJson(m, asFoundation: false)]);
+      }
       if (request.method == 'POST') {
-        final message = {'id': _nextMessageId++, 'body': (body['body'] as String).trim(),
-          'created_at': '2026-11-15T12:20:00Z', 'from_foundation': false, 'mine': true};
+        final message = <String, dynamic>{'id': _nextMessageId++, 'body': (body['body'] as String).trim(),
+          'created_at': '2026-11-15T12:20:00Z', 'from_foundation': asFoundation};
         messages.add(message);
-        return _json(201, message);
+        return _json(201, _messageJson(message, asFoundation: asFoundation));
       }
       final after = int.tryParse(request.url.queryParameters['after_id'] ?? '');
-      return _json(200, [for (final m in messages) if (after == null || (m['id'] as int) > after) m]);
+      return _json(200, [
+        for (final m in messages)
+          if (after == null || (m['id'] as int) > after) _messageJson(m, asFoundation: asFoundation),
+      ]);
     }
     if (request.url.path == '/conversations') {
-      if (!loggedIn) return _json(200, <Object>[]);
+      if (!inChat) return _json(200, <Object>[]);
+      if (request.method == 'POST') {
+        if (!asFoundation) return _json(403, {'detail': 'Solo una fundación puede abrir una conversación.'});
+        final userId = body['user_id'] as int;
+        final animalId = body['animal_id'] as int?;
+        final existing = conversations.where((c) => c['user_id'] == userId);
+        final conversation = existing.isNotEmpty ? existing.first : <String, dynamic>{'id': 6 + conversations.length,
+          'foundation_id': 1, 'foundation_name': 'Fundación Patitas', 'user_id': userId, 'user_name': 'Persona interesada',
+          'created_at': '2026-11-15T13:00:00Z'};
+        if (existing.isEmpty) {
+          conversations.add(conversation);
+          chatMessages[conversation['id'] as int] = [];
+        }
+        if (animalId != null) startQuestionnaire(conversation['id'] as int, animalId);
+        return _json(existing.isEmpty ? 201 : 200, _conversationJson(conversation));
+      }
       if (conversationsFail) return _json(503, {'detail': 'No se pudieron cargar las conversaciones.'});
       return _json(200, [for (final c in conversations) _conversationJson(c)]);
     }

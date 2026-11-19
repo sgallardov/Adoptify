@@ -64,7 +64,7 @@ diseño (`shared/widgets/app_shell.dart`).
 **Fundación** (`foundation` o `admin`): abre en **Inicio** (`/fundacion`). Barra de izquierda a derecha:
 - **Inicio** (`/fundacion`): resumen, **Mis animales** (con interesados y postulaciones) y **Agregar mascota**.
 - **Mapa** (`/fundacion/mapa`): el mismo mapa, con la gestión de reportes (HU-L).
-- **Chat** (`/fundacion/chat`): todavía "Próximamente" en la app; las fundaciones chatean desde el portal (HU-G2).
+- **Chat** (`/fundacion/chat`): la misma lista y chat que el adoptante (HU-G2). "Conversar" en los interesados de una mascota abre el chat y empieza el cuestionario de adopción (HU-G3); la postulación se revisa en el portal.
 - **Perfil** (`/fundacion/perfil`), descrito abajo.
 
 **Agregar mascota** (`/fundacion/agregar`, desde Inicio). La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).

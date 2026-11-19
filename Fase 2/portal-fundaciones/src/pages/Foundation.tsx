@@ -2,6 +2,7 @@ import { PawPrint, ShieldCheck } from 'lucide-react'
 import { foundation } from '../data/demo'
 import PageHeading from '../components/PageHeading'
 import MembersSection from '../components/MembersSection'
+import AdoptionFormSection from '../components/AdoptionFormSection'
 
 export default function Foundation() {
   return <>
@@ -18,6 +19,7 @@ export default function Foundation() {
         </dl>
       </div>
     </section>
+    <AdoptionFormSection />
     <MembersSection />
   </>
 }

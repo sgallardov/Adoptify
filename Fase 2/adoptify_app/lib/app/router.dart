@@ -123,6 +123,7 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
           routes: [
             GoRoute(
               path: '/fundacion/chat',
+              // "Conversar" desde los interesados de una mascota: con animal_id empieza el cuestionario (HU-G3)
               builder: (context, state) => FoundationChatScreen(
                 interestedUserId: int.tryParse(state.uri.queryParameters['user_id'] ?? ''),
                 animalId: int.tryParse(state.uri.queryParameters['animal_id'] ?? ''),
@@ -236,6 +237,11 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     ),
     // Antes la pestaña Conecta se llamaba Match: los enlaces viejos siguen funcionando
     GoRoute(path: '/match', redirect: (context, state) => '/conecta'),
+    // Chat de la fundación con un adoptante, desde su pestaña Chat
+    GoRoute(
+      path: '/fundacion/mensajes/:id',
+      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
+    ),
     // Se abre con el corazón de la pestaña Conecta
     GoRoute(
       path: '/favoritos',

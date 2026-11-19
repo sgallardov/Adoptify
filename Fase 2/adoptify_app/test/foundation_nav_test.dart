@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Publica una historia'), findsNothing);
   });
 
-  testWidgets('la fundación ve los interesados desde la card de cada animal sin crear un chat automático', (tester) async {
+  testWidgets('la fundación ve los interesados desde la card de cada animal y conversa con ellos', (tester) async {
     await openFoundation(tester);
 
     await openMyAnimals(tester);
@@ -73,11 +73,11 @@ void main() {
     expect(find.text('Sin ficha de adopción'), findsOneWidget);
     expect(find.text('Conversar'), findsNWidgets(2));
 
-    // Conversar abre el chat con esa persona (sin crear mensajes hasta HU-G2)
+    // Conversar abre (o recupera) el chat con esa persona: Matías ya tenía una conversación
     await tester.tap(find.text('Conversar').first);
     await tester.pumpAndSettle();
-    expect(screenTitle('Chat'), findsOneWidget);
-    expect(find.text('Conversación preparada'), findsOneWidget);
+    expect(screenTitle('Matías Adoptante'), findsOneWidget);
+    expect(find.text('¡Hola Matías! ¿Te gustaría conocer a Luna?'), findsOneWidget);
   });
 
   testWidgets('un animal sin interesados muestra el estado vacío', (tester) async {
@@ -94,11 +94,11 @@ void main() {
   testWidgets('cada pestaña abre su pantalla', (tester) async {
     await openFoundation(tester);
 
-    // Chat sigue como placeholder hasta HU-G2
+    // Chat lista las conversaciones con el nombre de cada persona (HU-G2)
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
     expect(screenTitle('Chat'), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
+    expect(find.text('Matías Adoptante'), findsOneWidget);
 
     // Perfil ya no es un placeholder: edita la foto y la descripción de la fundación
     await tester.tap(find.text('Perfil'));

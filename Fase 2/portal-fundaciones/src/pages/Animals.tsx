@@ -13,12 +13,15 @@ export default function Animals() {
   const [query, setQuery] = useState('')
   const [species, setSpecies] = useState('')
   const [status, setStatus] = useState('')
-  const [interested, setInterested] = useState<Record<number, number>>({})
-  // Conteo de favoritos por animal; si falla, las cards simplemente no muestran el conteo
+  const [interested, setInterested] = useState<Record<number, { count: number; toReview: number }>>({})
+  // Conteo de favoritos y de postulaciones por revisar (HU-G3); si falla, las cards no muestran el conteo
   useEffect(() => {
     const controller = new AbortController()
     fetchInterested(controller.signal)
-      .then(groups => setInterested(Object.fromEntries(groups.map(group => [group.animal_id, group.interested.length]))))
+      .then(groups => setInterested(Object.fromEntries(groups.map(group => [group.animal_id, {
+        count: group.interested.length,
+        toReview: group.interested.filter(person => person.questionnaire?.completed && !person.questionnaire.decision).length,
+      }]))))
       .catch(() => {})
     return () => controller.abort()
   }, [])
@@ -36,7 +39,7 @@ export default function Animals() {
       <label><span className="sr-only">Filtrar por estado</span><select value={status} onChange={event => setStatus(event.target.value)} className="w-full rounded-xl border border-base-200 bg-surface px-4 py-2.5 text-sm md:w-44"><option value="">Todos los estados</option><option>Disponible</option><option>En proceso</option><option>Adoptado</option></select></label>
     </section>
     <p aria-live="polite" className="mb-5 flex items-center gap-2 text-sm text-base-500"><SlidersHorizontal size={15} />{filtered.length} {filtered.length === 1 ? 'animal encontrado' : 'animales encontrados'}</p>
-    {filtered.length ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map(animal => <AnimalCard key={animal.id} animal={animal} interestedCount={interested[animal.id]} />)}</div> : <Feedback kind="empty" title={animals.length ? 'No encontramos animales' : 'Todavía no hay animales publicados'} description={animals.length ? 'Prueba con otro nombre o cambia los filtros.' : 'Los animales aparecerán aquí cuando estén registrados.'} actionLabel={animals.length ? 'Limpiar filtros' : undefined} onAction={animals.length ? () => { setQuery(''); setSpecies(''); setStatus('') } : undefined} />}
+    {filtered.length ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{filtered.map(animal => <AnimalCard key={animal.id} animal={animal} interestedCount={interested[animal.id]?.count} toReview={interested[animal.id]?.toReview} />)}</div> : <Feedback kind="empty" title={animals.length ? 'No encontramos animales' : 'Todavía no hay animales publicados'} description={animals.length ? 'Prueba con otro nombre o cambia los filtros.' : 'Los animales aparecerán aquí cuando estén registrados.'} actionLabel={animals.length ? 'Limpiar filtros' : undefined} onAction={animals.length ? () => { setQuery(''); setSpecies(''); setStatus('') } : undefined} />}
     </>}
   </>
 }

@@ -49,7 +49,7 @@ Fase 2/portal-fundaciones/src/
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
   app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion (Inicio) si es fundación/admin (barra propia: Inicio, Mapa, Chat, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mensajes, Mapa, Conecta (`/conecta`, el match; `/match` redirige), Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
-  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), messages (chat del adoptante), foundation_home / foundation_animals / foundation_add / foundation_profile (vista de fundación), foundation_chat (todavía "Próximamente": las fundaciones chatean desde el portal)
+  features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), messages (chat del adoptante), foundation_home / foundation_animals / foundation_add / foundation_profile (vista de fundación), foundation_chat (pestaña Chat de la fundación: la misma lista y chat del adoptante)
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
   shared/widgets/          # app_shell.dart (barra inferior: AppShell de adoptante y FoundationShell, mismo diseño), coming_soon.dart
 ```
@@ -64,6 +64,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - **Cuenta:** `PATCH /auth/me` edita el nombre y `POST /auth/change-password` cambia la contraseña pidiendo la actual (`400` si no coincide). El correo y el RUT no se editan.
 - **Errores en español** (`core/errors.py`): `401` sin token ("Inicia sesión para continuar.") y `422` con `msg` en español y sin `input`. Un permiso que debe ganar a la validación va como dependencia (ver `require_admin` en veterinarias).
 - **Verificación en dos pasos (HU-I):** opcional, por correo (Gmail SMTP, `services/email.py`; sin SMTP en development el código sale en los logs). Con ella activa, `/auth/login` responde 202 con `challenge_id` y el token llega con `/auth/verify-code`. Los endpoints con sesión iniciada nunca responden 401 por un dato mal ingresado (usar 400): la app y el portal cierran sesión ante cualquier 401.
+- **Cuestionario de adopción (HU-G3):** "Conversar" con `animal_id` hace en el chat las preguntas de la fundación una a una (sugeridas en `services/adoption_questionnaire.py` hasta que la fundación guarde las suyas), una vez por persona y mascota. `flagged_answers` solo marca "No cumple": nunca rechaza sola; la fundación acepta o rechaza en "Ver postulación" (portal).
 - **Match** (en la interfaz se llama **Conecta**, nunca "match"; porcentaje "83 % compatible"; en la API y el código sigue `match`): pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.
 
 ## Patrones
@@ -89,9 +90,8 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - Cada pantalla nueva con su widget test en `test/`; la API se simula con `test/fake_api.dart` (MockClient + MemoryTokenStorage). `FakeApi()` parte con la sesión de Matías iniciada; `FakeApi(loggedIn: false)` parte en el login.
 
 ## Estado y pendientes
-Hecho: HU-01 a HU-16 (backend, portal y app), match con `/animals/match` y "Quiero adoptar", fotos privadas en Supabase Storage, HU-A a HU-L (resguardo privado, hogares temporales, gestión de reportes, veterinarias, RUT cifrado, socios, interesados, avisos cercanos, verificación en dos pasos, mapa de la fundación), postulaciones de adopción, chat HU-G2 (backend, portal y pestaña Mensajes del adoptante), edición de nombre y contraseña, y errores en español.
+Hecho: HU-01 a HU-16 (backend, portal y app), match con `/animals/match` y "Quiero adoptar", fotos privadas en Supabase Storage, HU-A a HU-L (resguardo privado, hogares temporales, gestión de reportes, veterinarias, RUT cifrado, socios, interesados, avisos cercanos, verificación en dos pasos, mapa de la fundación), postulaciones de adopción, chat HU-G2 (backend, portal, pestaña Mensajes del adoptante y Chat de la fundación), cuestionario de adopción HU-G3 (preguntas una a una en el chat y postulación en el portal), edición de nombre y contraseña, y errores en español.
 Pendiente (en orden aproximado de prioridad):
 1. TTL / expiración de reportes-alertas (objetivo 3 del proyecto).
-2. Chat en la pestaña Chat de la fundación en la app (hoy "Próximamente"; el portal ya lo tiene).
-3. Fotos: borrar archivos huérfanos del bucket.
-4. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.
+2. Fotos: borrar archivos huérfanos del bucket.
+3. Fase 3: QA, pruebas de integración, evidencias (capturas de Swagger, `docker compose ps`, `pytest`), despliegue.

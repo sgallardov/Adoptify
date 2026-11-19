@@ -169,7 +169,7 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
           <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${message.from_foundation ? 'bg-brand-600 text-on-accent' : 'bg-base-100 text-base-900'}`}>
             <p className="whitespace-pre-wrap break-words">{message.body}</p>
             <p className={`mt-1 text-right text-[11px] ${message.from_foundation ? 'text-on-accent/75' : 'text-base-500'}`}>
-              {message.from_foundation && !message.mine ? 'Tu fundación · ' : ''}{shortDate(message.created_at)}
+              {senderLabel(message)}{shortDate(message.created_at)}
             </p>
           </div>
         </li>)}
@@ -191,6 +191,13 @@ function ChatPanel({ conversation, onSent }: { conversation: Conversation; onSen
       {sendError && <p role="alert" className="mt-2 text-sm text-danger-700">{sendError}</p>}
     </form>
   </>
+}
+
+// Quién escribió, cuando no es obvio: preguntas automáticas del cuestionario (HU-G3) u otro socio
+function senderLabel(message: Message): string {
+  if (message.kind === 'question' && message.question) return `Pregunta automática ${message.question.index + 1} de ${message.question.total} · `
+  if (message.kind === 'answer') return 'Respuesta al cuestionario · '
+  return message.from_foundation && !message.mine ? 'Tu fundación · ' : ''
 }
 
 // Suma mensajes nuevos sin duplicar los que ya llegaron (el sondeo y el envío pueden traer el mismo)
