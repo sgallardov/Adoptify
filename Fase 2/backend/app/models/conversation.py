@@ -34,7 +34,8 @@ class Message(Base):
     )
     sender_user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     body: Mapped[str] = mapped_column(String(1000), nullable=False)
-    # text | form (la fundación envió su formulario) | form_answers (el adoptante lo respondió) (HU-G3)
+    # text | question (pregunta automática del cuestionario) | answer (respuesta del adoptante) (HU-G3).
+    # Las preguntas automáticas no tienen remitente: se muestran como de la fundación.
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="text", server_default="text")
     form_request_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("adoption_form_requests.id", ondelete="CASCADE"), nullable=True

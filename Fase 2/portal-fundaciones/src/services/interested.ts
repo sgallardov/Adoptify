@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { QuestionnaireSummary } from './adoptionForm'
 
 export type InterestedPerson = {
   user_id: number
@@ -6,6 +7,8 @@ export type InterestedPerson = {
   favorited_at: string
   // 0-100; null si la persona no completó "Quiero adoptar"
   match_score: number | null
+  // Cuestionario de adopción de esta mascota (HU-G3); null hasta que la fundación aprieta "Conversar"
+  questionnaire: QuestionnaireSummary | null
 }
 
 export type AnimalInterested = {

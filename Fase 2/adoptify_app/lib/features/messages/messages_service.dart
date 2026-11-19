@@ -48,47 +48,36 @@ class Conversation {
   );
 }
 
-// Pregunta del formulario de adopción de una fundación (HU-G3): text, yes_no o choice
-class FormQuestion {
-  const FormQuestion({required this.label, required this.kind, required this.options, required this.required});
+// Pregunta automática del cuestionario de adopción (HU-G3). Al apretar "Conversar" junto a un
+// interesado, el chat le hace las preguntas de la fundación una a una; el adoptante responde aquí.
+class QuestionInfo {
+  const QuestionInfo({
+    required this.formId,
+    required this.index,
+    required this.total,
+    required this.kind,
+    required this.options,
+    required this.required,
+  });
 
-  final String label;
+  final int formId;
+  // 0 = primera pregunta
+  final int index;
+  final int total;
+  // text | yes_no | choice
   final String kind;
   final List<String> options;
   final bool required;
 
-  factory FormQuestion.fromJson(Map<String, dynamic> json) => FormQuestion(
-    label: json['label'] as String,
+  factory QuestionInfo.fromJson(Map<String, dynamic> json) => QuestionInfo(
+    formId: json['form_id'] as int,
+    index: json['index'] as int,
+    total: json['total'] as int,
     kind: json['kind'] as String,
     options: [for (final option in json['options'] as List<dynamic>? ?? const []) option as String],
     required: json['required'] as bool? ?? true,
   );
 }
-
-// Formulario enviado por chat. answers es null hasta que el adoptante responde (una sola vez).
-class AdoptionFormRequest {
-  const AdoptionFormRequest({required this.id, required this.questions, this.answers});
-
-  final int id;
-  final List<FormQuestion> questions;
-  final List<Object?>? answers;
-
-  bool get answered => answers != null;
-
-  factory AdoptionFormRequest.fromJson(Map<String, dynamic> json) => AdoptionFormRequest(
-    id: json['id'] as int,
-    questions: [for (final item in json['questions'] as List<dynamic>) FormQuestion.fromJson(item as Map<String, dynamic>)],
-    answers: json['answers'] as List<dynamic>?,
-  );
-}
-
-// "Sí"/"No" para sí o no; "Sin respuesta" si quedó vacía una opcional
-String formatAnswer(Object? answer) => switch (answer) {
-  null => 'Sin respuesta',
-  true => 'Sí',
-  false => 'No',
-  _ => answer.toString(),
-};
 
 class ChatMessage {
   const ChatMessage({
@@ -98,7 +87,7 @@ class ChatMessage {
     required this.fromFoundation,
     required this.mine,
     this.kind = 'text',
-    this.form,
+    this.question,
   });
 
   final int id;
@@ -106,9 +95,9 @@ class ChatMessage {
   final DateTime createdAt;
   final bool fromFoundation;
   final bool mine;
-  // text | form (la fundación envió su formulario) | form_answers (el adoptante lo respondió)
+  // text | question (pregunta automática del cuestionario) | answer (respuesta del adoptante)
   final String kind;
-  final AdoptionFormRequest? form;
+  final QuestionInfo? question;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
     id: json['id'] as int,
@@ -117,8 +106,17 @@ class ChatMessage {
     fromFoundation: json['from_foundation'] as bool,
     mine: json['mine'] as bool,
     kind: json['kind'] as String? ?? 'text',
-    form: json['form'] == null ? null : AdoptionFormRequest.fromJson(json['form'] as Map<String, dynamic>),
+    question: json['question'] == null ? null : QuestionInfo.fromJson(json['question'] as Map<String, dynamic>),
   );
+}
+
+// La pregunta que espera respuesta: la última pregunta automática, si después no llegó su respuesta
+ChatMessage? pendingQuestion(List<ChatMessage> messages) {
+  for (final message in messages.reversed) {
+    if (message.kind == 'answer') return null;
+    if (message.kind == 'question' && message.question != null) return message;
+  }
+  return null;
 }
 
 // Llamadas de /conversations. Las conversaciones las abre una fundación; el adoptante lee y responde.
@@ -146,22 +144,18 @@ class MessagesService {
     return ChatMessage.fromJson(data as Map<String, dynamic>);
   }
 
-  // Fundación: abre (o recupera) el chat con una persona interesada o postulada
-  Future<Conversation> open(int userId) async {
-    final data = await _api.post('/conversations', {'user_id': userId});
+  // Fundación: abre (o recupera) el chat con una persona interesada o postulada. Con animalId
+  // ("Conversar" desde los interesados de una mascota) empieza el cuestionario de adopción, una sola vez.
+  Future<Conversation> open(int userId, {int? animalId}) async {
+    final data = await _api.post('/conversations', {'user_id': userId, 'animal_id': ?animalId});
     return Conversation.fromJson(data as Map<String, dynamic>);
   }
 
-  // Fundación: envía una copia de su formulario de adopción (HU-G3)
-  Future<ChatMessage> sendForm(int conversationId) async {
-    final data = await _api.post('/conversations/$conversationId/form', {});
-    return ChatMessage.fromJson(data as Map<String, dynamic>);
-  }
-
-  // Adoptante: una respuesta por pregunta, en orden; null deja sin responder una opcional
-  Future<ChatMessage> answerForm(int conversationId, int formId, List<Object?> answers) async {
-    final data = await _api.post('/conversations/$conversationId/forms/$formId/answers', {'answers': answers});
-    return ChatMessage.fromJson(data as Map<String, dynamic>);
+  // Adoptante: responde la pregunta pendiente (true/false, una alternativa o texto; null salta una
+  // opcional). Devuelve su respuesta y la siguiente pregunta, o el cierre si era la última.
+  Future<List<ChatMessage>> answer(int conversationId, int formId, Object? answer) async {
+    final data = await _api.post('/conversations/$conversationId/forms/$formId/answer', {'answer': answer}) as List<dynamic>;
+    return [for (final item in data) ChatMessage.fromJson(item as Map<String, dynamic>)];
   }
 }
 

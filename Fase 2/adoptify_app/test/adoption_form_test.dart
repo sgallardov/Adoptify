@@ -8,121 +8,106 @@ import 'package:adoptify_app/app/app.dart';
 
 import 'fake_api.dart';
 
-// Formulario de adopción por chat (HU-G3): la fundación lo envía y el adoptante lo responde una vez
+// Cuestionario de adopción por chat (HU-G3): al apretar "Conversar" junto a un interesado, el chat le
+// hace las preguntas de la fundación una a una y el adoptante responde con botones o escribiendo.
 
-Future<void> openChat(WidgetTester tester, FakeApi api, {required String tab, required String title}) async {
+Future<void> openChat(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text(tab).last);
+  await tester.tap(find.text('Mensajes').last);
   await tester.pumpAndSettle();
-  await tester.tap(find.text(title));
+  await tester.tap(find.text('Fundación Patitas'));
   await tester.pumpAndSettle();
 }
+
+Map<String, dynamic> lastAnswer(FakeApi api) => jsonDecode(
+  api.requests.lastWhere((r) => r.method == 'POST' && r.url.path.endsWith('/answer')).body,
+) as Map<String, dynamic>;
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('la fundación envía su formulario desde el chat', (tester) async {
+  testWidgets('Conversar desde los interesados de una mascota empieza el cuestionario', (tester) async {
     final api = FakeApi(asFoundation: true);
-    await openChat(tester, api, tab: 'Chat', title: 'Matías Adoptante');
-
-    await tester.tap(find.byTooltip('Enviar formulario de adopción'));
+    await tester.pumpWidget(AdoptifyApp(auth: api.auth));
     await tester.pumpAndSettle();
-    expect(find.textContaining('¿Enviar tu formulario de adopción a Matías Adoptante?'), findsOneWidget);
-    await tester.tap(find.text('Enviar'));
+    // Inicio → Mis animales (el acceso queda bajo la barra inferior en la pantalla de prueba)
+    await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mis animales'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2 interesados'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Conversar').first);
     await tester.pumpAndSettle();
 
-    expect(api.requests.where((r) => r.url.path == '/conversations/5/form'), hasLength(1));
-    expect(find.text('Te enviamos nuestro formulario de adopción.'), findsOneWidget);
-    expect(find.text('3 preguntas · Esperando respuestas'), findsOneWidget);
-    // La fundación no responde su propio formulario
-    expect(find.text('Responder formulario'), findsNothing);
+    final opened = api.requests.lastWhere((r) => r.method == 'POST' && r.url.path == '/conversations');
+    expect(jsonDecode(opened.body), {'user_id': 1, 'animal_id': 7});
+    // La fundación ve la pregunta como un mensaje, sin botones para responderla
+    expect(find.text('Pregunta 1 de 3'), findsOneWidget);
+    expect(find.text('¿Vives en casa o departamento?'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Casa'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
   });
 
-  testWidgets('sin preguntas configuradas muestra el mensaje del backend', (tester) async {
-    final api = FakeApi(asFoundation: true)..formQuestions.clear();
-    await openChat(tester, api, tab: 'Chat', title: 'Matías Adoptante');
-    await tester.tap(find.byTooltip('Enviar formulario de adopción'));
+  testWidgets('el adoptante responde una pregunta a la vez y al final vuelve el chat normal', (tester) async {
+    final api = FakeApi()..startQuestionnaire(5, 1);
+    await openChat(tester, api);
+
+    // Alternativas: botones en lugar del campo de texto
+    expect(find.text('Pregunta 1 de 3'), findsOneWidget);
+    expect(find.text('Elige tu respuesta · Pregunta 1 de 3'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Departamento'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Enviar'));
+    expect(lastAnswer(api), {'answer': 'Departamento'});
+    expect(find.text('Departamento'), findsOneWidget);
+
+    // Sí o no
+    expect(find.text('Pregunta 2 de 3'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Sí'));
     await tester.pumpAndSettle();
-    expect(find.text('Primero configura las preguntas de tu formulario en Mi fundación.'), findsOneWidget);
-  });
+    expect(lastAnswer(api), {'answer': true});
 
-  testWidgets('el adoptante no ve el botón de enviar formulario', (tester) async {
-    await openChat(tester, FakeApi(), tab: 'Mensajes', title: 'Fundación Patitas');
-    expect(find.byTooltip('Enviar formulario de adopción'), findsNothing);
-  });
-
-  testWidgets('el adoptante responde el formulario y queda marcado como respondido', (tester) async {
-    final api = FakeApi();
-    api.foundationSendsForm(5);
-    await openChat(tester, api, tab: 'Mensajes', title: 'Fundación Patitas');
-    expect(find.text('3 preguntas · Esperando respuestas'), findsOneWidget);
-
-    await tester.tap(find.text('Responder formulario'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Formulario de adopción'), findsOneWidget);
-
-    // Enviar sin las obligatorias marca cada una y no llama a la API
-    await tester.tap(find.text('Enviar respuestas'));
-    await tester.pumpAndSettle();
-    expect(find.text('Responde esta pregunta.'), findsNWidgets(2));
-    expect(api.requests.where((r) => r.url.path.endsWith('/answers')), isEmpty);
-
-    await tester.tap(find.text('Casa'));
-    await tester.tap(find.text('Sí'));
+    // Pregunta abierta: lo que se escribe es la respuesta
+    expect(find.text('Pregunta 3 de 3'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Escribe tu respuesta…'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '  Tuve un gato por 10 años  ');
     await tester.pump();
-    expect(find.text('Responde esta pregunta.'), findsNothing);
-    await tester.enterText(find.byType(TextField), '  Tuve una perrita 10 años  ');
-    await tester.ensureVisible(find.text('Enviar respuestas'));
-    await tester.tap(find.text('Enviar respuestas'));
+    await tester.tap(find.byTooltip('Enviar mensaje'));
     await tester.pumpAndSettle();
+    expect(lastAnswer(api), {'answer': 'Tuve un gato por 10 años'});
 
-    final sent = api.requests.lastWhere((r) => r.url.path == '/conversations/5/forms/1/answers');
-    expect(jsonDecode(sent.body), {'answers': ['Casa', true, 'Tuve una perrita 10 años']});
-    // De vuelta en el chat: la respuesta aparece y el formulario ya no se puede responder otra vez
-    expect(find.widgetWithText(AppBar, 'Fundación Patitas'), findsOneWidget);
-    expect(find.text('Respondí el formulario de adopción.'), findsOneWidget);
-    expect(find.text('3 preguntas · Respondido'), findsOneWidget);
-    expect(find.text('Responder formulario'), findsNothing);
-    expect(find.text('Tuve una perrita 10 años'), findsOneWidget);
+    expect(find.text(FakeApi.questionnaireFinished), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Escribe un mensaje…'), findsOneWidget);
+    expect(find.text('Prefiero no responder'), findsNothing);
+    expect(api.formRequests[1]!['answers'], ['Departamento', true, 'Tuve un gato por 10 años']);
   });
 
-  testWidgets('una pregunta opcional se puede dejar sin responder', (tester) async {
+  testWidgets('una pregunta opcional se puede saltar', (tester) async {
+    final api = FakeApi()..startQuestionnaire(5, 1);
+    await openChat(tester, api);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Casa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'No'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Prefiero no responder'));
+    await tester.pumpAndSettle();
+    expect(lastAnswer(api), {'answer': null});
+    expect(find.text(FakeApi.questionnaireFinished), findsOneWidget);
+  });
+
+  testWidgets('las preguntas que llegan con el chat abierto aparecen solas en 10 s', (tester) async {
     final api = FakeApi();
-    api.foundationSendsForm(5);
-    await openChat(tester, api, tab: 'Mensajes', title: 'Fundación Patitas');
-    await tester.tap(find.text('Responder formulario'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Departamento'));
-    await tester.tap(find.text('No'));
-    await tester.ensureVisible(find.text('Enviar respuestas'));
-    await tester.tap(find.text('Enviar respuestas'));
-    await tester.pumpAndSettle();
+    await openChat(tester, api);
+    expect(find.byType(TextField), findsOneWidget);
 
-    final sent = api.requests.lastWhere((r) => r.url.path.endsWith('/answers'));
-    expect(jsonDecode(sent.body), {'answers': ['Departamento', false, null]});
-    expect(find.text('Sin respuesta'), findsOneWidget);
-  });
-
-  testWidgets('la fundación ve las respuestas con el sondeo del chat', (tester) async {
-    final api = FakeApi(asFoundation: true);
-    final message = api.foundationSendsForm(5);
-    await openChat(tester, api, tab: 'Chat', title: 'Matías Adoptante');
-    expect(find.text('3 preguntas · Esperando respuestas'), findsOneWidget);
-
-    // Matías responde desde su app
-    final form = api.formRequests[message['form_id']]!;
-    form['answers'] = ['Casa', true, null];
-    api.chatMessages[5]!.add({'id': 900, 'body': 'Respondí el formulario de adopción.', 'created_at': '2026-11-15T12:50:00Z',
-      'from_foundation': false, 'kind': 'form_answers', 'form_id': form['id']});
+    api.startQuestionnaire(5, 1);
     await tester.pump(const Duration(seconds: 10));
     await tester.pumpAndSettle();
-
-    expect(find.text('Respondí el formulario de adopción.'), findsOneWidget);
     expect(find.text('¿Vives en casa o departamento?'), findsOneWidget);
-    expect(find.text('Sí'), findsOneWidget);
-    expect(find.text('Sin respuesta'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Casa'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
   });
 }

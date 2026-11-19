@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.adoption_form import FormRequestOut
+from app.schemas.adoption_form import QuestionKind
 
 MAX_MESSAGE_LENGTH = 1000
 
@@ -13,6 +13,8 @@ class ConversationCreate(BaseModel):
     """La fundación abre el chat con un adoptante vinculado (like, postulación o hogar temporal)."""
 
     user_id: int = Field(..., gt=0)
+    # Desde "Conversar" en los interesados de una mascota: empieza el cuestionario de adopción (HU-G3)
+    animal_id: int | None = Field(None, gt=0)
 
 
 class LastMessage(BaseModel):
@@ -52,6 +54,21 @@ class MessageOut(BaseModel):
     # True si lo escribió alguien de la fundación; así cada lado sabe de qué color pintarlo
     from_foundation: bool
     mine: bool
-    # form: la fundación envió su formulario; form_answers: el adoptante lo respondió (HU-G3)
-    kind: Literal["text", "form", "form_answers"] = "text"
-    form: FormRequestOut | None = None
+    # question: pregunta automática del cuestionario; answer: respuesta del adoptante (HU-G3)
+    kind: Literal["text", "question", "answer"] = "text"
+    # Solo en las preguntas: lo que la app necesita para mostrar los botones de respuesta
+    question: "QuestionInfo | None" = None
+
+
+class QuestionInfo(BaseModel):
+    form_id: int
+    animal_id: int
+    # Posición de la pregunta (0 = primera) y total del cuestionario, para mostrar "Pregunta 3 de 8"
+    index: int
+    total: int
+    kind: QuestionKind
+    options: list[str]
+    required: bool
+
+
+MessageOut.model_rebuild()

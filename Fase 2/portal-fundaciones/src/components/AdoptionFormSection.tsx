@@ -1,32 +1,38 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowDown, ArrowUp, ClipboardList, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ClipboardList, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { errorMessage } from '../services/api'
-import { fetchAdoptionForm, saveAdoptionForm } from '../services/adoptionForm'
-import { MAX_QUESTIONS, emptyQuestion, kindLabels, questionsPayload, toDraft, validateQuestions } from '../services/adoptionFormEditor'
+import { fetchAdoptionForm, resetAdoptionForm, saveAdoptionForm } from '../services/adoptionForm'
+import type { AdoptionForm, QuestionKind } from '../services/adoptionForm'
+import { MAX_QUESTIONS, emptyQuestion, kindLabels, optionsOf, questionsPayload, toDraft, validateQuestions } from '../services/adoptionFormEditor'
 import type { QuestionDraft } from '../services/adoptionFormEditor'
-import type { QuestionKind } from '../services/adoptionForm'
 import { useAuth } from '../hooks/useAuth'
 import Feedback from './Feedback'
 
 const inputClass = 'mt-2 w-full rounded-xl border border-base-300 bg-surface px-3 py-2.5 text-base text-base-800 disabled:opacity-60'
 
-// Preguntas que la fundación envía por chat a quien quiere adoptar (HU-G3)
+// Preguntas que el chat le hace, una a una, a quien se interesa en una mascota (HU-G3)
 export default function AdoptionFormSection() {
   const { user } = useAuth()
   const canEdit = user?.role === 'foundation' // un admin no tiene fundación propia
   const [drafts, setDrafts] = useState<QuestionDraft[] | null>(null)
+  const [customized, setCustomized] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [errors, setErrors] = useState<Record<number, string>>({})
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
+  function show(form: AdoptionForm) {
+    setDrafts(form.questions.map(toDraft))
+    setCustomized(form.customized)
+  }
+
   useEffect(() => {
     if (!canEdit) return
     const controller = new AbortController()
     fetchAdoptionForm(controller.signal)
-      .then(questions => { if (!controller.signal.aborted) setDrafts(questions.map(toDraft)) })
+      .then(form => { if (!controller.signal.aborted) show(form) })
       .catch(() => { if (!controller.signal.aborted) setLoadError(true) })
     return () => controller.abort()
   }, [attempt, canEdit])
@@ -51,6 +57,12 @@ export default function AdoptionFormSection() {
     reorder(next)
   }
 
+  function toggleFlagged(index: number, option: string, checked: boolean) {
+    const draft = drafts?.[index]
+    if (!draft) return
+    update(index, { flagged: checked ? [...draft.flagged, option] : draft.flagged.filter(item => item !== option) })
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!drafts || saving) return
@@ -59,23 +71,40 @@ export default function AdoptionFormSection() {
     if (Object.keys(validation).length) { setNotice({ kind: 'error', text: 'Revisa las preguntas marcadas.' }); return }
     setSaving(true); setNotice(null)
     try {
-      setDrafts((await saveAdoptionForm(questionsPayload(drafts))).map(toDraft))
-      setNotice({ kind: 'success', text: 'Formulario guardado. Los que ya enviaste no cambian.' })
+      show(await saveAdoptionForm(questionsPayload(drafts)))
+      setNotice({ kind: 'success', text: 'Preguntas guardadas. Los cuestionarios que ya empezaron no cambian.' })
     } catch (error) {
-      setNotice({ kind: 'error', text: errorMessage(error, 'No pudimos guardar el formulario. Inténtalo nuevamente.') })
+      setNotice({ kind: 'error', text: errorMessage(error, 'No pudimos guardar las preguntas. Inténtalo nuevamente.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function reset() {
+    if (saving || !window.confirm('¿Volver a las preguntas sugeridas por Adoptify? Se borrarán tus cambios.')) return
+    setSaving(true); setNotice(null); setErrors({})
+    try {
+      show(await resetAdoptionForm())
+      setNotice({ kind: 'success', text: 'Volviste a las preguntas sugeridas.' })
+    } catch (error) {
+      setNotice({ kind: 'error', text: errorMessage(error, 'No pudimos restablecer las preguntas. Inténtalo nuevamente.') })
     } finally {
       setSaving(false)
     }
   }
 
   return <section aria-labelledby="adoption-form-title" className="mt-8 rounded-3xl border border-base-200 bg-surface p-7 sm:p-9">
-    <h2 id="adoption-form-title" className="flex items-center gap-2 text-xl font-bold"><ClipboardList size={22} aria-hidden="true" />Formulario de adopción</h2>
-    <p className="mt-2 max-w-2xl text-sm leading-6 text-base-600">Las preguntas o requisitos que envías desde Mensajes a quien quiere adoptar. La persona responde desde la app una sola vez y sus respuestas quedan en la conversación.</p>
+    <h2 id="adoption-form-title" className="flex items-center gap-2 text-xl font-bold"><ClipboardList size={22} aria-hidden="true" />Preguntas de adopción</h2>
+    <p className="mt-2 max-w-2xl text-sm leading-6 text-base-600">
+      Cuando aprietas Conversar junto a una persona interesada, el chat le hace estas preguntas una a una. Sus respuestas quedan en
+      la postulación (Mis casos → Interesados → Ver postulación), con las que no cumplen marcadas en rojo. Tú decides si aceptas o rechazas.
+    </p>
+    {drafts && !customized && <p className="mt-4 rounded-2xl bg-brand-50 px-4 py-3 text-sm text-brand-800">Estas son las preguntas sugeridas por Adoptify. Puedes cambiarlas, quitar o agregar las que quieras.</p>}
     <div className="mt-6">
-      {loadError ? <Feedback kind="error" title="No pudimos cargar tu formulario." actionLabel="Reintentar" onAction={() => { setLoadError(false); setAttempt(value => value + 1) }} />
-        : drafts === null ? <Feedback kind="loading" title="Cargando formulario…" compact />
-        : <form onSubmit={submit} noValidate aria-label="Preguntas del formulario de adopción">
-          {drafts.length === 0 && <Feedback kind="empty" title="Aún no tienes preguntas" description="Agrega al menos una para poder enviar el formulario por el chat." compact />}
+      {loadError ? <Feedback kind="error" title="No pudimos cargar tus preguntas." actionLabel="Reintentar" onAction={() => { setLoadError(false); setAttempt(value => value + 1) }} />
+        : drafts === null ? <Feedback kind="loading" title="Cargando preguntas…" compact />
+        : <form onSubmit={submit} noValidate aria-label="Preguntas de adopción">
+          {drafts.length === 0 && <Feedback kind="empty" title="Sin preguntas" description="Al apretar Conversar solo se abrirá el chat, sin cuestionario." compact />}
           <ol className="space-y-4">
             {drafts.map((draft, index) => <li key={index} className="rounded-2xl border border-base-200 bg-base-50 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -91,12 +120,29 @@ export default function AdoptionFormSection() {
                   <input id={`question-${index}`} className={inputClass} value={draft.label} maxLength={200} aria-invalid={index in errors}
                     aria-describedby={index in errors ? `question-${index}-error` : undefined} onChange={event => update(index, { label: event.target.value })} /></div>
                 <div><label htmlFor={`question-${index}-kind`} className="text-sm font-semibold">Tipo de respuesta</label>
-                  <select id={`question-${index}-kind`} className={inputClass} value={draft.kind} onChange={event => update(index, { kind: event.target.value as QuestionKind })}>
+                  <select id={`question-${index}-kind`} className={inputClass} value={draft.kind} onChange={event => update(index, { kind: event.target.value as QuestionKind, flagged: [] })}>
                     {Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select></div>
               </div>
               {draft.kind === 'choice' && <div className="mt-4"><label htmlFor={`question-${index}-options`} className="text-sm font-semibold">Alternativas (una por línea)</label>
                 <textarea id={`question-${index}-options`} rows={3} className={inputClass} value={draft.optionsText} onChange={event => update(index, { optionsText: event.target.value })} /></div>}
+
+              {draft.kind === 'yes_no' && <div className="mt-4"><label htmlFor={`question-${index}-flagged`} className="text-sm font-semibold">Respuesta que no cumple</label>
+                <select id={`question-${index}-flagged`} className={`${inputClass} sm:max-w-xs`} value={draft.flagged.length ? String(draft.flagged[0]) : ''}
+                  onChange={event => update(index, { flagged: event.target.value === '' ? [] : [event.target.value === 'true'] })}>
+                  <option value="">Ninguna (solo informativa)</option>
+                  <option value="false">No</option>
+                  <option value="true">Sí</option>
+                </select></div>}
+              {draft.kind === 'choice' && optionsOf(draft).length > 0 && <fieldset className="mt-4">
+                <legend className="text-sm font-semibold">Alternativas que no cumplen</legend>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                  {optionsOf(draft).map(option => <label key={option} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" className="size-4" checked={draft.flagged.includes(option)} onChange={event => toggleFlagged(index, option, event.target.checked)} />{option}
+                  </label>)}
+                </div>
+              </fieldset>}
+
               <label className="mt-4 flex items-center gap-3 text-sm">
                 <input type="checkbox" className="size-4" checked={draft.required} onChange={event => update(index, { required: event.target.checked })} />Respuesta obligatoria
               </label>
@@ -106,7 +152,8 @@ export default function AdoptionFormSection() {
           {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'} className={`mt-4 text-sm font-medium ${notice.kind === 'error' ? 'text-danger-700' : 'text-success-800'}`}>{notice.text}</p>}
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button" className="button-secondary" disabled={drafts.length >= MAX_QUESTIONS} onClick={() => reorder([...drafts, emptyQuestion()])}><Plus size={17} aria-hidden="true" />Agregar pregunta</button>
-            <button type="submit" className="button-primary" disabled={saving}><Save size={17} aria-hidden="true" />{saving ? 'Guardando…' : 'Guardar formulario'}</button>
+            <button type="submit" className="button-primary" disabled={saving}><Save size={17} aria-hidden="true" />{saving ? 'Guardando…' : 'Guardar preguntas'}</button>
+            {customized && <button type="button" className="button-secondary" disabled={saving} onClick={reset}><RotateCcw size={17} aria-hidden="true" />Volver a las sugeridas</button>}
           </div>
         </form>}
     </div>

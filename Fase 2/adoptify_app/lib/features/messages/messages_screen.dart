@@ -14,10 +14,12 @@ import 'messages_service.dart';
 // La fundación la ve como su pestaña "Chat", con sus interesados y postulados.
 // Se actualiza sola cada 15 s mientras la pestaña está a la vista.
 class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key, this.openWithUserId});
+  const MessagesScreen({super.key, this.openWithUserId, this.openWithAnimalId});
 
   // Fundación: al entrar abre (o recupera) el chat con esta persona, desde "Conversar"
   final int? openWithUserId;
+  // Mascota por la que se conversa: empieza el cuestionario de adopción (HU-G3)
+  final int? openWithAnimalId;
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -39,19 +41,21 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _started = true;
     _load();
     _timer = Timer.periodic(conversationsPollInterval, (_) => _poll());
-    _openWith(widget.openWithUserId);
+    _openWith(widget.openWithUserId, widget.openWithAnimalId);
   }
 
   @override
   void didUpdateWidget(MessagesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.openWithUserId != oldWidget.openWithUserId) _openWith(widget.openWithUserId);
+    if (widget.openWithUserId != oldWidget.openWithUserId || widget.openWithAnimalId != oldWidget.openWithAnimalId) {
+      _openWith(widget.openWithUserId, widget.openWithAnimalId);
+    }
   }
 
-  Future<void> _openWith(int? userId) async {
+  Future<void> _openWith(int? userId, int? animalId) async {
     if (userId == null) return;
     try {
-      final conversation = await _service.open(userId);
+      final conversation = await _service.open(userId, animalId: animalId);
       if (mounted) await _open(conversation);
     } catch (error) {
       if (!mounted) return;

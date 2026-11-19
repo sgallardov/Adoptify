@@ -13,8 +13,8 @@ from app.models.conversation import Conversation, Message
 from app.models.foster_application import FosterApplication
 from app.models.foundation import Foundation
 from app.models.user import User
-from app.schemas.adoption_form import FormRequestOut
-from app.schemas.conversation import ConversationCreate, ConversationOut, LastMessage, MessageCreate, MessageOut
+from app.schemas.conversation import ConversationCreate, ConversationOut, LastMessage, MessageCreate, MessageOut, QuestionInfo
+from app.services.adoption_questionnaire import start_questionnaire
 
 router = APIRouter()
 
@@ -31,22 +31,70 @@ def _is_participant(user: User, conversation: Conversation) -> bool:
     return conversation.user_id == user.id or _is_foundation_side(user, conversation)
 
 
-def _form_out(form: AdoptionFormRequest) -> FormRequestOut:
-    return FormRequestOut(id=form.id, questions=form.questions, answers=form.answers, answered_at=form.answered_at)
+def _question_info(message: Message, form: AdoptionFormRequest | None, index: int | None) -> QuestionInfo | None:
+    """Datos de una pregunta automática, para que la app muestre los botones de respuesta."""
+    if message.kind != "question" or form is None or index is None:
+        return None
+    question = form.questions[index]
+    return QuestionInfo(
+        form_id=form.id, animal_id=form.animal_id, index=index, total=len(form.questions),
+        kind=question["kind"], options=question.get("options") or [], required=question.get("required", True),
+    )
 
 
 def _message_out(
-    message: Message, conversation: Conversation, current_user: User, form: AdoptionFormRequest | None = None
+    message: Message,
+    conversation: Conversation,
+    current_user: User,
+    form: AdoptionFormRequest | None = None,
+    question_index: int | None = None,
 ) -> MessageOut:
     return MessageOut(
         id=message.id,
         body=message.body,
         created_at=message.created_at,
+        # Los mensajes automáticos (sin remitente) se muestran como de la fundación
         from_foundation=message.sender_user_id != conversation.user_id,
-        mine=message.sender_user_id == current_user.id,
+        mine=message.sender_user_id is not None and message.sender_user_id == current_user.id,
         kind=message.kind,
-        form=None if form is None else _form_out(form),
+        question=_question_info(message, form, question_index),
     )
+
+
+async def question_indexes(db: AsyncSession, messages: list[Message]) -> tuple[dict[int, AdoptionFormRequest], dict[int, int]]:
+    """Cuestionarios de los mensajes y la posición de cada pregunta automática.
+
+    La posición de una pregunta es cuántas preguntas del mismo cuestionario hubo antes que ella
+    en el chat (se cuentan también las que quedaron fuera de esta página).
+    """
+    form_ids = {message.form_request_id for message in messages if message.form_request_id is not None}
+    if not form_ids:
+        return {}, {}
+    forms = {
+        form.id: form
+        for form in (await db.execute(select(AdoptionFormRequest).where(AdoptionFormRequest.id.in_(form_ids)))).scalars()
+    }
+    questions = (await db.execute(
+        select(Message.id, Message.form_request_id)
+        .where(Message.form_request_id.in_(form_ids), Message.kind == "question")
+        .order_by(Message.id)
+    )).all()
+    indexes: dict[int, int] = {}
+    seen: dict[int, int] = {}
+    for message_id, form_id in questions:
+        indexes[message_id] = seen.get(form_id, 0)
+        seen[form_id] = indexes[message_id] + 1
+    return forms, indexes
+
+
+def messages_out(
+    messages: list[Message], conversation: Conversation, current_user: User,
+    forms: dict[int, AdoptionFormRequest], indexes: dict[int, int],
+) -> list[MessageOut]:
+    return [
+        _message_out(message, conversation, current_user, forms.get(message.form_request_id), indexes.get(message.id))
+        for message in messages
+    ]
 
 
 async def _linked_to_foundation(db: AsyncSession, user_id: int, foundation_id: int) -> bool:
@@ -101,12 +149,14 @@ async def _own_conversation(db: AsyncSession, conversation_id: int, current_user
     summary="Abrir un chat con un adoptante",
     description=(
         "Solo fundaciones. La persona debe haber dado like a un animal de la fundación, postulado a uno de ellos "
-        "o postulado como hogar temporal. Si la conversación ya existe se devuelve la misma con 200."
+        "o postulado como hogar temporal. Si la conversación ya existe se devuelve la misma con 200. "
+        "Con animal_id (botón Conversar de los interesados de esa mascota) empieza en el chat el cuestionario "
+        "de adopción de la fundación, una sola vez por persona y mascota (HU-G3)."
     ),
     responses={
         200: {"description": "La conversación ya existía"},
         403: {"description": "La cuenta no es de fundación o la persona no está vinculada a ella"},
-        404: {"description": "No existe un adoptante con ese id"},
+        404: {"description": "No existe un adoptante con ese id, o la mascota no es de la fundación"},
     },
 )
 async def open_conversation(
@@ -122,23 +172,31 @@ async def open_conversation(
         target = await db.get(User, payload.user_id)
         if target is None or target.role != "adopter":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No encontramos a esa persona.")
-        existing = (await db.execute(
+        animal = None
+        if payload.animal_id is not None:
+            animal = await db.get(Animal, payload.animal_id)
+            if animal is None or animal.foundation_id != foundation_id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No encontramos esa mascota en tu fundación.")
+        conversation = (await db.execute(
             select(Conversation).where(Conversation.foundation_id == foundation_id, Conversation.user_id == target.id)
         )).scalar_one_or_none()
-        if existing is not None:
+        if conversation is not None:
             response.status_code = status.HTTP_200_OK
-            return await _conversation_out(db, existing)
-        if not await _linked_to_foundation(db, target.id, foundation_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo puedes conversar con personas interesadas en tus animales o postuladas.",
-            )
-        conversation = Conversation(foundation_id=foundation_id, user_id=target.id)
-        db.add(conversation)
+        else:
+            if not await _linked_to_foundation(db, target.id, foundation_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Solo puedes conversar con personas interesadas en tus animales o postuladas.",
+                )
+            conversation = Conversation(foundation_id=foundation_id, user_id=target.id)
+            db.add(conversation)
+            await db.flush()
+        if animal is not None:
+            await start_questionnaire(db, conversation, animal, first_name=target.full_name.split()[0])
         await db.commit()
         await db.refresh(conversation)
     except IntegrityError:
-        # Otro socio de la fundación la abrió entre la consulta y el commit: se devuelve esa
+        # Otro socio de la fundación la abrió (o empezó el cuestionario) al mismo tiempo: se devuelve esa
         await db.rollback()
         conversation = (await db.execute(
             select(Conversation).where(Conversation.foundation_id == foundation_id, Conversation.user_id == payload.user_id)
@@ -193,19 +251,11 @@ async def list_messages(
     if after_id is not None:
         query = query.where(Message.id > after_id)
     try:
-        messages = (await db.execute(query.order_by(Message.id.desc()).limit(MESSAGES_PAGE))).scalars().all()
-        form_ids = {message.form_request_id for message in messages if message.form_request_id is not None}
-        forms = {} if not form_ids else {
-            form.id: form for form in (await db.execute(
-                select(AdoptionFormRequest).where(AdoptionFormRequest.id.in_(form_ids))
-            )).scalars()
-        }
+        messages = list(reversed((await db.execute(query.order_by(Message.id.desc()).limit(MESSAGES_PAGE))).scalars().all()))
+        forms, indexes = await question_indexes(db, messages)
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="No se pudieron cargar los mensajes.") from exc
-    return [
-        _message_out(message, conversation, current_user, forms.get(message.form_request_id))
-        for message in reversed(messages)
-    ]
+    return messages_out(messages, conversation, current_user, forms, indexes)
 
 
 @router.post(

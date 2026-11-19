@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validat
 
 from app.services import storage
 from app.services.communes import COMMUNES
+from app.schemas.adoption_form import QuestionnaireSummary
 
 Species = Literal["perro", "gato"]
 Gender = Literal["macho", "hembra"]
@@ -80,6 +81,8 @@ class InterestedUserResponse(BaseModel):
     favorited_at: datetime
     # Compatibilidad 0-100 con el animal; null si la persona no completó "Quiero adoptar"
     match_score: float | None = None
+    # Cuestionario de adopción de esta mascota (HU-G3); null si la fundación todavía no aprieta "Conversar"
+    questionnaire: QuestionnaireSummary | None = None
 
 
 class AnimalInterestedResponse(BaseModel):
