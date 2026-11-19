@@ -5,6 +5,10 @@ import '../../core/config.dart';
 import '../map/map_service.dart';
 
 // Tarjeta del match: no trae ubicación a propósito, solo lo que sirve para decidir
+// Porcentaje de compatibilidad tal como se muestra ("83 % compatible"); el espacio no se corta entre líneas
+String percentLabel(num percent) => '${percent.round()}\u00a0%';
+String compatibilityLabel(num percent) => '${percentLabel(percent)} compatible';
+
 class MatchAnimal {
   const MatchAnimal({
     required this.id,

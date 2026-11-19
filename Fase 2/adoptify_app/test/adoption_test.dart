@@ -27,7 +27,7 @@ void main() {
     await openProfile(tester, api);
 
     expect(find.text('Quiero adoptar'), findsOneWidget);
-    expect(find.text('Opcional · cuéntanos de tu hogar para encontrar tu match'), findsOneWidget);
+    expect(find.text('Opcional · cuéntanos de tu hogar para encontrar mascotas compatibles'), findsOneWidget);
     expect(find.text('Tipo de vivienda'), findsNothing);
   });
 

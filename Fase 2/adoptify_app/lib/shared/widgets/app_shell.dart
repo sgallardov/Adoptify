@@ -31,7 +31,7 @@ const _userItems = [
     tooltip: 'Conversaciones con fundaciones',
   ),
   NavItem(label: 'Mapa', icon: Icons.map_outlined, activeIcon: Icons.map),
-  NavItem(label: 'Match', icon: Icons.favorite_border, activeIcon: Icons.favorite),
+  NavItem(label: 'Conecta', icon: Icons.favorite_border, activeIcon: Icons.favorite),
   NavItem(label: 'Perfil', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 

@@ -384,7 +384,10 @@ Incluyen los tres escenarios exigidos (total, parcial y nulo), preferencias
 incompletas, edad desconocida y rango de edad invertido. La función puede usarse
 desde futuros endpoints; esta HU no agrega una ruta HTTP.
 
-### Match y favoritos (backend y app)
+### Conecta (match) y favoritos (backend y app)
+
+En la interfaz el match se llama **Conecta** y el porcentaje se muestra como "83 % compatible"
+(app y portal). La API y el código mantienen el nombre `match` (`/animals/match`, `match_score`).
 
 Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 
@@ -403,10 +406,10 @@ Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 | `PATCH` | `/adoption-applications/{id}/status` | Fundación: revisa, rechaza, preselecciona o invita a conversar a una candidatura propia. |
 
 Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
-En la app móvil, la pestaña **Match** muestra las tarjetas (deslizar a la derecha
+En la app móvil, la pestaña **Conecta** (`/conecta`; `/match` redirige ahí) muestra las tarjetas (deslizar a la derecha
 guarda el favorito) y el corazón de la barra abre la lista de favoritos.
 
-**HU-N (ficha desde Match y favoritos):** las tarjetas de `/animals/match` y `/animals/favorites`
+**HU-N (ficha desde Conecta y favoritos):** las tarjetas de `/animals/match` y `/animals/favorites`
 incluyen `status` (un favorito puede estar ya adoptado). En la app, "Ver ficha" en la tarjeta y
 tocar una fila de favoritos abren `/animales/:id` (descripción, raza, sexo y energía; desde ahí
 se postula). Los descartes ("Pasar") se guardan **en el dispositivo** por usuario
@@ -417,7 +420,7 @@ Bajo 40 % de compatibilidad la tarjeta va al final con el rótulo "Poco compatib
 
 Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales:
 
-- **Portal:** la card de cada animal en *Mis casos* muestra cuántos interesados tiene, y el detalle (`/animales/:id`) trae la sección **Interesados** con nombre, fecha del favorito y porcentaje de match.
+- **Portal:** la card de cada animal en *Mis casos* muestra cuántos interesados tiene, y el detalle (`/animales/:id`) trae la sección **Interesados** con nombre, fecha del favorito y porcentaje de compatibilidad ("83 % compatible").
 - **App (vista fundación):** cada card de *Mis animales* tiene el botón **N interesados**, que abre `/fundacion/interesados?animal_id=…` con la misma información y el botón **Conversar**.
 
 Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.

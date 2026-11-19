@@ -27,7 +27,6 @@ import '../features/messages/chat_screen.dart';
 import '../features/messages/messages_screen.dart';
 import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
-import '../core/api_client.dart';
 import '../shared/widgets/app_shell.dart';
 import '../shared/widgets/detail_loader.dart';
 
@@ -207,7 +206,7 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/match',
+              path: '/conecta',
               builder: (context, state) => const MatchScreen(),
             ),
           ],
@@ -235,7 +234,9 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
       path: '/mensajes/:id',
       builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
     ),
-    // Se abre con el corazón de la pestaña Match
+    // Antes la pestaña Conecta se llamaba Match: los enlaces viejos siguen funcionando
+    GoRoute(path: '/match', redirect: (context, state) => '/conecta'),
+    // Se abre con el corazón de la pestaña Conecta
     GoRoute(
       path: '/favoritos',
       builder: (context, state) => const FavoritesScreen(),

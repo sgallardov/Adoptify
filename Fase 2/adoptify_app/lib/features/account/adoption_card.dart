@@ -156,7 +156,7 @@ class _AdoptionCardState extends State<AdoptionCard> {
                         Text('Quiero adoptar', style: textTheme.titleMedium),
                         const SizedBox(height: 2),
                         Text(
-                          _saved ? 'Preferencias guardadas · toca para editar' : 'Opcional · cuéntanos de tu hogar para encontrar tu match',
+                          _saved ? 'Preferencias guardadas · toca para editar' : 'Opcional · cuéntanos de tu hogar para encontrar mascotas compatibles',
                           style: textTheme.bodySmall,
                         ),
                       ],

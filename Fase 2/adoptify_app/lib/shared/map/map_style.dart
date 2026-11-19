@@ -194,36 +194,22 @@ class MapDot extends StatelessWidget {
 class MapPins {
   // Mascota en adopción: círculo naranjo con un corazón blanco y borde blanco. El ícono y el borde la
   // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
-  // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36, en adopción 32); veterinarias y
-  // fundaciones van chicas (24) y atenuadas, y crecen al seleccionarlas
+  // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36); veterinarias y fundaciones van
+  // chicas (24) y atenuadas, y crecen al seleccionarlas
   static const animal = AnimalPin(size: 32);
-  static const selectedAnimal = AnimalPin(size: 38, selected: true);
-  static final report = MapDot(
-    color: AdoptifyColors.light.report,
-    size: reportSize,
-  );
-  static final reportPicker = MapDot(
-    color: AdoptifyColors.light.report,
-    size: 22,
-  );
-  static final origin = MapDot(
-    color: AdoptifyColors.dark.origin,
-    size: 16,
-    halo: true,
-  );
+  static final report = MapDot(color: AdoptifyColors.light.report, size: reportSize);
+  static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
+  static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
   // Reporte según la especie: perro y gato llevan su huella en blanco sobre el mismo rojo; "otro" es el punto
-  static Widget reportFor(String? species) => switch (species) {
-    'perro' => const ReportPin(
-      paw: Icon(Icons.pets, size: 20, color: Colors.white),
-    ),
-    'gato' => const ReportPin(
-      paw: CustomPaint(
-        size: Size.square(20),
-        painter: CatPawPainter(Colors.white),
-      ),
-    ),
-    _ => report,
-  };
+  // taken: una fundación tomó el caso; el pin lleva una insignia verde con un visto
+  static Widget reportFor(String? species, {bool taken = false}) {
+    final Widget pin = switch (species) {
+      'perro' => const ReportPin(paw: Icon(Icons.pets, size: 20, color: Colors.white)),
+      'gato' => const ReportPin(paw: CustomPaint(size: Size.square(20), painter: CatPawPainter(Colors.white))),
+      _ => report,
+    };
+    return taken ? TakenBadge(child: pin) : pin;
+  }
 
   static const double reportSize = 36;
 
@@ -294,6 +280,36 @@ class _PinCircle extends StatelessWidget {
     ),
     child: child,
   );
+}
+
+// Insignia verde con un visto en la esquina del pin de un reporte tomado por una fundación
+class TakenBadge extends StatelessWidget {
+  const TakenBadge({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          Positioned(
+            right: -6,
+            top: -6,
+            child: Container(
+              key: const ValueKey('taken-badge'),
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: AdoptifyColors.light.successStrong,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
+            ),
+          ),
+        ],
+      );
 }
 
 // Reporte de un perro o un gato: círculo rojo de reportes con borde blanco y la huella de la especie adentro

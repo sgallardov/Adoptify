@@ -20,7 +20,7 @@ void main() {
   testWidgets('la barra del adoptante tiene Mensajes en segundo lugar', (tester) async {
     await tester.pumpWidget(AdoptifyApp(auth: FakeApi().auth));
     await tester.pumpAndSettle();
-    final labels = ['Fundaciones', 'Mensajes', 'Mapa', 'Match', 'Perfil'];
+    final labels = ['Fundaciones', 'Mensajes', 'Mapa', 'Conecta', 'Perfil'];
     final positions = [for (final label in labels) tester.getCenter(find.text(label).last).dx];
     expect(positions, [...positions]..sort());
   });

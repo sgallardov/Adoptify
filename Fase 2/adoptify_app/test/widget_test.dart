@@ -10,7 +10,7 @@ void main() {
     await tester.pumpWidget(AdoptifyApp(auth: FakeApi().auth));
     await tester.pumpAndSettle();
 
-    expect(find.text('Buscar mascota o fundación'), findsOneWidget);
+    expect(find.text('Buscar fundación'), findsOneWidget);
     expect(find.byTooltip('Capas'), findsOneWidget);
     expect(find.byTooltip('Usar mi ubicación'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Reportar mascota'), findsOneWidget);
