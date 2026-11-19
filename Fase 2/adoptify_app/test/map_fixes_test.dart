@@ -61,6 +61,50 @@ void main() {
       expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
     });
 
+    // HU-X: búsqueda por palabras en reportes, fundaciones y veterinarias
+    testWidgets('busca por palabras en cualquier orden, sin tildes, y muestra el tipo', (tester) async {
+      await openMap(tester, FakeApi());
+      await tester.enterText(find.byType(TextField), 'HERIDO perro cafe');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Perro · Mediano · Café'), findsOneWidget);
+      expect(find.textContaining('Reporte ·'), findsOneWidget);
+
+      // Una palabra que no está en el reporte lo descarta
+      await tester.enterText(find.byType(TextField), 'perro negro herido');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Reporte ·'), findsNothing);
+      expect(find.text('No encontramos reportes, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'grecia nunoa');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(ListTile, 'Clínica Urgencias Vet'), findsOneWidget);
+      expect(find.textContaining('Veterinaria ·'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'patitas');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Fundación ·'), findsWidgets);
+    });
+
+    testWidgets('elegir un reporte o una veterinaria centra el mapa y abre su tarjeta', (tester) async {
+      await openMap(tester, FakeApi());
+      await tester.enterText(find.byType(TextField), 'collar rojo');
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Reporte ·'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Cerrar'), findsOneWidget);
+      expect(find.textContaining('Perro café con collar rojo'), findsWidgets);
+
+      await tester.enterText(find.byType(TextField), 'urgencias vet');
+      await tester.pumpAndSettle();
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      // Tarjeta de la veterinaria (antes de elegirla no se veía: falta zoom) y su pin en el mapa
+      expect(find.text('Clínica Urgencias Vet'), findsOneWidget);
+      expect(find.byTooltip('Cerrar'), findsOneWidget);
+      final keys = [for (final layer in tester.widgetList<MarkerLayer>(find.byType(MarkerLayer))) for (final m in layer.markers) m.key];
+      expect(keys, contains(const ValueKey('clinic-1')));
+    });
+
     testWidgets('tocar fuera del buscador y de la lista la cierra', (tester) async {
       await openMap(tester, FakeApi());
       await tester.enterText(find.byType(TextField), 'patitas');

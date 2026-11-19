@@ -328,7 +328,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'Luna');
       await tester.pumpAndSettle();
-      expect(find.text('No encontramos fundaciones con ese nombre.'), findsOneWidget);
+      expect(find.text('No encontramos reportes, fundaciones ni veterinarias con esas palabras.'), findsOneWidget);
     },
   );
 

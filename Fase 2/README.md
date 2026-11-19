@@ -231,6 +231,9 @@ entra al portal (`403` con "Esta cuenta es de adoptante. Inicia sesión desde la
 * La fundación no ve el botón "Reportar mascota": gestiona reportes, no los crea.
 * **Decisión sobre el seguimiento por varias fundaciones:** "visto" sigue guardando una sola fundación por reporte (la última reemplaza a la anterior). Es una marca informativa de "alguien ya lo vio", no una lista de seguimiento; lo que da exclusividad es "tomado", que es único por reporte. No se crea la tabla `report_follows` (ni migración ni RLS) hasta que haya un caso real de varias fundaciones siguiendo el mismo reporte; si aparece, bastaría `report_follows (report_id, foundation_id)` con clave única y RLS activada.
 
+#### App móvil: buscador del mapa (HU-X)
+* El buscador de `MapScreen` busca por palabras (todas deben aparecer, en cualquier orden, sin tildes ni mayúsculas) en lo que ya cargó el mapa: reportes (especie, tamaño, color, estados, condiciones, características, comportamiento y descripción), fundaciones (nombre y lugar) y veterinarias (nombre y dirección). No hay endpoint nuevo. Muestra hasta 8 resultados con su tipo (Reporte, Fundación, Veterinaria); al elegir uno (toque, clic o Enter para el primero) enciende su capa, centra el mapa (acercando lo justo para ver las veterinarias) y abre su tarjeta.
+
 ### HU-12: Módulo de fundaciones (backend)
 Cada fundación gestiona solo sus propios animales.
 * **Vínculo cuenta–fundación (migración `0004`):** `users.foundation_id` (FK nullable a `foundations.id`, `ON DELETE SET NULL`). Solo se usa en cuentas `foundation`; `admin` y `adopter` lo dejan en `NULL`. Una cuenta `foundation` sin fundación asignada no puede gestionar animales (`403`) ni ve ninguno en el listado.

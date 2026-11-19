@@ -343,15 +343,28 @@ class _MapScreenState extends State<MapScreen> {
     _load();
   }
 
-  // Elegir un resultado del buscador: se cierra la búsqueda y se muestra la fundación en el mapa
-  void _pickResult(Foundation foundation) {
+  // HU-X: elegir un resultado cierra la búsqueda, enciende su capa, centra el mapa y abre su tarjeta
+  void _pickResult(_SearchHit hit) {
     _search.clear();
     _searchFocus.unfocus();
-    setState(() => _showFoundations = true);
-    _selectFoundation(foundation);
-    if (foundation.position != null && _mapReady) {
-      _mapController.move(foundation.position!, _mapController.camera.zoom);
+    var zoom = _mapReady ? _mapController.camera.zoom : _clinicsMinZoom;
+    switch (hit.item) {
+      case final DogReport report:
+        setState(() => _showReports = true);
+        _selectReport(report);
+      case final Foundation foundation:
+        setState(() => _showFoundations = true);
+        _selectFoundation(foundation);
+      case final VetClinic clinic:
+        // Las veterinarias solo se dibujan con zoom cercano: se acerca lo justo para verla
+        if (zoom < _clinicsMinZoom) zoom = _clinicsMinZoom;
+        setState(() {
+          _showClinics = true;
+          _clinicsInView = true;
+        });
+        _selectClinic(clinic);
     }
+    if (_mapReady) _mapController.move(hit.position, zoom);
   }
 
   // Enter en el buscador elige el primer resultado; sin resultados la lista queda abierta con el aviso
@@ -413,14 +426,45 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // HU-R: el mapa ya no muestra mascotas en adopción, así que el buscador encuentra fundaciones
-  List<Foundation> get _results {
-    final query = _fold(_search.text.trim());
-    if (query.isEmpty) return const [];
-    return _foundations
-        .where((foundation) => foundation.position != null && _fold('${foundation.name} ${foundation.place}').contains(query))
-        .take(5)
-        .toList();
+  // HU-X: busca por palabras (todas deben aparecer, en cualquier orden y sin tildes ni mayúsculas)
+  // en reportes, fundaciones y veterinarias cargados en el mapa
+  List<_SearchHit> get _results {
+    final words = _fold(_search.text).split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return const [];
+    bool matches(String text) {
+      final folded = _fold(text);
+      return words.every(folded.contains);
+    }
+
+    return [
+      for (final report in _reports)
+        if (matches(_reportSearchText(report)))
+          _SearchHit(
+            kind: _HitKind.report,
+            title: report.summary.isEmpty ? 'Mascota reportada' : report.summary,
+            subtitle: [report.careLabel, if (report.conditionLabel.isNotEmpty) report.conditionLabel].join(' · '),
+            position: report.position,
+            item: report,
+          ),
+      for (final foundation in _foundations)
+        if (foundation.position != null && matches('${foundation.name} ${foundation.place}'))
+          _SearchHit(
+            kind: _HitKind.foundation,
+            title: foundation.name,
+            subtitle: foundation.place,
+            position: foundation.position!,
+            item: foundation,
+          ),
+      for (final clinic in _clinics)
+        if (matches('${clinic.name} ${clinic.place ?? ''}'))
+          _SearchHit(
+            kind: _HitKind.clinic,
+            title: clinic.name,
+            subtitle: clinic.place ?? (clinic.emergency ? 'Urgencias' : ''),
+            position: clinic.position,
+            item: clinic,
+          ),
+    ].take(_maxResults).toList();
   }
 
   void _openLegend() {
@@ -814,6 +858,48 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
+const _maxResults = 8;
+
+// Todo lo que se puede buscar de un reporte: valores y sus etiquetas en español
+String _reportSearchText(DogReport report) => [
+      report.summary,
+      report.careLabel,
+      report.statusLabel,
+      report.conditionLabel,
+      ?report.species,
+      ?report.size,
+      ?report.features,
+      ...report.conditions,
+      ...report.behaviors,
+      report.description,
+    ].join(' ');
+
+enum _HitKind {
+  report('Reporte'),
+  foundation('Fundación'),
+  clinic('Veterinaria');
+
+  const _HitKind(this.label);
+  final String label;
+}
+
+// Un resultado del buscador: su tipo, lo que se muestra y el elemento del mapa al que lleva
+class _SearchHit {
+  const _SearchHit({
+    required this.kind,
+    required this.title,
+    required this.subtitle,
+    required this.position,
+    required this.item,
+  });
+
+  final _HitKind kind;
+  final String title;
+  final String subtitle;
+  final LatLng position;
+  final Object item;
+}
+
 // Búsqueda sin distinguir mayúsculas ni tildes
 String _fold(String text) {
   const from = 'áéíóúüñ';
@@ -1080,7 +1166,7 @@ class _SearchBar extends StatelessWidget {
         // Tocar fuera del campo y de la lista (TextFieldTapRegion) cierra la búsqueda en web y en el teléfono
         onTapOutside: (_) => focusNode.unfocus(),
         decoration: InputDecoration(
-          hintText: 'Buscar fundación',
+          hintText: 'Buscar reporte, fundación o veterinaria',
           prefixIcon: Icon(Icons.search, color: context.colors.textMuted),
           suffixIcon: controller.text.isEmpty
               ? null
@@ -1103,8 +1189,24 @@ class _SearchBar extends StatelessWidget {
 class _SearchResults extends StatelessWidget {
   const _SearchResults({required this.results, required this.onPick});
 
-  final List<Foundation> results;
-  final ValueChanged<Foundation> onPick;
+  final List<_SearchHit> results;
+  final ValueChanged<_SearchHit> onPick;
+
+  Widget _leading(BuildContext context, _SearchHit hit) => SizedBox.square(
+        dimension: 40,
+        child: Center(
+          child: switch (hit.item) {
+            final DogReport report => MapPins.reportFor(report.species, taken: report.isTaken),
+            final Foundation foundation => FoundationAvatar(
+                name: foundation.name,
+                photoUrl: foundation.photoUrl,
+                size: 40,
+                color: context.colors.foundation,
+              ),
+            _ => Icon(Icons.local_hospital, color: context.colors.reportText),
+          },
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1116,29 +1218,36 @@ class _SearchResults extends StatelessWidget {
       child: results.isEmpty
           ? Padding(
               padding: const EdgeInsets.all(AdoptifySpacing.lg),
-              child: Text(
-                'No encontramos fundaciones con ese nombre.',
-                style: textTheme.bodyMedium,
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  'No encontramos reportes, fundaciones ni veterinarias con esas palabras.',
+                  style: textTheme.bodyMedium,
+                ),
               ),
             )
           : Material(
               type: MaterialType.transparency,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final foundation in results)
-                    ListTile(
-                      leading: FoundationAvatar(name: foundation.name, photoUrl: foundation.photoUrl, size: 40, color: context.colors.foundation),
-                      title: Text(foundation.name, style: textTheme.titleSmall),
-                      subtitle: Text(
-                        foundation.place,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodySmall,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final hit in results)
+                      ListTile(
+                        leading: _leading(context, hit),
+                        title: Text(hit.title, style: textTheme.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          hit.subtitle.isEmpty ? hit.kind.label : '${hit.kind.label} · ${hit.subtitle}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall,
+                        ),
+                        onTap: () => onPick(hit),
                       ),
-                      onTap: () => onPick(foundation),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
     );
