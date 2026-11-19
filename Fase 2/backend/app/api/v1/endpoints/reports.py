@@ -158,6 +158,10 @@ async def take_report(report_id: int, current_user: User = Depends(get_current_u
         report.taken_by_foundation_id = current_user.foundation_id
         report.taken_at = func.now()
         report.status = "in_rescue"
+        # HU-T: ya no hay botón "Marcar visto"; tomar el caso también cuenta como haberlo visto
+        if report.seen_at is None:
+            report.seen_by_foundation_id = current_user.foundation_id
+            report.seen_at = func.now()
         try:
             await db.commit()
         except SQLAlchemyError as exc:
