@@ -160,7 +160,6 @@ class MapPins {
   // Mascota en adopción: círculo naranjo con un corazón blanco y borde blanco. El ícono y el borde la
   // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
   static const animal = AnimalPin(size: 28);
-  static const selectedAnimal = AnimalPin(size: 34, selected: true);
   static final report = MapDot(color: AdoptifyColors.light.report, size: 18);
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);

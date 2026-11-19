@@ -33,45 +33,45 @@ void main() {
   group('buscador', () {
     testWidgets('tocar un resultado cierra la lista, limpia el buscador y abre la ficha', (tester) async {
       await openMap(tester, FakeApi());
-      await tester.enterText(find.byType(TextField), 'luna');
+      await tester.enterText(find.byType(TextField), 'patitas');
       await tester.pumpAndSettle();
 
       // Como un clic real: entre presionar y soltar se dibuja un cuadro. Antes, en web, el campo perdía el foco
       // al presionar, la lista desaparecía en ese cuadro y el clic ya no llegaba al resultado.
-      final press = await tester.startGesture(tester.getCenter(find.widgetWithText(ListTile, 'Luna')));
+      final press = await tester.startGesture(tester.getCenter(find.widgetWithText(ListTile, 'Fundación Patitas')));
       await tester.pump(const Duration(milliseconds: 80));
       await press.up();
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(ListTile, 'Luna'), findsNothing);
+      expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsNothing);
       expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
-      // Ficha de la mascota abierta en el mapa
-      expect(find.text('Zona aproximada: Ñuñoa'), findsOneWidget);
+      // Ficha de la fundación abierta en el mapa
+      expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
       expect(find.byTooltip('Cerrar'), findsOneWidget);
     }, variant: _platforms);
 
     testWidgets('Enter elige el primer resultado', (tester) async {
       await openMap(tester, FakeApi());
-      await tester.enterText(find.byType(TextField), 'lun');
+      await tester.enterText(find.byType(TextField), 'patit');
       await tester.pumpAndSettle();
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(ListTile, 'Luna'), findsNothing);
-      expect(find.text('Zona aproximada: Ñuñoa'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsNothing);
+      expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
     });
 
     testWidgets('tocar fuera del buscador y de la lista la cierra', (tester) async {
       await openMap(tester, FakeApi());
-      await tester.enterText(find.byType(TextField), 'luna');
+      await tester.enterText(find.byType(TextField), 'patitas');
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(ListTile, 'Luna'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsOneWidget);
 
       // Un punto del mapa lejos de los pines y de los botones
       await tester.tapAt(tester.getTopLeft(find.byType(FlutterMap)) + const Offset(30, 420));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(ListTile, 'Luna'), findsNothing);
-      expect(find.text('Zona aproximada: Ñuñoa'), findsNothing);
+      expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsNothing);
+      expect(find.text('Rescatamos perros y gatos de la calle.'), findsNothing);
     }, variant: _platforms);
   });
 
@@ -88,8 +88,8 @@ void main() {
       expect(find.text('Buscando tu ubicación…'), findsNothing);
       expect(find.text('Activar ubicación'), findsOneWidget);
       expect(find.text(permissionTimeoutMessage), findsOneWidget);
-      // El mapa sigue funcionando: la mascota se ve igual
-      expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
+      // El mapa sigue funcionando: el reporte se ve igual
+      expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
     });
 
     testWidgets('el botón de ubicación explica la espera y vuelve a estar disponible', (tester) async {
@@ -136,9 +136,11 @@ void main() {
 
       final legend = find.byKey(const ValueKey('map-legend'));
       expect(find.text('Qué significa cada pin'), findsOneWidget);
-      for (final item in ['Mascota en adopción', 'Perro reportado', 'Gato reportado', 'Fundación', 'Veterinaria']) {
+      for (final item in ['Perro reportado', 'Gato reportado', 'Fundación', 'Veterinaria']) {
         expect(find.descendant(of: legend, matching: find.text(item)), findsOneWidget);
       }
+      // HU-R: el mapa ya no muestra mascotas en adopción
+      expect(find.text('Mascota en adopción'), findsNothing);
     });
   });
 }

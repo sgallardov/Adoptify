@@ -66,6 +66,7 @@ class FakeApi {
   final MemoryTokenStorage storage;
   bool offline = false;
   bool animalsFail = false;
+  bool reportsFail = false;
   bool interestedFail = false;
   bool foundationsFail = false;
   // Nombre y contraseña de Matías: se pueden cambiar desde el Perfil
@@ -782,6 +783,7 @@ class FakeApi {
           },
         ]));
       case '/reports/nearby':
+        if (reportsFail) return _json(503, {'detail': 'No se pudo consultar los reportes.'});
         return _json(200, reports);
       case '/reports':
         if (request.headers['Authorization'] != 'Bearer $validToken') {

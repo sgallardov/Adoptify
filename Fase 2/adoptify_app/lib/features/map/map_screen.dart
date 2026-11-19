@@ -70,7 +70,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _autoFit = true;
   String? _geoError;
 
-  List<Animal> _animals = [];
   List<DogReport> _reports = [];
   bool _loading = true;
   bool _error = false;
@@ -85,12 +84,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _alertsLoading = false;
 
   // Capas visibles (botón de capas)
-  bool _showAnimals = true;
   bool _showReports = true;
   bool _showFoundations = true;
   bool _showClinics = true;
 
-  int? _selectedAnimalId;
   int? _selectedReportId;
   int? _selectedFoundationId;
   int? _selectedClinicId;
@@ -218,47 +215,33 @@ class _MapScreenState extends State<MapScreen> {
       _error = false;
     });
 
-    // Si fallan los reportes, el mapa sigue funcionando sin ellos
-    _service
-        .fetchNearbyReports(
-          origin ?? santiago,
-          origin != null ? _radiusKm : _defaultReportsRadiusKm,
-        )
-        .then((reports) {
-          if (mounted && request == _request) {
-            setState(() => _reports = reports);
-            _fitToPoints();
-          }
-        })
-        .catchError((_) {
-          if (mounted && request == _request) setState(() => _reports = []);
-        });
 
     // Las veterinarias se consultan por cercanía igual que reportes y mascotas.
     // Si fallan, el resto del mapa sigue funcionando.
     _loadClinics(origin ?? santiago, origin != null ? _radiusKm : _defaultReportsRadiusKm);
 
     try {
-      final animals = origin != null
-          ? await _service.fetchNearbyAnimals(origin, _radiusKm)
-          : await _service.fetchAvailableAnimals();
+      final reports = await _service.fetchNearbyReports(
+        origin ?? santiago,
+        origin != null ? _radiusKm : _defaultReportsRadiusKm,
+      );
       if (!mounted || request != _request) return;
       setState(() {
-        _animals = animals;
+        _reports = reports;
         _loading = false;
       });
       _fitToPoints();
     } catch (_) {
       if (!mounted || request != _request) return;
       setState(() {
-        _animals = [];
+        _reports = [];
         _loading = false;
         _error = true;
       });
     }
   }
 
-  // Encuadra el mapa para que se vean todas las mascotas y tu ubicación
+  // Encuadra el mapa para que se vean los reportes, las fundaciones y tu ubicación
   void _fitToPoints([int attempt = 0]) {
     if (!_mapReady || !mounted || !_autoFit) return;
     // Mientras se espera la ubicación no se encuadra el país entero: el mapa saltaría al llegar
@@ -284,9 +267,11 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
     final points = [
-      for (final animal in _animals)
-        if (animal.position != null) animal.position!,
+      // HU-R: el encuadre considera reportes y fundaciones, no las mascotas en adopción
       for (final report in _reports) report.position,
+      if (_showFoundations)
+        for (final foundation in _foundations)
+          if (foundation.position != null) foundation.position!,
       ?_origin,
     ];
     if (points.isEmpty) return;
@@ -316,8 +301,7 @@ class _MapScreenState extends State<MapScreen> {
         _origin = position;
         _centerOnOrigin = true;
         _autoFit = true;
-        _selectedAnimalId = null;
-        _selectedReportId = null;
+          _selectedReportId = null;
         _selectedFoundationId = null;
         _selectedClinicId = null;
         _locating = false;
@@ -341,7 +325,6 @@ class _MapScreenState extends State<MapScreen> {
       // "Ver todas": se encuadran todas las mascotas y reportes
       _centerOnUser = false;
       _autoFit = true;
-      _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
@@ -360,24 +343,15 @@ class _MapScreenState extends State<MapScreen> {
     _load();
   }
 
-  void _selectAnimal(Animal animal) {
-    setState(() {
-      _selectedAnimalId = animal.id;
-      _selectedReportId = null;
-      _selectedFoundationId = null;
-      _selectedClinicId = null;
-      _showAnimals = true;
-    });
-    if (animal.position != null && _mapReady) {
-      _mapController.move(animal.position!, _mapController.camera.zoom);
-    }
-  }
-
-  // Elegir un resultado del buscador: se cierra la búsqueda y se muestra la mascota en el mapa
-  void _pickResult(Animal animal) {
+  // Elegir un resultado del buscador: se cierra la búsqueda y se muestra la fundación en el mapa
+  void _pickResult(Foundation foundation) {
     _search.clear();
     _searchFocus.unfocus();
-    _selectAnimal(animal);
+    setState(() => _showFoundations = true);
+    _selectFoundation(foundation);
+    if (foundation.position != null && _mapReady) {
+      _mapController.move(foundation.position!, _mapController.camera.zoom);
+    }
   }
 
   // Enter en el buscador elige el primer resultado; sin resultados la lista queda abierta con el aviso
@@ -393,7 +367,6 @@ class _MapScreenState extends State<MapScreen> {
   void _selectReport(DogReport report) {
     setState(() {
       _selectedReportId = report.id;
-      _selectedAnimalId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
     });
@@ -402,7 +375,6 @@ class _MapScreenState extends State<MapScreen> {
   void _selectFoundation(Foundation foundation) {
     setState(() {
       _selectedFoundationId = foundation.id;
-      _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedClinicId = null;
     });
@@ -411,7 +383,6 @@ class _MapScreenState extends State<MapScreen> {
   void _selectClinic(VetClinic clinic) {
     setState(() {
       _selectedClinicId = clinic.id;
-      _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
     });
@@ -436,22 +407,18 @@ class _MapScreenState extends State<MapScreen> {
   void _clearSelection() {
     _searchFocus.unfocus();
     setState(() {
-      _selectedAnimalId = null;
       _selectedReportId = null;
       _selectedFoundationId = null;
       _selectedClinicId = null;
     });
   }
 
-  List<Animal> get _results {
+  // HU-R: el mapa ya no muestra mascotas en adopción, así que el buscador encuentra fundaciones
+  List<Foundation> get _results {
     final query = _fold(_search.text.trim());
     if (query.isEmpty) return const [];
-    return _animals
-        .where(
-          (animal) => _fold(
-            '${animal.name} ${animal.species} ${animal.foundationName ?? ''}',
-          ).contains(query),
-        )
+    return _foundations
+        .where((foundation) => foundation.position != null && _fold('${foundation.name} ${foundation.place}').contains(query))
         .take(5)
         .toList();
   }
@@ -478,22 +445,16 @@ class _MapScreenState extends State<MapScreen> {
           }
 
           return _LayersSheet(
-            animalsCount: _animals.length,
             reportsCount: _reports.length,
             foundationsCount: _foundations
                 .where((f) => f.position != null)
                 .length,
-            showAnimals: _showAnimals,
             showReports: _showReports,
             showFoundations: _showFoundations,
             clinicsCount: _clinics.length,
             clinicsInView: _clinicsInView,
             showClinics: _showClinics,
             showOrigin: _origin != null,
-            onAnimals: (value) => update(() {
-              _showAnimals = value;
-              if (!value) _selectedAnimalId = null;
-            }),
             onReports: (value) => update(() {
               _showReports = value;
               if (!value) _selectedReportId = null;
@@ -514,9 +475,6 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedAnimal = _animals
-        .where((animal) => animal.id == _selectedAnimalId)
-        .firstOrNull;
     final selectedReport = _reports
         .where((report) => report.id == _selectedReportId)
         .firstOrNull;
@@ -527,7 +485,6 @@ class _MapScreenState extends State<MapScreen> {
         .where((c) => c.id == _selectedClinicId)
         .firstOrNull;
     final hasSelection =
-        selectedAnimal != null ||
         selectedReport != null ||
         selectedFoundation != null ||
         selectedClinic != null;
@@ -679,17 +636,7 @@ class _MapScreenState extends State<MapScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (selectedAnimal != null) ...[
-                      _AnimalDetailCard(
-                        animal: selectedAnimal,
-                        onClose: _clearSelection,
-                        onOpen: () => context.push(
-                          '$_base/animales/${selectedAnimal.id}',
-                          extra: selectedAnimal,
-                        ),
-                      ),
-                      const SizedBox(height: AdoptifySpacing.md),
-                    ] else if (selectedReport != null) ...[
+                    if (selectedReport != null) ...[
                       _ReportDetailCard(
                         report: selectedReport,
                         onClose: _clearSelection,
@@ -747,7 +694,7 @@ class _MapScreenState extends State<MapScreen> {
           ),
           const SizedBox(width: AdoptifySpacing.sm),
           Flexible(
-            child: Text('Buscando mascotas…', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+            child: Text('Buscando reportes…', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
           ),
         ],
       );
@@ -756,24 +703,24 @@ class _MapScreenState extends State<MapScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
-            child: Text('No pudimos cargar las mascotas.', style: muted),
+            child: Text('No pudimos cargar los reportes.', style: muted),
           ),
           TextButton(onPressed: _load, child: const Text('Reintentar')),
         ],
       );
-    } else if (_origin == null && _animals.isNotEmpty) {
-      // El conteo de mascotas se reemplazó por la tarjeta de avisos
+    } else if (_origin == null && _reports.isNotEmpty) {
+      // El conteo de reportes se reemplazó por la tarjeta de avisos
       return const SizedBox.shrink();
     } else {
       final empty = _origin != null
-          ? 'No hay mascotas disponibles a menos de $_radiusKm km. Prueba con un radio mayor.'
-          : 'No hay mascotas disponibles por el momento.';
+          ? 'No hay mascotas reportadas a menos de $_radiusKm km. Prueba con un radio mayor.'
+          : 'No hay mascotas reportadas por el momento.';
       content = Wrap(
         spacing: AdoptifySpacing.sm,
         runSpacing: AdoptifySpacing.xs,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          if (_animals.isEmpty) Text(empty, style: muted),
+          if (_reports.isEmpty) Text(empty, style: muted),
           if (_origin != null) ...[
             _RadiusSelector(value: _radiusKm, onChanged: _changeRadius),
             TextButton.icon(
@@ -850,25 +797,6 @@ class _MapScreenState extends State<MapScreen> {
                   ),
             // Tu ubicación: la del botón o la detectada al abrir el mapa
             if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
-            if (_showAnimals) ...[
-              for (final animal in _animals)
-                if (animal.position != null && animal.id != _selectedAnimalId)
-                  mapMarker(
-                    animal.position!,
-                    MapPins.animal,
-                    key: ValueKey('animal-${animal.id}'),
-                    onTap: () => _selectAnimal(animal),
-                  ),
-              // La seleccionada se dibuja al final para quedar encima
-              for (final animal in _animals)
-                if (animal.position != null && animal.id == _selectedAnimalId)
-                  mapMarker(
-                    animal.position!,
-                    MapPins.selectedAnimal,
-                    key: ValueKey('animal-${animal.id}'),
-                    onTap: () => _selectAnimal(animal),
-                  ),
-            ],
             // Un aviso de rescate debe poder tocarse incluso si coincide con una referencia comunal.
             if (_showReports)
               for (final report in _reports)
@@ -1151,7 +1079,7 @@ class _SearchBar extends StatelessWidget {
         // Tocar fuera del campo y de la lista (TextFieldTapRegion) cierra la búsqueda en web y en el teléfono
         onTapOutside: (_) => focusNode.unfocus(),
         decoration: InputDecoration(
-          hintText: 'Buscar mascota o fundación',
+          hintText: 'Buscar fundación',
           prefixIcon: Icon(Icons.search, color: context.colors.textMuted),
           suffixIcon: controller.text.isEmpty
               ? null
@@ -1174,8 +1102,8 @@ class _SearchBar extends StatelessWidget {
 class _SearchResults extends StatelessWidget {
   const _SearchResults({required this.results, required this.onPick});
 
-  final List<Animal> results;
-  final ValueChanged<Animal> onPick;
+  final List<Foundation> results;
+  final ValueChanged<Foundation> onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -1188,7 +1116,7 @@ class _SearchResults extends StatelessWidget {
           ? Padding(
               padding: const EdgeInsets.all(AdoptifySpacing.lg),
               child: Text(
-                'No encontramos mascotas con ese nombre.',
+                'No encontramos fundaciones con ese nombre.',
                 style: textTheme.bodyMedium,
               ),
             )
@@ -1197,21 +1125,17 @@ class _SearchResults extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final animal in results)
+                  for (final foundation in results)
                     ListTile(
-                      leading: AnimalPhoto(url: animal.photoUrl, size: 40),
-                      title: Text(animal.name, style: textTheme.titleSmall),
+                      leading: FoundationAvatar(name: foundation.name, photoUrl: foundation.photoUrl, size: 40, color: context.colors.foundation),
+                      title: Text(foundation.name, style: textTheme.titleSmall),
                       subtitle: Text(
-                        [
-                          animal.publicZone,
-                          animal.summary,
-                          ?animal.foundationName,
-                        ].join(' · '),
+                        foundation.place,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textTheme.bodySmall,
                       ),
-                      onTap: () => onPick(animal),
+                      onTap: () => onPick(foundation),
                     ),
                 ],
               ),
@@ -1259,33 +1183,27 @@ class _ReportButton extends StatelessWidget {
 // Capas del mapa: leyenda de colores y qué mostrar
 class _LayersSheet extends StatelessWidget {
   const _LayersSheet({
-    required this.animalsCount,
     required this.reportsCount,
     required this.foundationsCount,
-    required this.showAnimals,
     required this.showReports,
     required this.showFoundations,
     required this.clinicsCount,
     required this.showClinics,
     required this.clinicsInView,
     required this.showOrigin,
-    required this.onAnimals,
     required this.onReports,
     required this.onFoundations,
     required this.onClinics,
   });
 
-  final int animalsCount;
   final int reportsCount;
   final int foundationsCount;
-  final bool showAnimals;
   final bool showReports;
   final bool showFoundations;
   final int clinicsCount;
   final bool showClinics;
   final bool clinicsInView;
   final bool showOrigin;
-  final ValueChanged<bool> onAnimals;
   final ValueChanged<bool> onReports;
   final ValueChanged<bool> onFoundations;
   final ValueChanged<bool> onClinics;
@@ -1300,7 +1218,7 @@ class _LayersSheet extends StatelessWidget {
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
 
-    // Con cinco capas no cabe en pantallas bajas: se desplaza en vez de cortarse
+    // Con varias capas no cabe en pantallas bajas: se desplaza en vez de cortarse
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -1318,15 +1236,6 @@ class _LayersSheet extends StatelessWidget {
                 horizontal: AdoptifySpacing.lg,
               ),
               child: Text('Capas del mapa', style: textTheme.titleMedium),
-            ),
-            SwitchListTile(
-              value: showAnimals,
-              onChanged: onAnimals,
-              secondary: dot(colors.primary),
-              title: Text(
-                'Adopción · zonas aproximadas ($animalsCount)',
-                style: textTheme.bodyMedium,
-              ),
             ),
             SwitchListTile(
               value: showReports,
@@ -1463,50 +1372,6 @@ class _DetailCard extends StatelessWidget {
   }
 }
 
-class _AnimalDetailCard extends StatelessWidget {
-  const _AnimalDetailCard({
-    required this.animal,
-    required this.onClose,
-    required this.onOpen,
-  });
-
-  final Animal animal;
-  final VoidCallback onClose;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return _DetailCard(
-      onClose: onClose,
-      onOpen: onOpen,
-      leading: AnimalPhoto(url: animal.photoUrl, size: 72),
-      children: [
-        Text(animal.name, style: textTheme.titleMedium),
-        const SizedBox(height: AdoptifySpacing.xs),
-        Text(animal.summary, style: textTheme.bodyMedium),
-        if (animal.foundationName != null)
-          Text(
-            animal.foundationName!,
-            style: textTheme.bodyMedium?.copyWith(
-              color: context.colors.textMuted,
-            ),
-          ),
-        Text(animal.publicZone),
-        if (animal.withinRadius) ...[
-          const SizedBox(height: AdoptifySpacing.xs),
-          Text(
-            'Dentro de tu radio de búsqueda',
-            style: textTheme.labelLarge?.copyWith(
-              color: context.colors.primaryDark,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
 // Qué significa cada pin, con los mismos dibujos del mapa. Se abre con el botón de información.
 class _LegendSheet extends StatelessWidget {
   const _LegendSheet();
@@ -1530,7 +1395,6 @@ class _LegendSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xl),
               child: Text('Qué significa cada pin', style: textTheme.titleMedium),
             ),
-            row(MapPins.animal, 'Mascota en adopción', 'Zona aproximada de su comuna, no la dirección exacta.'),
             row(MapPins.reportFor('perro'), 'Perro reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
