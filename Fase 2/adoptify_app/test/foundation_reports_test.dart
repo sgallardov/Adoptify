@@ -53,14 +53,14 @@ void main() {
     expect(find.text('Match'), findsNothing);
   });
 
-  testWidgets('la pestaña Mapa muestra reportes y animales, sin el botón Reportar mascota', (tester) async {
+  testWidgets('la pestaña Mapa muestra reportes sin mascotas en adopción ni botón Reportar mascota', (tester) async {
     // Sin ubicación el mapa encuadra todas las mascotas y reportes
     LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
     await _open(tester, FakeApi(asFoundation: true));
 
     expect(_path(tester), '/fundacion/mapa');
     expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('animal-7')), findsOneWidget);
+    expect(find.byKey(const ValueKey('animal-7')), findsNothing);
     expect(find.byTooltip('Capas'), findsOneWidget);
     expect(find.text('Reportar mascota'), findsNothing);
   });

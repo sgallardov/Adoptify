@@ -309,21 +309,6 @@ class MapService {
 
   final ApiClient _api;
 
-  // Sin ubicación: todas las mascotas disponibles
-  Future<List<Animal>> fetchAvailableAnimals() async {
-    final data = await _api.get('/animals') as List<dynamic>;
-    return data
-        .map((item) => Animal.fromJson(item as Map<String, dynamic>))
-        .where((animal) => animal.status == 'available')
-        .toList();
-  }
-
-  // Animales disponibles dentro del radio, ordenados del más cercano al más lejano
-  Future<List<Animal>> fetchNearbyAnimals(LatLng origin, int radiusKm) async {
-    final data = await _api.get('/animals/nearby', query: _near(origin, radiusKm)) as List<dynamic>;
-    return data.map((item) => Animal.fromJson(item as Map<String, dynamic>, withinRadius: true)).toList();
-  }
-
   Future<List<DogReport>> fetchNearbyReports(LatLng origin, int radiusKm) async {
     final data = await _api.get('/reports/nearby', query: _near(origin, radiusKm)) as List<dynamic>;
     return data.map((item) => DogReport.fromJson(item as Map<String, dynamic>)).toList();

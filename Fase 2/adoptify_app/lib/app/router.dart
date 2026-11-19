@@ -27,7 +27,6 @@ import '../features/messages/chat_screen.dart';
 import '../features/messages/messages_screen.dart';
 import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
-import '../core/api_client.dart';
 import '../shared/widgets/app_shell.dart';
 import '../shared/widgets/detail_loader.dart';
 
