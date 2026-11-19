@@ -149,7 +149,9 @@ los íconos naranjos y rojos que trae OpenStreetMap.
   - **Usar mi ubicación**: centra el mapa en ti con zoom de calles (16) y busca con `GET /animals/nearby` y
     `GET /reports/nearby`; al cambiar el radio se encuadran los resultados. Mientras busca, su tooltip dice
     "Buscando tu ubicación…" y nunca queda cargando más que el tope de tiempo;
-  - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón.
+  - el botón **Reportar mascota**. Tocar un pin abre su ficha sobre ese botón. Al publicar, el mapa recibe el id del
+    reporte nuevo, lo marca aunque quede fuera del radio elegido (si `/reports/nearby` no lo trae, lo pide con
+    `GET /reports/{id}`), abre su ficha y se mueve hasta él;
   - la atribución "© OpenStreetMap" (obligatoria por la licencia de OSM), mínima, bajo el botón de reportar.
 - `OsmTileLayer` (`shared/map/map_style.dart`) crea la capa de mosaicos recién cuando el mapa tiene tamaño y
   lleva un momento quieto. Al abrir, el mapa nace sin tamaño y se encuadra en los pines; en ese primer segundo

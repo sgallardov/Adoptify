@@ -154,6 +154,20 @@ void main() {
     expect(find.byKey(const ValueKey('report-2')), findsOneWidget);
   });
 
+  testWidgets('el reporte recién publicado se ve aunque quede fuera del radio del mapa', (tester) async {
+    final api = FakeApi()..newReportsOutsideRadius = true;
+    api.storage.token = validToken;
+    await openReport(tester, api);
+
+    await fillRequired(tester, comments: 'Perrita café lejos de mi casa');
+    await tapVisible(tester, find.text('Enviar reporte'));
+
+    // /reports/nearby no lo trae: el mapa lo pide por id, lo marca y abre su ficha
+    expect(api.requests.where((r) => r.method == 'GET' && r.url.path == '/reports/2'), isNotEmpty);
+    expect(find.byKey(const ValueKey('report-2')), findsOneWidget);
+    expect(find.textContaining('Perrita café lejos de mi casa'), findsWidgets);
+  });
+
   testWidgets('envía también el peso, las características y el comportamiento', (tester) async {
     final api = FakeApi();
     api.storage.token = validToken;
