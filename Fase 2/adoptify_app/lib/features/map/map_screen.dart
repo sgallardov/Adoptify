@@ -797,7 +797,8 @@ class _MapScreenState extends State<MapScreen> {
                   ),
             // Tu ubicación: la del botón o la detectada al abrir el mapa
             if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
-            // Un aviso de rescate debe poder tocarse incluso si coincide con una referencia comunal.
+            // Los avisos van al final para quedar encima de todo (HU-Q): se pueden tocar aunque haya
+            // muchas veterinarias o coincidan con una referencia comunal.
             if (_showReports)
               for (final report in _reports)
                 mapMarker(
@@ -1399,8 +1400,8 @@ class _LegendSheet extends StatelessWidget {
             row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
             row(MapPins.reportFor('perro', taken: true), 'Caso tomado', 'Una fundación ya está atendiendo a esta mascota.'),
-            row(const DropPin(width: 30, kind: DropKind.foundation), 'Fundación', 'Sede de la organización.'),
-            row(const DropPin(width: 30, kind: DropKind.clinic), 'Veterinaria', 'Aparecen al acercar el mapa.'),
+            row(MapPins.foundation, 'Fundación', 'Sede de la organización. Crece al tocarla.'),
+            row(MapPins.clinic, 'Veterinaria', 'Aparecen al acercar el mapa. Crece al tocarla.'),
             row(MapPins.origin, 'Tu ubicación', 'Solo si diste permiso para usarla.'),
           ],
         ),

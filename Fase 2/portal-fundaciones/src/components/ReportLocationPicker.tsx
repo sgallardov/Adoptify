@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import type { LatLng } from './mapTiles'
-import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, SANTIAGO } from './mapTiles'
+import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, PET_PIN_SIZE, PET_Z_OFFSET, SANTIAGO } from './mapTiles'
 
-const reportIcon = dotIcon('bg-danger-600', 22)
+const reportIcon = dotIcon('bg-danger-600', PET_PIN_SIZE)
 
 type Props = { value: LatLng | null; onChange: (position: LatLng) => void; markerLabel?: string }
 
@@ -32,7 +32,7 @@ export default function ReportLocationPicker({ value, onChange, markerLabel = 'U
       <ClickToPlace onChange={onChange} />
       <FollowValue value={value} />
       {value && (
-        <Marker position={value} icon={reportIcon} title={markerLabel} draggable
+        <Marker position={value} icon={reportIcon} zIndexOffset={PET_Z_OFFSET} title={markerLabel} draggable
           eventHandlers={{ dragend: event => onChange(event.target.getLatLng()) }} />
       )}
     </MapContainer>

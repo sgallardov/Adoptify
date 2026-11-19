@@ -10,6 +10,7 @@ export default function VeterinaryMap() {
   const [items, setItems] = useState<Veterinary[] | null>(null)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [selected, setSelected] = useState<number | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -26,7 +27,8 @@ export default function VeterinaryMap() {
     {items === null && !error && <div className="mt-4"><Feedback kind="loading" title="Cargando veterinarias…" compact /></div>}
     {items && <MapContainer center={SANTIAGO} zoom={11} scrollWheelZoom className="relative z-0 mt-4 h-[42rem] w-full overflow-hidden rounded-2xl border border-base-200">
       <TileLayer url={OSM_TILES} attribution={OSM_ATTRIBUTION} maxZoom={19} />
-      {items.map(clinic => <Marker key={clinic.id} position={[clinic.latitude, clinic.longitude]} icon={clinicIcon}>
+      {items.map(clinic => <Marker key={clinic.id} position={[clinic.latitude, clinic.longitude]} icon={clinicIcon(clinic.id === selected)}
+        eventHandlers={{ popupopen: () => setSelected(clinic.id), popupclose: () => setSelected(current => current === clinic.id ? null : current) }}>
         <Popup><strong>{clinic.name}</strong><br />{[clinic.address, clinic.commune].filter(Boolean).join(', ') || 'Dirección no informada'}
           {clinic.phone && <><br /><a href={`tel:${clinic.phone.replaceAll(' ', '')}`}>{clinic.phone}</a></>}
           {clinic.emergency && <><br /><span>Atención de urgencias</span></>}

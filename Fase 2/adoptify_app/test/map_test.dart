@@ -506,7 +506,7 @@ void main() {
   });
 
   testWidgets(
-    'las veterinarias tienen pin con cruz roja del tamaño de las fundaciones',
+    'las veterinarias tienen pin con cruz roja, chico como el de las fundaciones',
     (tester) async {
       await openMap(tester, FakeApi());
       final map = tester
@@ -530,6 +530,33 @@ void main() {
       expect(clinic.alignment, Alignment.topCenter);
       expect(MapPins.clinic.width, MapPins.foundation.width);
       expect(MapPins.clinic.kind, DropKind.clinic);
+    },
+  );
+
+  testWidgets(
+    'HU-Q: las mascotas son los pines más grandes y quedan encima de las veterinarias',
+    (tester) async {
+      // Jerarquía de tamaños: reportes > en adopción > fundaciones y veterinarias (que crecen al seleccionarlas)
+      expect(MapPins.reportSize, greaterThan(MapPins.animal.size));
+      expect(MapPins.animal.size, greaterThan(MapPins.clinic.width));
+      expect(MapPins.selectedClinic.width, greaterThan(MapPins.clinic.width));
+      expect(MapPins.selectedFoundation.width, greaterThan(MapPins.foundation.width));
+
+      await openMap(tester, FakeApi());
+      final map = tester
+          .widget<FlutterMap>(find.byType(FlutterMap))
+          .mapController!;
+      map.move(const LatLng(-33.455, -70.605), 14);
+      await tester.pumpAndSettle();
+      final keys = tester
+          .widget<MarkerLayer>(find.byType(MarkerLayer))
+          .markers
+          .map((m) => '${(m.key as ValueKey?)?.value}')
+          .toList();
+      final lastClinic = keys.lastIndexWhere((k) => k.startsWith('clinic-'));
+      final firstReport = keys.indexWhere((k) => k.startsWith('report-'));
+      expect(lastClinic, isNot(-1));
+      expect(firstReport, greaterThan(lastClinic));
     },
   );
 

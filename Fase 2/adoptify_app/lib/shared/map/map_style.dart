@@ -45,7 +45,8 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_ready) return;
-    _events ??= MapController.of(context).mapEventStream.listen((_) => _waitUntilStill());
+    _events ??= MapController.of(context).mapEventStream
+        .listen((_) => _waitUntilStill());
     _waitUntilStill();
   }
 
@@ -85,7 +86,9 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
       urlTemplate: _osmTiles,
       userAgentPackageName: 'cl.adoptify.adoptify_app',
       maxZoom: 19,
-      tileBuilder: Theme.of(context).brightness == Brightness.dark ? darkModeTileBuilder : _softTileBuilder,
+      tileBuilder: Theme.of(context).brightness == Brightness.dark
+          ? darkModeTileBuilder
+          : _softTileBuilder,
       reset: _reset.stream,
       errorTileCallback: _onTileError,
       // Los mosaicos con error se descartan para que el siguiente intento los pida de nuevo
@@ -99,39 +102,66 @@ class _OsmTileLayerState extends State<OsmTileLayer> {
 // sobre los íconos naranjos y rojos que trae OpenStreetMap
 const _saturation = 0.6;
 const _softTiles = ColorFilter.matrix(<double>[
-  0.2126 + 0.7874 * _saturation, 0.7152 - 0.7152 * _saturation, 0.0722 - 0.0722 * _saturation, 0, 0,
-  0.2126 - 0.2126 * _saturation, 0.7152 + 0.2848 * _saturation, 0.0722 - 0.0722 * _saturation, 0, 0,
-  0.2126 - 0.2126 * _saturation, 0.7152 - 0.7152 * _saturation, 0.0722 + 0.9278 * _saturation, 0, 0,
-  0, 0, 0, 1, 0,
+  0.2126 + 0.7874 * _saturation,
+  0.7152 - 0.7152 * _saturation,
+  0.0722 - 0.0722 * _saturation,
+  0,
+  0,
+  0.2126 - 0.2126 * _saturation,
+  0.7152 + 0.2848 * _saturation,
+  0.0722 - 0.0722 * _saturation,
+  0,
+  0,
+  0.2126 - 0.2126 * _saturation,
+  0.7152 - 0.7152 * _saturation,
+  0.0722 + 0.9278 * _saturation,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
 ]);
 
-Widget _softTileBuilder(BuildContext context, Widget tileWidget, TileImage tile) =>
-    ColorFiltered(colorFilter: _softTiles, child: tileWidget);
+Widget _softTileBuilder(
+  BuildContext context,
+  Widget tileWidget,
+  TileImage tile,
+) => ColorFiltered(colorFilter: _softTiles, child: tileWidget);
 
 // La licencia de OpenStreetMap exige mostrar "© OpenStreetMap" sobre el mapa: se deja lo más discreta posible
-Widget osmAttribution(BuildContext context, {Alignment alignment = Alignment.bottomRight}) => Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.all(AdoptifySpacing.xs),
-        padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xs),
-        decoration: BoxDecoration(
-          color: context.colors.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
-        ),
-        child: Text(
-          '© OpenStreetMap',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: context.colors.textMuted,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0,
-              ),
-        ),
+Widget osmAttribution(
+  BuildContext context, {
+  Alignment alignment = Alignment.bottomRight,
+}) => Align(
+  alignment: alignment,
+  child: Container(
+    margin: const EdgeInsets.all(AdoptifySpacing.xs),
+    padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.xs),
+    decoration: BoxDecoration(
+      color: context.colors.surface.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(AdoptifyRadius.sm),
+    ),
+    child: Text(
+      '© OpenStreetMap',
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: context.colors.textMuted,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0,
       ),
-    );
+    ),
+  ),
+);
 
 // Pin redondo con borde blanco, igual a dotIcon() del portal
 class MapDot extends StatelessWidget {
-  const MapDot({super.key, required this.color, required this.size, this.halo = false});
+  const MapDot({
+    super.key,
+    required this.color,
+    required this.size,
+    this.halo = false,
+  });
 
   final Color color;
   final double size;
@@ -147,8 +177,13 @@ class MapDot extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
-          const BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2)),
-          if (halo) BoxShadow(color: color.withValues(alpha: 0.25), spreadRadius: 6),
+          const BoxShadow(
+            color: Color(0x40000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+          if (halo)
+            BoxShadow(color: color.withValues(alpha: 0.25), spreadRadius: 6),
         ],
       ),
     );
@@ -159,27 +194,39 @@ class MapDot extends StatelessWidget {
 class MapPins {
   // Mascota en adopción: círculo naranjo con un corazón blanco y borde blanco. El ícono y el borde la
   // distinguen de los triángulos y puntos naranjos que trae el propio mapa de OpenStreetMap.
-  static const animal = AnimalPin(size: 28);
-  static final report = MapDot(color: AdoptifyColors.light.report, size: 18);
+  // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36); veterinarias y fundaciones van
+  // chicas (24) y atenuadas, y crecen al seleccionarlas
+  static const animal = AnimalPin(size: 32);
+  static final report = MapDot(color: AdoptifyColors.light.report, size: reportSize);
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
   // Reporte según la especie: perro y gato llevan su huella en blanco sobre el mismo rojo; "otro" es el punto
   // taken: una fundación tomó el caso; el pin lleva una insignia verde con un visto
   static Widget reportFor(String? species, {bool taken = false}) {
     final Widget pin = switch (species) {
-      'perro' => const ReportPin(paw: Icon(Icons.pets, size: 16, color: Colors.white)),
-      'gato' => const ReportPin(paw: CustomPaint(size: Size.square(16), painter: CatPawPainter(Colors.white))),
+      'perro' => const ReportPin(paw: Icon(Icons.pets, size: 20, color: Colors.white)),
+      'gato' => const ReportPin(paw: CustomPaint(size: Size.square(20), painter: CatPawPainter(Colors.white))),
       _ => report,
     };
     return taken ? TakenBadge(child: pin) : pin;
   }
 
-  // Más grandes que los puntos de mascotas (20) y reportes (18) para que las sedes se noten
-  static const foundation = DropPin(width: 46, kind: DropKind.foundation);
-  static const selectedFoundation = DropPin(width: 56, kind: DropKind.foundation);
+  static const double reportSize = 36;
+
+  // Fundaciones y veterinarias: gota chica y atenuada para no tapar los avisos; seleccionada crece y se ve plena
+  static const foundation = DropPin(width: 24, kind: DropKind.foundation);
+  static const selectedFoundation = DropPin(
+    width: 40,
+    kind: DropKind.foundation,
+    selected: true,
+  );
   // Veterinarias: mismo tamaño que las fundaciones, gota roja con una cruz roja sobre blanco
-  static const clinic = DropPin(width: 46, kind: DropKind.clinic);
-  static const selectedClinic = DropPin(width: 56, kind: DropKind.clinic);
+  static const clinic = DropPin(width: 24, kind: DropKind.clinic);
+  static const selectedClinic = DropPin(
+    width: 40,
+    kind: DropKind.clinic,
+    selected: true,
+  );
 }
 
 // Pin de una mascota en adopción. Usa los mismos colores en modo claro y oscuro.
@@ -191,14 +238,24 @@ class AnimalPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _PinCircle(
-        size: size,
-        color: selected ? AdoptifyColors.light.primaryText : AdoptifyColors.light.primaryStrong,
-        child: Icon(Icons.favorite, size: size * 0.5, color: AdoptifyColors.light.onAccent),
-      );
+    size: size,
+    color: selected
+        ? AdoptifyColors.light.primaryText
+        : AdoptifyColors.light.primaryStrong,
+    child: Icon(
+      Icons.favorite,
+      size: size * 0.5,
+      color: AdoptifyColors.light.onAccent,
+    ),
+  );
 }
 
 class _PinCircle extends StatelessWidget {
-  const _PinCircle({required this.size, required this.color, required this.child});
+  const _PinCircle({
+    required this.size,
+    required this.color,
+    required this.child,
+  });
 
   final double size;
   final Color color;
@@ -206,17 +263,23 @@ class _PinCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2.5),
-          boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2))],
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: color,
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.white, width: 2.5),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x40000000),
+          blurRadius: 4,
+          offset: Offset(0, 2),
         ),
-        child: child,
-      );
+      ],
+    ),
+    child: child,
+  );
 }
 
 // Insignia verde con un visto en la esquina del pin de un reporte tomado por una fundación
@@ -258,14 +321,20 @@ class ReportPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 30,
-      height: 30,
+      width: MapPins.reportSize,
+      height: MapPins.reportSize,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AdoptifyColors.light.report,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x40000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: paw,
     );
@@ -285,12 +354,24 @@ class CatPawPainter extends CustomPainter {
     final h = size.height;
     final paint = Paint()..color = color;
     // Almohadilla: óvalo arriba y tres lóbulos abajo
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.64), width: w * 0.56, height: h * 0.32), paint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * 0.5, h * 0.64),
+        width: w * 0.56,
+        height: h * 0.32,
+      ),
+      paint,
+    );
     for (final x in [0.34, 0.5, 0.66]) {
       canvas.drawCircle(Offset(w * x, h * 0.76), w * 0.15, paint);
     }
     // Dedos
-    for (final toe in const [Offset(0.17, 0.4), Offset(0.37, 0.2), Offset(0.63, 0.2), Offset(0.83, 0.4)]) {
+    for (final toe in const [
+      Offset(0.17, 0.4),
+      Offset(0.37, 0.2),
+      Offset(0.63, 0.2),
+      Offset(0.83, 0.4),
+    ]) {
       canvas.drawCircle(Offset(w * toe.dx, h * toe.dy), w * 0.12, paint);
     }
   }
@@ -304,10 +385,17 @@ class CatPawPainter extends CustomPainter {
 enum DropKind { foundation, clinic }
 
 class DropPin extends StatelessWidget {
-  const DropPin({super.key, required this.width, required this.kind});
+  const DropPin({
+    super.key,
+    required this.width,
+    required this.kind,
+    this.selected = false,
+  });
 
   final double width;
   final DropKind kind;
+  // Sin seleccionar se dibuja con menos contraste para que las mascotas resalten
+  final bool selected;
 
   double get height => width * 1.3;
 
@@ -319,24 +407,34 @@ class DropPin extends StatelessWidget {
     };
     final onColor = AdoptifyColors.light.onAccent;
     final symbol = width * 0.4;
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _DropPainter(color: color, border: onColor),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: Container(
-            margin: EdgeInsets.only(top: width * 0.17),
-            width: width * 0.66,
-            height: width * 0.66,
-            decoration: BoxDecoration(color: onColor, shape: BoxShape.circle),
-            child: switch (kind) {
-              DropKind.foundation => Icon(Icons.pets, size: symbol, color: color),
-              DropKind.clinic => Center(
-                  child: CustomPaint(size: Size.square(symbol), painter: _CrossPainter(color)),
+    return Opacity(
+      opacity: selected ? 1 : 0.8,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: CustomPaint(
+          painter: _DropPainter(color: color, border: onColor),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: EdgeInsets.only(top: width * 0.17),
+              width: width * 0.66,
+              height: width * 0.66,
+              decoration: BoxDecoration(color: onColor, shape: BoxShape.circle),
+              child: switch (kind) {
+                DropKind.foundation => Icon(
+                  Icons.pets,
+                  size: symbol,
+                  color: color,
                 ),
-            },
+                DropKind.clinic => Center(
+                  child: CustomPaint(
+                    size: Size.square(symbol),
+                    painter: _CrossPainter(color),
+                  ),
+                ),
+              },
+            ),
           ),
         ),
       ),
@@ -358,7 +456,12 @@ class _DropPainter extends CustomPainter {
     final path = Path()
       ..moveTo(radius, size.height)
       ..lineTo(radius - radius * 0.72, radius + radius * 0.7)
-      ..arcTo(Rect.fromCircle(center: center, radius: radius), 2.36, 4.71, false)
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: radius),
+        2.36,
+        4.71,
+        false,
+      )
       ..lineTo(radius, size.height)
       ..close();
     canvas.drawShadow(path, const Color(0x66000000), 3, false);
@@ -368,12 +471,13 @@ class _DropPainter extends CustomPainter {
       Paint()
         ..color = border
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
+        ..strokeWidth = size.width < 30 ? 1.5 : 2.5,
     );
   }
 
   @override
-  bool shouldRepaint(_DropPainter oldDelegate) => oldDelegate.color != color || oldDelegate.border != border;
+  bool shouldRepaint(_DropPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.border != border;
 }
 
 // Cruz de emergencia: dos barras gruesas con las puntas redondeadas
@@ -388,11 +492,17 @@ class _CrossPainter extends CustomPainter {
     final bar = size.width * 0.34;
     final radius = Radius.circular(bar * 0.2);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH((size.width - bar) / 2, 0, bar, size.height), radius),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH((size.width - bar) / 2, 0, bar, size.height),
+        radius,
+      ),
       paint,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(0, (size.height - bar) / 2, size.width, bar), radius),
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, (size.height - bar) / 2, size.width, bar),
+        radius,
+      ),
       paint,
     );
   }
@@ -402,10 +512,12 @@ class _CrossPainter extends CustomPainter {
 }
 
 // Marcador de gota (fundaciones y veterinarias): la punta apunta al lugar (el pin queda sobre el punto)
-Marker dropMarker(LatLng point, DropPin pin, {Key? key, VoidCallback? onTap}) => Marker(
+Marker dropMarker(LatLng point, DropPin pin, {Key? key, VoidCallback? onTap}) =>
+    Marker(
       key: key,
       point: point,
-      width: pin.width + 10,
+      // Área táctil mínima de 44 px aunque la gota sea chica
+      width: pin.width < 34 ? 44 : pin.width + 10,
       height: pin.height,
       alignment: Alignment.topCenter,
       child: GestureDetector(
@@ -416,7 +528,8 @@ Marker dropMarker(LatLng point, DropPin pin, {Key? key, VoidCallback? onTap}) =>
     );
 
 // Marcador centrado en el punto. El área táctil es más grande que el pin para tocarlo fácil con el dedo.
-Marker mapMarker(LatLng point, Widget pin, {Key? key, VoidCallback? onTap}) => Marker(
+Marker mapMarker(LatLng point, Widget pin, {Key? key, VoidCallback? onTap}) =>
+    Marker(
       key: key,
       point: point,
       width: 44,
@@ -427,5 +540,3 @@ Marker mapMarker(LatLng point, Widget pin, {Key? key, VoidCallback? onTap}) => M
         child: Center(child: pin),
       ),
     );
-
-
