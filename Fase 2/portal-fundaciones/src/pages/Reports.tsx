@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Eye, HandHeart, Undo2 } from 'lucide-react'
-import { fetchReports, markReportSeen, takeReport, untakeReport } from '../services/reports'
+import { HandHeart, Undo2 } from 'lucide-react'
+import { fetchMyFoundationId, fetchReports, takeReport, untakeReport } from '../services/reports'
+import { reportAction } from '../services/reportActions'
 import type { Report } from '../services/reports'
 import { errorMessage } from '../services/api'
 import Feedback from '../components/Feedback'
@@ -14,6 +15,13 @@ export default function Reports() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<number | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [myFoundationId, setMyFoundationId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchMyFoundationId(controller.signal).then(id => { if (!controller.signal.aborted) setMyFoundationId(id) })
+    return () => controller.abort()
+  }, [])
 
   // En desarrollo React monta y desmonta el efecto para detectar errores. La primera petición se aborta;
   // ese aborto no es un fallo de red y no debe dejar una alerta después de que otra petición sí cargó datos.
@@ -38,7 +46,7 @@ export default function Reports() {
     finally { setBusy(null) }
   }
   return <>
-    <PageHeading eyebrow="Respuesta coordinada" title="Reportes cercanos" description="Marca los avisos que revisaste o toma un caso para coordinar su rescate." />
+    <PageHeading eyebrow="Respuesta coordinada" title="Reportes cercanos" description="Toma un caso para coordinar su rescate; si te equivocaste, puedes deshacer la toma. Los casos de otra fundación no se pueden tomar." />
     <VeterinaryMap />
     {error && <div className="mb-5"><Feedback kind="error" title={error} actionLabel="Reintentar" onAction={() => setAttempt(value => value + 1)} /></div>}
     {reports === null && !error && <Feedback kind="loading" title="Cargando reportes…" />}
@@ -47,11 +55,9 @@ export default function Reports() {
       <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold capitalize">{report.species ?? 'Mascota'} · {report.size ?? 'Tamaño no informado'}</h2><p className="mt-1 text-sm text-base-500">{labels[report.status]}</p></div><span className="rounded-full bg-danger-50 px-3 py-1 text-xs font-semibold text-danger-700">#{report.id}</span></div>
       <p className="mt-4 text-sm leading-6 text-base-700">{report.description}</p>
       {report.foundation_name && <p className="mt-3 text-sm font-medium text-success-800">Caso tomado por {report.foundation_name}</p>}
-      {!report.foundation_name && report.seen_at && <p className="mt-3 text-sm text-base-600">Tu fundación ya marcó este reporte como visto.</p>}
-      {report.status !== 'resolved' && <div className="mt-5 flex flex-wrap gap-2">
-        <button disabled={busy === report.id} onClick={() => action(report.id, markReportSeen)} className="button-secondary"><Eye size={16} />Marcar visto</button>
-        {report.status === 'in_rescue' ? <button disabled={busy === report.id} onClick={() => action(report.id, untakeReport)} className="button-secondary"><Undo2 size={16} />Deshacer toma</button> : <button disabled={busy === report.id} onClick={() => action(report.id, takeReport)} className="button-primary"><HandHeart size={16} />Lo tomamos</button>}
-      </div>}
+      {!report.foundation_name && report.seen_at && <p className="mt-3 text-sm text-base-600">Una fundación ya vio este reporte.</p>}
+      {reportAction(report, myFoundationId) === 'take' && <div className="mt-5"><button disabled={busy === report.id} onClick={() => action(report.id, takeReport)} className="button-primary"><HandHeart size={16} />Lo tomamos</button></div>}
+      {reportAction(report, myFoundationId) === 'untake' && <div className="mt-5"><button disabled={busy === report.id} onClick={() => action(report.id, untakeReport)} className="button-secondary"><Undo2 size={16} />Deshacer toma</button></div>}
     </article>)}</div>
   </>
 }

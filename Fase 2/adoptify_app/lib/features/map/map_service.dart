@@ -335,8 +335,6 @@ class MapService {
   Future<DogReport> fetchReport(int reportId) async => _reportAction(await _api.get('/reports/$reportId'));
 
   // Acciones de la fundación sobre un reporte (HU-C). Cada una devuelve el reporte ya actualizado.
-  Future<DogReport> markSeen(int reportId) async => _reportAction(await _api.post('/reports/$reportId/seen', {}));
-
   Future<DogReport> takeReport(int reportId) async => _reportAction(await _api.put('/reports/$reportId/taken'));
 
   Future<DogReport> untakeReport(int reportId) async => _reportAction(await _api.delete('/reports/$reportId/taken'));

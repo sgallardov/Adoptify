@@ -67,6 +67,16 @@ async def test_foundation_can_see_take_and_undo_a_report(async_client, report_wo
     assert undone.json()["taken_by_foundation_id"] is None
 
 
+async def test_taking_a_report_also_marks_it_as_seen(async_client, report_world):
+    report_id = report_world["report"].id
+    taken = await async_client.put(f"/api/v1/reports/{report_id}/taken", headers=report_world["headers"]["a"])
+    assert taken.status_code == 200
+    assert taken.json()["seen_at"] is not None
+    # Deshacer la toma no borra que una fundación ya lo vio
+    undone = await async_client.delete(f"/api/v1/reports/{report_id}/taken", headers=report_world["headers"]["a"])
+    assert undone.json()["seen_at"] is not None
+
+
 async def test_permissions_and_resolved_conflict(async_client, report_world, db_session: AsyncSession):
     report = report_world["report"]
     assert (await async_client.post(f"/api/v1/reports/{report.id}/seen", headers=report_world["headers"]["adopter"])).status_code == 403

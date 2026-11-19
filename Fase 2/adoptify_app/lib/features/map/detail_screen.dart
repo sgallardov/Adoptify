@@ -171,9 +171,6 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     }
   }
 
-  void _follow() => _run(() => _service.markSeen(report.id), 'Marcaste el reporte para seguimiento.',
-      'No pudimos marcar el reporte.');
-
   void _take() => _run(() => _service.takeReport(report.id), 'Tomaste el caso: ahora está En rescate.',
       'No pudimos tomar el reporte.');
 
@@ -296,12 +293,11 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             _IconLine(icon: Icons.visibility_outlined, text: 'Una fundación ya vio este reporte'),
                             const SizedBox(height: AdoptifySpacing.sm),
                           ],
-                          if (_canManage) ...[
+                          if (_canManage && (report.takenByFoundationId == null || report.takenByFoundationId == _myFoundationId)) ...[
                             _FoundationActions(
                               busy: _acting,
                               taken: report.takenByFoundationId != null,
                               mine: report.takenByFoundationId != null && report.takenByFoundationId == _myFoundationId,
-                              onFollow: _follow,
                               onTake: _take,
                               onUntake: _untake,
                             ),
@@ -372,7 +368,6 @@ class _FoundationActions extends StatelessWidget {
     required this.busy,
     required this.taken,
     required this.mine,
-    required this.onFollow,
     required this.onTake,
     required this.onUntake,
   });
@@ -380,22 +375,16 @@ class _FoundationActions extends StatelessWidget {
   final bool busy;
   final bool taken;
   final bool mine;
-  final VoidCallback onFollow;
   final VoidCallback onTake;
   final VoidCallback onUntake;
 
+  // HU-T: una sola acción. Libre: "Lo tomamos"; mío: "Deshacer toma"; de otra fundación: nada.
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: AdoptifySpacing.sm,
       runSpacing: AdoptifySpacing.sm,
       children: [
-        OutlinedButton.icon(
-          key: const ValueKey('follow-report'),
-          onPressed: busy ? null : onFollow,
-          icon: const Icon(Icons.visibility_outlined),
-          label: const Text('Marcar para seguimiento'),
-        ),
         if (!taken)
           FilledButton.icon(
             key: const ValueKey('take-report'),

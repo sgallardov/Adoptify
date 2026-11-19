@@ -74,17 +74,13 @@ void main() {
     expect(_path(tester), '/fundacion/mapa');
   });
 
-  testWidgets('la fundación puede seguir, tomar y deshacer la toma', (tester) async {
+  testWidgets('la fundación solo tiene una acción: tomar o deshacer la toma', (tester) async {
     final api = FakeApi(asFoundation: true);
     await _open(tester, api, report: true);
 
-    expect(_follow, findsOneWidget);
+    expect(_follow, findsNothing);
     expect(_take, findsOneWidget);
     expect(_untake, findsNothing);
-
-    await _tap(tester, _follow);
-    expect(api.requests.any((r) => r.method == 'POST' && r.url.path == '/reports/1/seen'), isTrue);
-    expect(find.text('Marcaste el reporte para seguimiento.'), findsOneWidget);
 
     await _tap(tester, _take);
     expect(api.requests.any((r) => r.method == 'PUT' && r.url.path == '/reports/1/taken'), isTrue);
@@ -116,9 +112,9 @@ void main() {
     expect(find.text('Otra fundación ya tomó este reporte.'), findsOneWidget);
     expect(find.text('Refugio Sin Casos tomó este caso'), findsOneWidget);
     expect(_take, findsNothing);
-    // El caso no es suyo: no puede deshacerlo, pero sí seguirlo
+    // El caso no es suyo: no ofrece ninguna acción
     expect(_untake, findsNothing);
-    expect(_follow, findsOneWidget);
+    expect(_follow, findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -134,7 +130,7 @@ void main() {
 
     expect(_take, findsNothing);
     expect(_untake, findsNothing);
-    expect(_follow, findsOneWidget);
+    expect(_follow, findsNothing);
   });
 
   testWidgets('el caso propio muestra Deshacer toma', (tester) async {

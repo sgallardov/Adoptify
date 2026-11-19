@@ -219,15 +219,15 @@ entra al portal (`403` con "Esta cuenta es de adoptante. Inicia sesión desde la
 * Reporte inexistente: `404`. En la app, el detalle del reporte muestra los contadores (♡ y 💬), la conversación ("Anónimo" o "Tú") y una barra fija para escribir; sin sesión invita a iniciarla.
 
 ### Gestión de reportes por fundaciones (HU-C)
-* `POST /api/v1/reports/{id}/seen`: una cuenta `foundation` vinculada puede marcar un aviso como visto sin cambiar su estado.
-* `PUT /api/v1/reports/{id}/taken`: registra a su fundación como responsable y pasa el estado a `in_rescue`. Si otra fundación ya lo tomó, devuelve `409`.
+* `PUT /api/v1/reports/{id}/taken`: registra a su fundación como responsable y pasa el estado a `in_rescue`. Si el reporte no tenía `seen_at`, también lo marca como visto (HU-T). Si otra fundación ya lo tomó, devuelve `409`.
+* `POST /api/v1/reports/{id}/seen`: marca un aviso como visto sin cambiar su estado. Se mantiene por compatibilidad, pero desde HU-T ni la app ni el portal lo usan: "visto" se registra al tomar el caso.
 * `DELETE /api/v1/reports/{id}/taken`: solo la fundación que tomó el caso puede deshacerlo; vuelve el estado a `reported`.
 * Los reportes resueltos no admiten esas marcas (`409`). `GET /reports/nearby` y `GET /reports/{id}` incluyen `foundation_name`, `taken_by_foundation_id`, `seen_at` y `taken_at`, pero nunca `reporter_id`. La app compara `taken_by_foundation_id` con el id de su fundación (`GET /foundations/me`) para ofrecer "Deshacer toma".
 * Solo las cuentas con rol `foundation` vinculadas a una fundación pueden marcar: un `admin` recibe `403`.
 
 #### App móvil: vista de fundación (HU-L)
 * La barra de fundación es Inicio, Mapa, Chat y Perfil. `/fundacion/mapa` reutiliza `MapScreen`; los detalles se abren dentro del área de fundación (`/fundacion/reportes/:id`, `/fundacion/animales/:id`, `/fundacion/directorio/:id`) para que `sessionRedirect` no la expulse.
-* En el detalle del reporte, la fundación ve "Marcar para seguimiento" y "Lo tomamos" (o "Deshacer toma" si el caso es suyo). Si otra fundación lo tomó solo queda el seguimiento; un reporte resuelto no muestra acciones y una cuenta de adoptante nunca las ve. Ante `409` o `403` se muestra el mensaje del servidor y se vuelve a leer el reporte.
+* En el detalle del reporte, la fundación tiene una sola acción (HU-T): "Lo tomamos", o "Deshacer toma" si el caso es suyo. Si otra fundación lo tomó no hay acciones; lo mismo en la página Reportes del portal; un reporte resuelto no muestra acciones y una cuenta de adoptante nunca las ve. Ante `409` o `403` se muestra el mensaje del servidor y se vuelve a leer el reporte.
 * La fundación no ve el botón "Reportar mascota": gestiona reportes, no los crea.
 * **Decisión sobre el seguimiento por varias fundaciones:** "visto" sigue guardando una sola fundación por reporte (la última reemplaza a la anterior). Es una marca informativa de "alguien ya lo vio", no una lista de seguimiento; lo que da exclusividad es "tomado", que es único por reporte. No se crea la tabla `report_follows` (ni migración ni RLS) hasta que haya un caso real de varias fundaciones siguiendo el mismo reporte; si aparece, bastaría `report_follows (report_id, foundation_id)` con clave única y RLS activada.
 
