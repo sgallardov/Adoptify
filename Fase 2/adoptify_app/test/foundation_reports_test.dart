@@ -50,7 +50,7 @@ void main() {
     final xs = [for (final label in ['Inicio', 'Mapa', 'Chat', 'Perfil']) tester.getCenter(find.text(label).last).dx];
     expect(xs, orderedEquals([...xs]..sort()));
     expect(find.text('Fundaciones'), findsNothing);
-    expect(find.text('Match'), findsNothing);
+    expect(find.text('Conecta'), findsNothing);
   });
 
   testWidgets('la pestaña Mapa muestra reportes y animales, sin el botón Reportar mascota', (tester) async {

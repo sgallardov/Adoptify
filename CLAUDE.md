@@ -47,7 +47,7 @@ Fase 2/portal-fundaciones/src/
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
-  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion (Inicio) si es fundación/admin (barra propia: Inicio, Mapa, Chat, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mensajes, Mapa, Match, Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
+  app/                     # app.dart, router.dart (go_router; **login obligatorio**: abre en /cargando y el redirect lleva a /login sin sesión, a /mapa si es adoptante o a /fundacion (Inicio) si es fundación/admin (barra propia: Inicio, Mapa, Chat, Perfil), también al cerrar sesión o vencer el token; barra de adoptante: Fundaciones, Mensajes, Mapa, Conecta (`/conecta`, el match; `/match` redirige), Perfil; /reportar, /favoritos y los detalles a pantalla completa), theme.dart (paleta clara y oscura, espaciado, radios, sombra y escala tipográfica), theme_controller.dart (modo oscuro)
   core/                    # config.dart (apiUrl: 10.0.2.2 en emulador, localhost en web, --dart-define=API_URL; mediaUrl), api_client.dart (incluye upload multipart), token_storage.dart, photo_service.dart
   features/<pantalla>/     # map (map_service = modelos + /animals y /reports; mapa a pantalla completa con buscador), foundations (/foundations), report, account, auth (AuthController + AuthScope = sesión), messages (chat del adoptante), foundation_home / foundation_animals / foundation_add / foundation_profile (vista de fundación), foundation_chat (todavía "Próximamente": las fundaciones chatean desde el portal)
   shared/map/              # map_style.dart (mosaicos OSM, atribución, MapPins; equivale a mapTiles.ts) y map_controls.dart (MapButton, mapSurface)
@@ -64,7 +64,7 @@ Fase 2/adoptify_app/lib/   # app Flutter (HU-08)
 - **Cuenta:** `PATCH /auth/me` edita el nombre y `POST /auth/change-password` cambia la contraseña pidiendo la actual (`400` si no coincide). El correo y el RUT no se editan.
 - **Errores en español** (`core/errors.py`): `401` sin token ("Inicia sesión para continuar.") y `422` con `msg` en español y sin `input`. Un permiso que debe ganar a la validación va como dependencia (ver `require_admin` en veterinarias).
 - **Verificación en dos pasos (HU-I):** opcional, por correo (Gmail SMTP, `services/email.py`; sin SMTP en development el código sale en los logs). Con ella activa, `/auth/login` responde 202 con `challenge_id` y el token llega con `/auth/verify-code`. Los endpoints con sesión iniciada nunca responden 401 por un dato mal ingresado (usar 400): la app y el portal cierran sesión ante cualquier 401.
-- **Match:** pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.
+- **Match** (en la interfaz se llama **Conecta**, nunca "match"; porcentaje "83 % compatible"; en la API y el código sigue `match`): pesos especie 30, tamaño 25, rango edad 25, energía 20; normaliza sobre criterios comparables.
 
 ## Patrones
 **Backend**

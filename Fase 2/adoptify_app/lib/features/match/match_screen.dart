@@ -138,7 +138,7 @@ class _MatchScreenState extends State<MatchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Haz Match!'),
+        title: const Text('Conecta'),
         // La pestaña conserva su estado: así se recarga tras editar "Quiero adoptar" o iniciar sesión
         actions: [
           if (_status == _Status.ready)
@@ -160,7 +160,7 @@ class _MatchScreenState extends State<MatchScreen> {
         _Status.loading => const Center(child: CircularProgressIndicator()),
         _Status.needsLogin => _Prompt(
             icon: Icons.favorite,
-            title: 'Inicia sesión para hacer match',
+            title: 'Inicia sesión para conectar con una mascota',
             message: 'Con tu cuenta te mostramos las mascotas que mejor encajan contigo.',
             action: 'Iniciar sesión',
             onAction: () => context.push('/login'),
@@ -174,7 +174,7 @@ class _MatchScreenState extends State<MatchScreen> {
           ),
         _Status.error => _Prompt(
             icon: Icons.cloud_off,
-            title: 'No pudimos cargar tu match',
+            title: 'No pudimos cargar tus mascotas compatibles',
             message: 'Revisa tu conexión e inténtalo de nuevo.',
             action: 'Reintentar',
             onAction: _load,
@@ -332,7 +332,7 @@ class _AnimalCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: AdoptifySpacing.md, vertical: AdoptifySpacing.xs),
                     decoration: BoxDecoration(color: colors.primaryStrong, borderRadius: BorderRadius.circular(99)),
-                    child: Text(card.lowCompatibility ? 'Poco compatible · ${card.percent}%' : '${card.percent}% match', style: textTheme.labelLarge?.copyWith(color: colors.onAccent)),
+                    child: Text(card.lowCompatibility ? 'Poco compatible · ${percentLabel(card.percent)}' : compatibilityLabel(card.percent), style: textTheme.labelLarge?.copyWith(color: colors.onAccent)),
                   ),
                 ),
               ],

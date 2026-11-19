@@ -22,7 +22,7 @@ FakeApi _api() => FakeApi()..adoptionProfile = Map<String, dynamic>.of(_profile)
 Future<void> _openMatch(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Match'));
+  await tester.tap(find.text('Conecta'));
   await tester.pumpAndSettle();
 }
 
@@ -121,7 +121,7 @@ void main() {
     await tester.tap(find.byTooltip('Pasar'));
     await tester.pumpAndSettle();
     expect(find.text('Michi'), findsOneWidget);
-    expect(find.text('Poco compatible · 10%'), findsOneWidget);
+    expect(find.text('Poco compatible · 10 %'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Pasar'));
     await tester.pumpAndSettle();

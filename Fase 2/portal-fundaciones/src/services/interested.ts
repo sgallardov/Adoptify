@@ -28,4 +28,4 @@ export async function fetchAnimalInterested(animalId: number, signal: AbortSigna
   return data
 }
 
-export const formatMatch = (score: number | null) => score === null ? 'Sin ficha de adopción' : `${Math.round(score)}% de match`
+export const formatMatch = (score: number | null) => score === null ? 'Sin ficha de adopción' : `${Math.round(score)}\u00a0% compatible`
