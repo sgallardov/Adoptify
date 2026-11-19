@@ -23,6 +23,7 @@ import '../features/map/map_screen.dart';
 import '../features/map/map_service.dart';
 import '../features/match/favorites_screen.dart';
 import '../features/match/match_screen.dart';
+import '../features/messages/adoption_form_screen.dart';
 import '../features/messages/chat_screen.dart';
 import '../features/messages/messages_screen.dart';
 import '../features/messages/messages_service.dart';
@@ -125,7 +126,6 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
               path: '/fundacion/chat',
               builder: (context, state) => FoundationChatScreen(
                 interestedUserId: int.tryParse(state.uri.queryParameters['user_id'] ?? ''),
-                animalId: int.tryParse(state.uri.queryParameters['animal_id'] ?? ''),
               ),
             ),
           ],
@@ -236,6 +236,19 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     ),
     // Antes la pestaña Conecta se llamaba Match: los enlaces viejos siguen funcionando
     GoRoute(path: '/match', redirect: (context, state) => '/conecta'),
+    // El adoptante responde el formulario de adopción que le envió la fundación (HU-G3)
+    GoRoute(
+      path: '/mensajes/:id/formulario',
+      builder: (context, state) => AdoptionFormScreen(
+        conversationId: int.parse(state.pathParameters['id']!),
+        form: state.extra as AdoptionFormRequest,
+      ),
+    ),
+    // Chat de la fundación con un adoptante, desde su pestaña Chat
+    GoRoute(
+      path: '/fundacion/mensajes/:id',
+      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
+    ),
     // Se abre con el corazón de la pestaña Conecta
     GoRoute(
       path: '/favoritos',

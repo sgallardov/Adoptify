@@ -425,7 +425,7 @@ Un favorito expresa interés, pero **no crea un chat automáticamente**. La fund
 
 Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.
 
-En el portal, **Conversar** abre (o retoma) el chat con esa persona (HU-G2). En la app, por ahora solo abre la pestaña Chat con ese `user_id` (sin crear mensajes).
+**Conversar** abre (o retoma) el chat con esa persona (HU-G2), en el portal y en la app.
 
 ### Chat entre fundación y adoptante (HU-G2)
 
@@ -439,7 +439,25 @@ Una sola conversación por par fundación-usuario (`conversations`, único por `
 | `POST /api/v1/conversations/{id}/messages` | Solo los dos participantes (`404` para otros). `{"body"}` de 1 a 1000 caracteres, sin contar espacios al borde; vacío o más largo, `422`. El adoptante responde en las existentes, no abre nuevas. |
 
 * **Sin WebSockets: sondeo.** El portal pide la lista cada 15 s y el chat abierto cada 10 s (solo lo nuevo, con `after_id`), y solo mientras la pestaña está visible. Así un mensaje aparece en 10 s o menos. Se eligió por simple y porque cada consulta a Supabase cuesta ~55 ms; si el uso crece, se puede pasar a WebSockets sin cambiar las tablas.
-* **Alcance actual:** vista de chat en el portal (`/mensajes`) y pestaña **Mensajes** del adoptante en la app, con el mismo sondeo. La pestaña Chat de la fundación en la app sigue con el esqueleto.
+* **Alcance actual:** vista de chat en el portal (`/mensajes`), pestaña **Mensajes** del adoptante y pestaña **Chat** de la fundación en la app (misma lista y chat, `/fundacion/mensajes/:id`), con el mismo sondeo.
+
+### Formulario de adopción por chat (HU-G3)
+
+Cada fundación **configura sus propias preguntas** (decisión: configurable, no un formulario fijo, porque "Postular a adoptar" ya envía la ficha "Quiero adoptar"). Las envía desde el chat y el adoptante responde desde la app **una sola vez**. Migración `0022`, tablas con RLS:
+
+* `adoption_form_questions`: `foundation_id`, `position`, `label` (hasta 200), `kind` (`text` | `yes_no` | `choice`), `options` (solo `choice`, 2 a 10 sin repetir) y `required`. Máximo 20 por fundación.
+* `adoption_form_requests`: cada envío, con una **copia** de las preguntas (`questions`), `answers` y `answered_at`. Editar el formulario después no cambia los ya enviados.
+* `messages` suma `kind` (`text` | `form` | `form_answers`) y `form_request_id`. Cada mensaje de la API trae `kind` y `form` (`{id, questions, answers, answered_at}` o `null`).
+
+| Endpoint | Descripción |
+|---|---|
+| `GET /api/v1/foundations/me/adoption-form` | Las preguntas de la fundación de la cuenta, en orden (`{"questions": []}` si no hay). `403` para adoptantes. |
+| `PUT /api/v1/foundations/me/adoption-form` | Reemplaza todas las preguntas en el orden recibido. `422` si una pregunta está vacía, un `choice` tiene menos de 2 alternativas o repetidas, otro tipo trae alternativas o son más de 20. |
+| `POST /api/v1/conversations/{id}/form` | Solo la fundación de la conversación (`403` para el adoptante, `404` para quien no participa). Crea un mensaje `form`. `409` si la fundación aún no tiene preguntas. |
+| `POST /api/v1/conversations/{id}/forms/{form_id}/answers` | Solo el adoptante de la conversación (`403` para la fundación). `{"answers": [...]}`, una por pregunta y en orden: texto (hasta 1000), `true`/`false` o una de las alternativas; `null` o texto vacío solo en opcionales (`422` con el nombre de la pregunta). `409` si ya se respondió: las respuestas no se modifican. Crea un mensaje `form_answers` que la fundación recibe con el sondeo. |
+
+* **Portal:** las preguntas se editan en **Mi fundación → Formulario de adopción** (`components/AdoptionFormSection.tsx`); **Enviar formulario** está en el encabezado del chat y las respuestas se ven dentro del mensaje.
+* **App:** la fundación lo envía con el ícono de formulario del chat; el adoptante toca **Responder formulario** (`/mensajes/:id/formulario`). Las preguntas se configuran solo en el portal.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 

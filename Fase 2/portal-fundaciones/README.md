@@ -40,7 +40,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/animales` (Mis casos): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre y filtros por especie y estado.
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de compatibilidad, "83 % compatible"; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
 - `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
-- `/fundacion`: perfil de la organización de ejemplo y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
+- `/fundacion`: perfil de la organización de ejemplo, sección **Formulario de adopción** (HU-G3: preguntas propias de texto, sí/no o alternativas, que se envían por el chat) y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
 - Sidebar en escritorio y menú desplegable en pantallas pequeñas.
 - Etiquetas accesibles, navegación por teclado y estados sin resultados.
 
@@ -178,6 +178,11 @@ línea; el límite es de 1000 caracteres, con contador.
 Sin WebSockets: `hooks/usePolling.ts` pide la lista cada 15 s y los mensajes nuevos del chat abierto cada 10 s
 (`after_id`), solo mientras la pestaña está visible. Un fallo del sondeo no borra lo que ya se ve. Llamadas en
 `services/conversations.ts`, pantalla en `pages/Messages.tsx`.
+
+**Formulario de adopción (HU-G3):** el botón **Enviar formulario** del encabezado del chat manda una copia de las
+preguntas configuradas en *Mi fundación*. El mensaje indica "Esperando respuestas" o "Respondido", y la respuesta del
+adoptante llega como otro mensaje con cada pregunta y su respuesta. Llamadas en `services/adoptionForm.ts`;
+validación y formato en `services/adoptionFormEditor.ts` (con pruebas en `tests/adoptionForm.test.mjs`).
 
 ## Modo oscuro
 

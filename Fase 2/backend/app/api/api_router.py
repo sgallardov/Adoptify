@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, animals, foundations, reports, uploads, users, veterinary_clinics, foundation_members, adoption_applications, foster_applications, conversations, geocoding
+from app.api.v1.endpoints import health, auth, animals, foundations, reports, uploads, users, veterinary_clinics, foundation_members, adoption_applications, foster_applications, conversations, geocoding, adoption_forms
 
 api_router = APIRouter()
 
@@ -18,3 +18,4 @@ api_router.include_router(adoption_applications.router, prefix="/adoption-applic
 api_router.include_router(foster_applications.router, prefix="/foster-applications", tags=["Hogares temporales"])
 api_router.include_router(conversations.router, prefix="/conversations", tags=["Chat"])
 api_router.include_router(geocoding.router, prefix="/geocode", tags=["Direcciones"])
+api_router.include_router(adoption_forms.router, tags=["Formulario de adopción"])
