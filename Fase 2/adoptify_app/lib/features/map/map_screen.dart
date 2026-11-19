@@ -419,6 +419,20 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _open(Uri url) => openExternal(context, url);
 
+  // Al volver del detalle se relee el reporte: si una fundación lo tomó o deshizo la toma, se ve al tiro
+  Future<void> _openReport(DogReport report) async {
+    await context.push('$_base/reportes/${report.id}', extra: report);
+    try {
+      final fresh = await _service.fetchReport(report.id);
+      if (!mounted) return;
+      List<DogReport> swap(List<DogReport> list) => [for (final item in list) item.id == fresh.id ? fresh : item];
+      setState(() {
+        _reports = swap(_reports);
+        if (_alerts != null) _alerts = swap(_alerts!);
+      });
+    } catch (_) {}
+  }
+
   void _clearSelection() {
     _searchFocus.unfocus();
     setState(() {
@@ -584,10 +598,7 @@ class _MapScreenState extends State<MapScreen> {
                             alignment: Alignment.centerRight,
                             child: _AlertsPanel(
                               reports: _alerts!,
-                              onOpen: (report) => context.push(
-                                '$_base/reportes/${report.id}',
-                                extra: report,
-                              ),
+                              onOpen: _openReport,
                               onClose: () =>
                                   setState(() => _alertsOpen = false),
                             ),
@@ -682,10 +693,7 @@ class _MapScreenState extends State<MapScreen> {
                       _ReportDetailCard(
                         report: selectedReport,
                         onClose: _clearSelection,
-                        onOpen: () => context.push(
-                          '$_base/reportes/${selectedReport.id}',
-                          extra: selectedReport,
-                        ),
+                        onOpen: () => _openReport(selectedReport),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ] else if (selectedFoundation != null) ...[
@@ -866,7 +874,7 @@ class _MapScreenState extends State<MapScreen> {
               for (final report in _reports)
                 mapMarker(
                   report.position,
-                  MapPins.reportFor(report.species),
+                  MapPins.reportFor(report.species, taken: report.isTaken),
                   key: ValueKey('report-${report.id}'),
                   onTap: () => _selectReport(report),
                 ),
@@ -1099,7 +1107,7 @@ class _AlertsPanel extends StatelessWidget {
                                 ),
                                 Text(
                                   [
-                                    report.statusLabel,
+                                    report.seenOnly ? 'Una fundación ya lo vio' : report.careLabel,
                                     if (report.distanceKm != null)
                                       'a ${formatKm(report.distanceKm!)} km',
                                   ].join(' · '),
@@ -1526,6 +1534,7 @@ class _LegendSheet extends StatelessWidget {
             row(MapPins.reportFor('perro'), 'Perro reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
+            row(MapPins.reportFor('perro', taken: true), 'Caso tomado', 'Una fundación ya está atendiendo a esta mascota.'),
             row(const DropPin(width: 30, kind: DropKind.foundation), 'Fundación', 'Sede de la organización.'),
             row(const DropPin(width: 30, kind: DropKind.clinic), 'Veterinaria', 'Aparecen al acercar el mapa.'),
             row(MapPins.origin, 'Tu ubicación', 'Solo si diste permiso para usarla.'),
@@ -1810,8 +1819,13 @@ class _ReportDetailCard extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: AdoptifySpacing.xs),
+        if (report.isTaken || report.seenOnly)
+          Text(
+            report.isTaken ? report.careLabel : 'Una fundación ya lo vio',
+            style: textTheme.labelLarge?.copyWith(color: context.colors.success),
+          ),
         Text(
-          '${report.statusLabel} · ${formatDate(report.createdAt)}',
+          '${report.isTaken ? 'Reportado' : report.statusLabel} · ${formatDate(report.createdAt)}',
           style: textTheme.bodyMedium?.copyWith(
             color: context.colors.textMuted,
           ),
