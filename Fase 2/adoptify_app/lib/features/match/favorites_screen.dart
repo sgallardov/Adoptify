@@ -64,7 +64,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ? const ComingSoon(
                       icon: Icons.favorite_border,
                       title: 'Aún no tienes favoritos',
-                      message: 'Toca el corazón en una tarjeta del match para guardarla aquí.',
+                      message: 'Toca el corazón en una tarjeta de Conecta para guardarla aquí.',
                     )
                   : ContentWidth(
                       child: ListView.separated(
@@ -115,7 +115,7 @@ class _FavoriteTile extends StatelessWidget {
               children: [
                 Text(animal.name, style: textTheme.titleMedium),
                 Text('${animal.species} · ${animal.age} · ${animal.size}', style: textTheme.bodySmall),
-                Text('${animal.percent}% match', style: textTheme.labelMedium?.copyWith(color: colors.primaryText)),
+                Text(compatibilityLabel(animal.percent), style: textTheme.labelMedium?.copyWith(color: colors.primaryText)),
               ],
             ),
           ),

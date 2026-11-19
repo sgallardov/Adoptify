@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adoptify_app/app/app.dart';
@@ -9,19 +11,34 @@ import 'fake_api.dart';
 Future<void> openMatch(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Match'));
+  await tester.tap(find.text('Conecta'));
   await tester.pumpAndSettle();
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('sin sesión no se llega a Match: la app abre en el login', (tester) async {
-    // Login obligatorio: sin sesión no hay barra inferior ni pestaña Match
+  testWidgets('sin sesión no se llega a Conecta: la app abre en el login', (tester) async {
+    // Login obligatorio: sin sesión no hay barra inferior ni pestaña Conecta
     await tester.pumpWidget(AdoptifyApp(auth: FakeApi(loggedIn: false).auth));
     await tester.pumpAndSettle();
     expect(find.text('Hola de nuevo'), findsOneWidget);
-    expect(find.text('Match'), findsNothing);
+    expect(find.text('Conecta'), findsNothing);
+  });
+
+  testWidgets('la pestaña se llama Conecta, vive en /conecta y /match redirige', (tester) async {
+    final api = FakeApi();
+    await openMatch(tester, api);
+    expect(find.widgetWithText(AppBar, 'Conecta'), findsOneWidget);
+    final router = GoRouter.of(tester.element(find.byType(AppBar)));
+    expect(router.state.matchedLocation, '/conecta');
+
+    router.go('/mapa');
+    await tester.pumpAndSettle();
+    router.go('/match');
+    await tester.pumpAndSettle();
+    expect(router.state.matchedLocation, '/conecta');
+    expect(find.widgetWithText(AppBar, 'Conecta'), findsOneWidget);
   });
 
   testWidgets('sin "Quiero adoptar" invita a completarlo en el perfil', (tester) async {
@@ -48,7 +65,7 @@ void main() {
     await openMatch(tester, api);
 
     expect(find.text('Luna'), findsOneWidget);
-    expect(find.text('100% match'), findsOneWidget);
+    expect(find.text('100 % compatible'), findsOneWidget);
     expect(find.textContaining('Zona'), findsNothing);
 
     await tester.tap(find.byTooltip('Me gusta'));

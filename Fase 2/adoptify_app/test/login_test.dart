@@ -90,7 +90,7 @@ void main() {
     // Cae en el inicio de fundación, con su propia barra (incluye Mapa, HU-L) y sin la de adoptante
     expect(find.widgetWithText(AppBar, 'Inicio'), findsOneWidget);
     expect(find.text('Fundaciones'), findsNothing);
-    expect(find.text('Match'), findsNothing);
+    expect(find.text('Conecta'), findsNothing);
 
     // Desde Perfil puede cerrar sesión y vuelve al login
     await tester.tap(find.text('Perfil'));

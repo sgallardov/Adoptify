@@ -2,6 +2,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/api_client.dart';
 import '../../core/config.dart';
+import '../match/match_service.dart' show compatibilityLabel;
 
 const animalStatusLabels = <String, String>{
   'available': 'En adopción',
@@ -83,7 +84,7 @@ class InterestedPerson {
   // 0-100; null si la persona no completó "Quiero adoptar"
   final double? matchScore;
 
-  String get matchLabel => matchScore == null ? 'Sin ficha de adopción' : '${matchScore!.round()}% de match';
+  String get matchLabel => matchScore == null ? 'Sin ficha de adopción' : compatibilityLabel(matchScore!);
 }
 
 class AnimalInterested {

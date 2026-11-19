@@ -58,7 +58,7 @@ diseño (`shared/widgets/app_shell.dart`).
 - **Fundaciones** (`/fundaciones`): fundaciones con sus mascotas en adopción.
 - **Mensajes** (`/mensajes`): conversaciones con fundaciones (HU-G2); cada chat se abre en `/mensajes/:id`.
 - **Mapa** (`/mapa`).
-- **Match** (`/match`).
+- **Conecta** (`/conecta`): tarjetas de mascotas compatibles con "Quiero adoptar" (el match). `/match` redirige aquí.
 - **Perfil** (`/cuenta`).
 
 **Fundación** (`foundation` o `admin`): abre en **Inicio** (`/fundacion`). Barra de izquierda a derecha:

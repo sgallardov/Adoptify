@@ -44,7 +44,7 @@ void main() {
 
     // Nada de la barra de adoptante
     expect(find.text('Fundaciones'), findsNothing);
-    expect(find.text('Match'), findsNothing);
+    expect(find.text('Conecta'), findsNothing);
   });
 
   testWidgets('al iniciar sesión cae en Inicio sin forzar el formulario de mascotas', (tester) async {
@@ -69,7 +69,7 @@ void main() {
     expect(screenTitle('Personas interesadas'), findsOneWidget);
     expect(find.text('Luna'), findsOneWidget);
     expect(find.text('Matías Adoptante'), findsOneWidget);
-    expect(find.text('83% de match'), findsOneWidget);
+    expect(find.text('83 % compatible'), findsOneWidget);
     expect(find.text('Sin ficha de adopción'), findsOneWidget);
     expect(find.text('Conversar'), findsNWidgets(2));
 
@@ -203,7 +203,7 @@ void main() {
 
     expect(find.text('Fundaciones'), findsOneWidget);
     expect(find.text('Mapa'), findsOneWidget);
-    expect(find.text('Match'), findsOneWidget);
+    expect(find.text('Conecta'), findsOneWidget);
     expect(find.text('Perfil'), findsOneWidget);
     expect(find.text('Chat'), findsNothing);
     expect(find.text('Agregar mascota'), findsNothing);
