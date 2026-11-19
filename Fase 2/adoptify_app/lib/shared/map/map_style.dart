@@ -165,11 +165,15 @@ class MapPins {
   static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
   // Reporte según la especie: perro y gato llevan su huella en blanco sobre el mismo rojo; "otro" es el punto
-  static Widget reportFor(String? species) => switch (species) {
-        'perro' => const ReportPin(paw: Icon(Icons.pets, size: 16, color: Colors.white)),
-        'gato' => const ReportPin(paw: CustomPaint(size: Size.square(16), painter: CatPawPainter(Colors.white))),
-        _ => report,
-      };
+  // taken: una fundación tomó el caso; el pin lleva una insignia verde con un visto
+  static Widget reportFor(String? species, {bool taken = false}) {
+    final Widget pin = switch (species) {
+      'perro' => const ReportPin(paw: Icon(Icons.pets, size: 16, color: Colors.white)),
+      'gato' => const ReportPin(paw: CustomPaint(size: Size.square(16), painter: CatPawPainter(Colors.white))),
+      _ => report,
+    };
+    return taken ? TakenBadge(child: pin) : pin;
+  }
 
   // Más grandes que los puntos de mascotas (20) y reportes (18) para que las sedes se noten
   static const foundation = DropPin(width: 46, kind: DropKind.foundation);
@@ -213,6 +217,36 @@ class _PinCircle extends StatelessWidget {
           boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 2))],
         ),
         child: child,
+      );
+}
+
+// Insignia verde con un visto en la esquina del pin de un reporte tomado por una fundación
+class TakenBadge extends StatelessWidget {
+  const TakenBadge({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          Positioned(
+            right: -6,
+            top: -6,
+            child: Container(
+              key: const ValueKey('taken-badge'),
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: AdoptifyColors.light.successStrong,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
+            ),
+          ),
+        ],
       );
 }
 

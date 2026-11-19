@@ -134,6 +134,15 @@ class DogReport {
 
   String get statusLabel => reportStatuses[status] ?? status;
 
+  // HU-S: una fundación tomó el caso (la mascota está siendo atendida)
+  bool get isTaken => takenByFoundationId != null && status != 'resolved';
+
+  // Estado para tarjetas y listas: "En rescate por <Fundación>" si está tomado; si no, el estado normal
+  String get careLabel => isTaken ? 'En rescate por ${foundationName ?? 'una fundación'}' : statusLabel;
+
+  // Solo si la vio una fundación sin tomarlo todavía
+  bool get seenOnly => !isTaken && seenAt != null && status != 'resolved';
+
   // "Perro · Mediano · Café · ~12 kg", igual que reportSummary del portal. Vacío en reportes antiguos.
   String get summary => [
         ?_label(reportSpecies, species),
