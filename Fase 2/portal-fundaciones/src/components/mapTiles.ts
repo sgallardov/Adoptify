@@ -1,9 +1,10 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-export type LatLng = { lat: number; lng: number }
+export type { LatLng } from '../services/reportArea'
 
-export const SANTIAGO: LatLng = { lat: -33.4489, lng: -70.6693 }
+// La define el criterio común de reportes (HU-Z); se reexporta para los mapas que la usan como centro
+export { SANTIAGO } from '../services/reportArea'
 
 // Mosaicos públicos de OpenStreetMap: gratis, sin API key, con política de uso justo.
 // Si el tráfico crece, basta con cambiar esta URL por la de un proveedor de mosaicos.

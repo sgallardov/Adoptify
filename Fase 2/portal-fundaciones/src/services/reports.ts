@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { LatLng, ReportArea } from './reportArea'
 
 export type Report = {
   id: number; species: string | null; size: string | null; color: string | null
@@ -10,31 +11,25 @@ export type Report = {
 
 export const reportStatusLabels: Record<Report['status'], string> = { reported: 'Reportado', in_rescue: 'En rescate', resolved: 'Resuelto' }
 
-// Si la fundación no tiene ubicación registrada se usa Santiago como respaldo
-export const FALLBACK_CENTER = { lat: -33.4489, lng: -70.6693 }
-export const RADIUS_OPTIONS_KM = [10, 25, 50, 100]
-export const DEFAULT_RADIUS_KM = 50
-
-export type SearchCenter = { lat: number; lng: number; fromFoundation: boolean }
-
-// Centro de la búsqueda: la ubicación de la fundación de la sesión; respaldo: Santiago
-export async function fetchSearchCenter(signal: AbortSignal): Promise<SearchCenter> {
-  try {
-    const { data } = await api.get<{ latitude: number | null; longitude: number | null }>('/foundations/me', { signal })
-    if (data.latitude !== null && data.longitude !== null) return { lat: data.latitude, lng: data.longitude, fromFoundation: true }
-  } catch (cause) {
-    if (signal.aborted) throw cause
-  }
-  return { ...FALLBACK_CENTER, fromFoundation: false }
+// HU-Z: la zona de búsqueda la decide reportSearchArea, el mismo criterio que usa el mapa de la app
+export async function fetchReports(area: ReportArea, signal: AbortSignal): Promise<Report[]> {
+  return (await api.get<Report[]>('/reports/nearby', { params: area, signal })).data
 }
 
-export async function fetchReports(center: { lat: number; lng: number }, radiusKm: number, signal: AbortSignal): Promise<Report[]> {
-  return (await api.get<Report[]>('/reports/nearby', { params: { lat: center.lat, lng: center.lng, radius_km: radiusKm }, signal })).data
-}
-// Id de la fundación de la sesión, para saber si un caso tomado es propio. null si la cuenta no tiene fundación.
-export async function fetchMyFoundationId(signal: AbortSignal): Promise<number | null> {
+// Fundación de la sesión en una sola consulta: su id, para saber si un caso tomado es propio, y la
+// ubicación de su sede, que es el centro de la búsqueda de reportes (null si no la tiene registrada).
+// La cuenta sin fundación (por ejemplo admin) recibe null.
+export type MyFoundation = { id: number; origin: LatLng | null }
+
+export async function fetchMyFoundation(signal: AbortSignal): Promise<MyFoundation | null> {
   try {
-    return (await api.get<{ id: number }>('/foundations/me', { signal })).data.id
+    const { data } = await api.get<{ id: number; latitude: number | null; longitude: number | null }>(
+      '/foundations/me', { signal },
+    )
+    const origin = data.latitude !== null && data.longitude !== null
+      ? { lat: data.latitude, lng: data.longitude }
+      : null
+    return { id: data.id, origin }
   } catch {
     return null
   }

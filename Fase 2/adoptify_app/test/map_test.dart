@@ -391,11 +391,14 @@ void main() {
     await openMap(tester, FakeApi());
     final camera = tester.widget<FlutterMap>(find.byType(FlutterMap)).mapController!.camera;
 
-    // FakeLocation parte en Santiago centro: el mapa queda ahí, a nivel de barrio, sin filtrar por radio
+    // FakeLocation parte en Santiago centro: el mapa queda ahí, a nivel de barrio
     expect(camera.center.latitude, closeTo(-33.4378, 0.0001));
     expect(camera.center.longitude, closeTo(-70.6505, 0.0001));
     expect(camera.zoom, 14);
-    expect(find.text('Ver todas'), findsNothing);
+    // HU-Z: con tu ubicación la búsqueda ya está filtrada a 10 km (como el portal con su sede),
+    // y el chip ofrece cambiar el radio o volver a ver todas
+    expect(find.text('Radio 10 km'), findsOneWidget);
+    expect(find.text('Ver todas'), findsOneWidget);
     final markers = tester.widget<MarkerLayer>(find.byType(MarkerLayer)).markers;
     expect(markers.where((m) => m.point == const LatLng(-33.4378, -70.6505)), isNotEmpty);
   });

@@ -3,8 +3,32 @@ import 'package:latlong2/latlong.dart';
 import '../../core/api_client.dart';
 import '../../core/config.dart';
 import '../../core/photo_service.dart';
+import '../../shared/map/map_style.dart';
 
 // Modelos y llamadas de mascotas y reportes: equivalente a services/animals.ts y services/reports.ts del portal
+
+// HU-Z: criterio común de búsqueda de reportes entre la app y el portal de fundaciones.
+// Las dos vistas piden GET /reports/nearby con los mismos parámetros, así que con la misma ubicación y el
+// mismo radio muestran exactamente los mismos reportes (los que no están resueltos).
+//   - Con ubicación (la del teléfono en la app, la sede de la fundación en el portal): el radio elegido,
+//     por defecto defaultReportRadiusKm.
+//   - Sin ubicación (permiso denegado, o cuenta sin sede ubicada): Santiago con noLocationReportRadiusKm,
+//     el radio máximo que acepta la API.
+// El equivalente en el portal es reportSearchArea de src/services/reportArea.ts: mantener los dos iguales.
+const reportRadiusOptions = [5, 10, 25, 50, 100];
+const defaultReportRadiusKm = 10;
+const noLocationReportRadiusKm = 100;
+
+class ReportSearchArea {
+  const ReportSearchArea(this.origin, this.radiusKm);
+
+  final LatLng origin;
+  final int radiusKm;
+}
+
+ReportSearchArea reportSearchArea(LatLng? origin, [int radiusKm = defaultReportRadiusKm]) => origin != null
+    ? ReportSearchArea(origin, radiusKm)
+    : const ReportSearchArea(santiago, noLocationReportRadiusKm);
 
 class Animal {
   const Animal({
