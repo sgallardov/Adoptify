@@ -62,13 +62,13 @@ diseño (`shared/widgets/app_shell.dart`).
 - **Perfil** (`/cuenta`).
 
 **Fundación** (`foundation` o `admin`): abre en **Inicio** (`/fundacion`). Barra de izquierda a derecha:
-- **Inicio** (`/fundacion`): resumen, **Mis animales** (con interesados y postulaciones) y **Agregar mascota**.
+- **Inicio** (`/fundacion`): resumen, **Mis animales** (con interesados y postulaciones) y **Publicar animal**.
 - **Mapa** (`/fundacion/mapa`): el mismo mapa, con la gestión de reportes (HU-L).
-- **Chat** (`/fundacion/chat`): la misma lista y chat que el adoptante (HU-G2). "Conversar" en los interesados de una mascota abre el chat y empieza el cuestionario de adopción (HU-G3); la postulación se revisa en el portal.
-- **Perfil** (`/fundacion/perfil`), descrito abajo.
+- **Mensajes** (`/fundacion/chat`): la misma lista y chat que el adoptante (HU-G2). "Conversar" en los interesados de una mascota abre el chat y empieza el cuestionario de adopción (HU-G3); la postulación se revisa en el portal.
+- **Mi fundación** (`/fundacion/perfil`), descrito abajo. Se llama igual que en el portal web.
 
-**Agregar mascota** (`/fundacion/agregar`, desde Inicio). La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
-- **Perfil de la fundación** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
+**Publicar animal** (`/fundacion/agregar`, desde Inicio; al editar el título es *Editar a &lt;nombre&gt;*, igual que el portal). La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
+- **Mi fundación** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
 intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.

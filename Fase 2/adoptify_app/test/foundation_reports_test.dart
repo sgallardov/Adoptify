@@ -43,11 +43,11 @@ void main() {
   });
   tearDown(() => LocationService.instance = LocationService());
 
-  testWidgets('la barra de fundación tiene Inicio, Mapa, Chat y Perfil, en ese orden', (tester) async {
+  testWidgets('la barra de fundación tiene Inicio, Mapa, Mensajes y Mi fundación, en ese orden', (tester) async {
     await tester.pumpWidget(AdoptifyApp(auth: FakeApi(asFoundation: true).auth));
     await tester.pumpAndSettle();
 
-    final xs = [for (final label in ['Inicio', 'Mapa', 'Chat', 'Perfil']) tester.getCenter(find.text(label).last).dx];
+    final xs = [for (final label in ['Inicio', 'Mapa', 'Mensajes', 'Mi fundación']) tester.getCenter(find.text(label).last).dx];
     expect(xs, orderedEquals([...xs]..sort()));
     expect(find.text('Fundaciones'), findsNothing);
     expect(find.text('Conecta'), findsNothing);

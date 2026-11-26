@@ -67,7 +67,7 @@ export default function Messages() {
     {!error && conversations !== null && <div className="grid min-h-[32rem] overflow-hidden rounded-2xl border border-base-200 bg-surface lg:grid-cols-[18rem_1fr]">
       <aside aria-label="Conversaciones" className={`border-base-200 lg:border-r ${selectedId !== null ? 'hidden lg:block' : ''}`}>
         {conversations.length === 0
-          ? <div className="p-5"><Feedback kind="empty" title="Aún no tienes conversaciones" description="Abre una desde Mis casos (Interesados) o desde Hogares temporales con el botón Conversar." compact /></div>
+          ? <div className="p-5"><Feedback kind="empty" title="Aún no tienes conversaciones" description="Abre una desde Mis animales (Interesados) o desde Hogares temporales con el botón Conversar." compact /></div>
           : <ul className="divide-y divide-base-100">
             {conversations.map(item => <li key={item.id}>
               <Link to={`/mensajes/${item.id}`} aria-current={item.id === selectedId ? 'page' : undefined}

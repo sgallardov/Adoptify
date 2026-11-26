@@ -92,8 +92,8 @@ void main() {
     expect(find.text('Fundaciones'), findsNothing);
     expect(find.text('Conecta'), findsNothing);
 
-    // Desde Perfil puede cerrar sesión y vuelve al login
-    await tester.tap(find.text('Perfil'));
+    // Desde Mi fundación puede cerrar sesión y vuelve al login
+    await tester.tap(find.text('Mi fundación').last);
     await tester.pumpAndSettle();
     expect(find.text('Fundación Patitas'), findsOneWidget);
     // El botón está al final del formulario de perfil

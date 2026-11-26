@@ -155,7 +155,7 @@ class _FoundationProfileScreenState extends State<FoundationProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil'), actions: const [_ThemeToggle(), SizedBox(width: AdoptifySpacing.xs)]),
+      appBar: AppBar(title: const Text('Mi fundación'), actions: const [_ThemeToggle(), SizedBox(width: AdoptifySpacing.xs)]),
       body: ContentWidth(child: _body()),
     );
   }

@@ -40,13 +40,13 @@ GoRouter routerOf(WidgetTester tester) =>
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('la fundación ve Inicio, Mapa, Chat y Perfil, en ese orden', (tester) async {
+  testWidgets('la fundación ve Inicio, Mapa, Mensajes y Mi fundación, en ese orden', (tester) async {
     await openFoundation(tester);
 
     final home = tester.getCenter(find.text('Inicio').last).dx;
     final map = tester.getCenter(find.text('Mapa')).dx;
-    final chat = tester.getCenter(find.text('Chat')).dx;
-    final profile = tester.getCenter(find.text('Perfil')).dx;
+    final chat = tester.getCenter(find.text('Mensajes')).dx;
+    final profile = tester.getCenter(find.text('Mi fundación')).dx;
     expect(home, lessThan(map));
     expect(map, lessThan(chat));
     expect(chat, lessThan(profile));
@@ -107,16 +107,16 @@ void main() {
   testWidgets('cada pestaña abre su pantalla', (tester) async {
     await openFoundation(tester);
 
-    // Chat lista las conversaciones con el nombre de cada persona (HU-G2)
-    await tester.tap(find.text('Chat'));
+    // Mensajes lista las conversaciones con el nombre de cada persona (HU-G2)
+    await tester.tap(find.text('Mensajes').last);
     await tester.pumpAndSettle();
-    expect(screenTitle('Chat'), findsOneWidget);
+    expect(screenTitle('Mensajes'), findsOneWidget);
     expect(find.text('Matías Adoptante'), findsOneWidget);
 
-    // Perfil ya no es un placeholder: edita la foto y la descripción de la fundación
-    await tester.tap(find.text('Perfil'));
+    // Mi fundación ya no es un placeholder: edita la foto y la descripción de la fundación
+    await tester.tap(find.text('Mi fundación').last);
     await tester.pumpAndSettle();
-    expect(screenTitle('Perfil'), findsOneWidget);
+    expect(screenTitle('Mi fundación'), findsOneWidget);
     expect(find.text('Fundación Patitas'), findsOneWidget);
     expect(find.text('Guardar perfil'), findsOneWidget);
 
@@ -124,14 +124,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Publicar animal'));
     await tester.pumpAndSettle();
-    expect(screenTitle('Agregar mascota'), findsOneWidget);
+    expect(screenTitle('Publicar animal'), findsOneWidget);
     expect(find.text('Publica una historia'), findsOneWidget);
   });
 
   testWidgets('cada pestaña tiene su tooltip y un área táctil suficiente', (tester) async {
     await openFoundation(tester);
 
-    for (final tooltip in ['Chat con adoptantes', 'Perfil de la fundación']) {
+    for (final tooltip in ['Conversaciones con adoptantes', 'Perfil de la fundación']) {
       final tab = find.byTooltip(tooltip);
       expect(tab, findsOneWidget);
       final size = tester.getSize(tab);
@@ -147,24 +147,24 @@ void main() {
     final context = tester.element(find.byType(Scaffold).first);
     expect(Theme.of(context).brightness, Brightness.dark);
     expect(find.text('Inicio'), findsWidgets);
-    expect(find.text('Chat'), findsOneWidget);
-    expect(find.text('Agregar mascota'), findsNothing);
-    expect(find.text('Perfil'), findsOneWidget);
+    expect(find.text('Mensajes'), findsOneWidget);
+    expect(screenTitle('Publicar animal'), findsNothing);
+    expect(find.text('Mi fundación'), findsWidgets);
   });
 
-  testWidgets('el Perfil de fundación cambia entre modo claro y oscuro con la luna y el sol', (tester) async {
+  testWidgets('Mi fundación cambia entre modo claro y oscuro con la luna y el sol', (tester) async {
     await openFoundation(tester);
-    await tester.tap(find.text('Perfil'));
+    await tester.tap(find.text('Mi fundación').last);
     await tester.pumpAndSettle();
 
-    Brightness brightness() => Theme.of(tester.element(screenTitle('Perfil'))).brightness;
+    Brightness brightness() => Theme.of(tester.element(screenTitle('Mi fundación'))).brightness;
     Future<String?> saved() async => (await SharedPreferences.getInstance()).getString('theme_mode');
 
     // Arriba a la derecha, después del título, con la luna en modo claro
     expect(brightness(), Brightness.light);
     final moon = find.byTooltip('Cambiar a modo oscuro');
-    expect(tester.getCenter(moon).dx, greaterThan(tester.getCenter(find.text('Perfil').first).dx));
-    expect(tester.getCenter(moon).dy, lessThan(tester.getCenter(find.text('Perfil').first).dy + 1));
+    expect(tester.getCenter(moon).dx, greaterThan(tester.getCenter(find.text('Mi fundación').first).dx));
+    expect(tester.getCenter(moon).dy, lessThan(tester.getCenter(find.text('Mi fundación').first).dy + 1));
     expect(find.descendant(of: moon, matching: find.byIcon(Icons.dark_mode_outlined)), findsOneWidget);
 
     await tester.tap(moon);
@@ -181,18 +181,18 @@ void main() {
     expect(await saved(), 'light');
   });
 
-  testWidgets('la fundación recupera el modo oscuro guardado y el botón solo está en Perfil', (tester) async {
+  testWidgets('la fundación recupera el modo oscuro guardado y el botón solo está en Mi fundación', (tester) async {
     SharedPreferences.setMockInitialValues({'theme_mode': 'dark'});
     await openFoundation(tester);
 
-    // Inicio y Chat no llevan el botón
+    // Inicio y Mensajes no llevan el botón
     expect(find.byTooltip('Cambiar a modo claro'), findsNothing);
-    await tester.tap(find.text('Perfil'));
+    await tester.tap(find.text('Mi fundación').last);
     await tester.pumpAndSettle();
     expect(find.byTooltip('Cambiar a modo claro'), findsOneWidget);
     expect(find.byTooltip('Cambiar a modo oscuro'), findsNothing);
 
-    await tester.tap(find.text('Chat'));
+    await tester.tap(find.text('Mensajes').last);
     await tester.pumpAndSettle();
     expect(find.byTooltip('Cambiar a modo claro'), findsNothing);
   });
@@ -218,12 +218,12 @@ void main() {
     expect(find.text('Mapa'), findsOneWidget);
     expect(find.text('Conecta'), findsOneWidget);
     expect(find.text('Perfil'), findsOneWidget);
-    expect(find.text('Chat'), findsNothing);
-    expect(find.text('Agregar mascota'), findsNothing);
+    expect(find.text('Mi fundación'), findsNothing);
+    expect(screenTitle('Publicar animal'), findsNothing);
 
     routerOf(tester).go('/fundacion/chat');
     await tester.pumpAndSettle();
-    expect(find.text('Chat'), findsNothing);
+    expect(find.text('Mi fundación'), findsNothing);
     expect(find.byTooltip('Capas'), findsOneWidget);
 
     // La pestaña de adoptante /fundaciones sigue funcionando

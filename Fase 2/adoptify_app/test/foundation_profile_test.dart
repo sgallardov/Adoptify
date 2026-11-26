@@ -12,7 +12,7 @@ Future<FakeApi> openProfile(WidgetTester tester) async {
   final api = FakeApi(asFoundation: true);
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Perfil'));
+  await tester.tap(find.text('Mi fundación').last);
   await tester.pumpAndSettle();
   return api;
 }
@@ -70,7 +70,7 @@ void main() {
     final api = FakeApi(asFoundation: true)..foundationPhoto = 'http://api/uploads/perfil.jpg';
     await tester.pumpWidget(AdoptifyApp(auth: api.auth));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Perfil'));
+    await tester.tap(find.text('Mi fundación').last);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Quitar foto'));

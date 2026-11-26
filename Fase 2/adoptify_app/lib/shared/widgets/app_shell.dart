@@ -35,18 +35,18 @@ const _userItems = [
   NavItem(label: 'Perfil', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 
-// Vista de fundación: Inicio, Mapa, Chat y Perfil. Publicar un animal vive en su propio flujo desde Inicio.
+// Vista de fundación: Inicio, Mapa, Mensajes y Mi fundación. Publicar un animal vive en su propio flujo desde Inicio.
 const _foundationItems = [
   NavItem(label: 'Inicio', icon: Icons.home_outlined, activeIcon: Icons.home),
   NavItem(label: 'Mapa', icon: Icons.map_outlined, activeIcon: Icons.map, tooltip: 'Mapa de reportes'),
   NavItem(
-    label: 'Chat',
+    label: 'Mensajes',
     icon: Icons.chat_bubble_outline,
     activeIcon: Icons.chat_bubble,
-    tooltip: 'Chat con adoptantes',
+    tooltip: 'Conversaciones con adoptantes',
   ),
   NavItem(
-    label: 'Perfil',
+    label: 'Mi fundación',
     icon: Icons.person_outline,
     activeIcon: Icons.person,
     tooltip: 'Perfil de la fundación',

@@ -47,7 +47,7 @@ export default function Animals() {
   const filtering = Boolean(query || species)
 
   return <>
-    <PageHeading eyebrow="Cada historia importa" title="Mis casos" description="Consulta los animales publicados y encuentra cada una de sus historias." />
+    <PageHeading eyebrow="Cada historia importa" title="Mis animales" description="Consulta los animales publicados y encuentra cada una de sus historias." />
     <div className="mb-6 flex justify-end"><Link to="/animales/nuevo" className="button-primary">Publicar animal</Link></div>
     {loading || error ? <AnimalsState loading={loading} retry={retry} /> : <>
     <section aria-label="Filtros de animales" className="mb-7 flex flex-col gap-3 rounded-2xl border border-base-200 bg-surface p-4 md:flex-row">

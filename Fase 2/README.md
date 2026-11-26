@@ -226,7 +226,7 @@ entra al portal (`403` con "Esta cuenta es de adoptante. Inicia sesión desde la
 * Solo las cuentas con rol `foundation` vinculadas a una fundación pueden marcar: un `admin` recibe `403`.
 
 #### App móvil: vista de fundación (HU-L)
-* La barra de fundación es Inicio, Mapa, Chat y Perfil. `/fundacion/mapa` reutiliza `MapScreen`; los detalles se abren dentro del área de fundación (`/fundacion/reportes/:id`, `/fundacion/animales/:id`, `/fundacion/directorio/:id`) para que `sessionRedirect` no la expulse.
+* La barra de fundación es Inicio, Mapa, Mensajes y Mi fundación (los mismos nombres que el portal). `/fundacion/mapa` reutiliza `MapScreen`; los detalles se abren dentro del área de fundación (`/fundacion/reportes/:id`, `/fundacion/animales/:id`, `/fundacion/directorio/:id`) para que `sessionRedirect` no la expulse.
 * En el detalle del reporte, la fundación tiene una sola acción (HU-T): "Lo tomamos", o "Deshacer toma" si el caso es suyo. Si otra fundación lo tomó no hay acciones; lo mismo en la página Reportes del portal; un reporte resuelto no muestra acciones y una cuenta de adoptante nunca las ve. Ante `409` o `403` se muestra el mensaje del servidor y se vuelve a leer el reporte.
 * La fundación no ve el botón "Reportar mascota": gestiona reportes, no los crea.
 * **Decisión sobre el seguimiento por varias fundaciones:** "visto" sigue guardando una sola fundación por reporte (la última reemplaza a la anterior). Es una marca informativa de "alguien ya lo vio", no una lista de seguimiento; lo que da exclusividad es "tomado", que es único por reporte. No se crea la tabla `report_follows` (ni migración ni RLS) hasta que haya un caso real de varias fundaciones siguiendo el mismo reporte; si aparece, bastaría `report_follows (report_id, foundation_id)` con clave única y RLS activada.
@@ -423,7 +423,7 @@ Bajo 40 % de compatibilidad la tarjeta va al final con el rótulo "Poco compatib
 
 Un favorito expresa interés, pero **no crea un chat automáticamente**. La fundación ve los interesados de sus propios animales:
 
-- **Portal:** la card de cada animal en *Mis casos* muestra cuántos interesados tiene, y el detalle (`/animales/:id`) trae la sección **Interesados** con nombre, fecha del favorito y porcentaje de compatibilidad ("83 % compatible").
+- **Portal:** la card de cada animal en *Mis animales* muestra cuántos interesados tiene, y el detalle (`/animales/:id`) trae la sección **Interesados** con nombre, fecha del favorito y porcentaje de compatibilidad ("83 % compatible").
 - **App (vista fundación):** cada card de *Mis animales* tiene el botón **N interesados**, que abre `/fundacion/interesados?animal_id=…` con la misma información y el botón **Conversar**.
 
 Cada respuesta contiene únicamente el ID interno, el nombre, la fecha del favorito y `match_score` (0-100, calculado con `calculate_match_score` sobre las preferencias de “Quiero adoptar”; `null` si la persona no completó la ficha). Nunca expone correo, teléfono ni RUT. Solo cuentan los favoritos de adoptantes; al quitar el corazón, la persona desaparece de la lista.
@@ -446,7 +446,7 @@ Una sola conversación por par fundación-usuario (`conversations`, único por `
 
 ### Cuestionario de adopción por chat (HU-G3)
 
-Al apretar **Conversar** junto a una persona interesada en una mascota (portal: Mis casos → ficha → Interesados;
+Al apretar **Conversar** junto a una persona interesada en una mascota (portal: Mis animales → ficha → Interesados;
 app: Mis animales → interesados), el chat le hace **las preguntas de la fundación una a una**. Cada respuesta se
 guarda y llega la siguiente; al terminar, la fundación abre **Ver postulación** (pop-up en el portal), ve las
 respuestas con las que **no cumplen marcadas en rojo** y la **acepta o rechaza** con un mensaje predeterminado que
@@ -478,7 +478,7 @@ puede editar. Nada se rechaza solo: decide la fundación.
 | `POST /api/v1/adoption-form-requests/{id}/decision` | `{"decision": "accepted" \| "rejected", "message": "..."}`. Envía el mensaje por el chat y deja la decisión; `409` si faltan respuestas o ya se decidió. |
 
 `GET /animals/interested` y `/animals/{id}/interested` traen por persona `questionnaire: {id, answered, total,
-completed, flagged, decision}` (o `null`), y la tarjeta de Mis casos muestra **N por revisar**.
+completed, flagged, decision}` (o `null`), y la tarjeta de Mis animales muestra **N por revisar**.
 
 * **App (adoptante):** en el chat, las preguntas de sí o no y de alternativas se responden con botones (reemplazan
   al campo de texto) y las abiertas escribiendo; "Prefiero no responder" salta las opcionales.
@@ -487,7 +487,7 @@ completed, flagged, decision}` (o `null`), y la tarjeta de Mis casos muestra **N
 ### Animales por estado y Seguimiento (HU-Y)
 
 La fundación gestiona sus animales en **pestañas por estado**, con el conteo de cada una: **Disponibles**,
-**En proceso**, **Adoptados** y **Seguimiento** (portal: Mis casos; app: Inicio → Mis animales). Cada animal
+**En proceso**, **Adoptados** y **Seguimiento** (portal: Mis animales; app: Inicio → Mis animales, con los mismos nombres). Cada animal
 aparece en una sola pestaña, la de su estado actual, y al cambiar el estado la tarjeta se mueve de pestaña al
 instante, sin recargar la página ni volver a pedir la lista.
 

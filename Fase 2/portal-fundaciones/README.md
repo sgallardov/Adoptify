@@ -37,7 +37,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/login`: inicio de sesión de fundaciones (sin registro). La vista de usuario (mapa, reportes, adopción) vive solo en la app móvil.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
-- `/animales` (Mis casos): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre, filtro por especie y **pestañas por estado** (HU-Y).
+- `/animales` (Mis animales): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre, filtro por especie y **pestañas por estado** (HU-Y).
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de compatibilidad, "83 % compatible"; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
 - `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
 - `/fundacion`: perfil de la organización de ejemplo, sección **Preguntas de adopción** (HU-G3: parte con 8 sugeridas; texto, sí/no o alternativas, con la respuesta que no cumple) y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
@@ -132,7 +132,7 @@ una fundación existente. La migración no asigna automáticamente las cuentas
 antiguas: esa vinculación corresponde al administrador. Para cuentas nuevas,
 el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
 
-- En **Mis casos → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
+- En **Mis animales → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
 - En la ficha, **Editar animal** (`/animales/:id/editar`) carga los valores guardados.
 - **Estado de adopción → Cambiar estado** permite Disponible, En proceso, Adoptado y Seguimiento (ver HU-Y).
 - **Buscar dirección** (`AddressSearch`, `GET /geocode`) mueve el marcador al lugar elegido;
@@ -161,7 +161,7 @@ envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 
 ## Animales por estado (HU-Y)
 
-**Mis casos** (`/animales`) separa los animales en pestañas con el conteo de cada una: **Disponibles (N)**,
+**Mis animales** (`/animales`) separa los animales en pestañas con el conteo de cada una: **Disponibles (N)**,
 **En proceso (N)**, **Adoptados (N)** y **Seguimiento (N)**. Cada animal aparece en una sola pestaña, la de su
 estado actual, y la pestaña vacía explica qué va en ella. La búsqueda por nombre y el filtro por especie se
 aplican antes de contar, así que los números coinciden con lo que hay dentro.
@@ -188,7 +188,7 @@ decidió, se muestra quién y no hay botones. **Conversar** abre el chat con el 
 ## Mensajes (HU-G2)
 `/mensajes` (ítem del menú) muestra a la izquierda las conversaciones de la fundación, con el último mensaje, y a la
 derecha el chat elegido (`/mensajes/:id`). En pantallas pequeñas se ve una cosa a la vez, con botón para volver.
-El chat se abre con **Conversar** desde la sección Interesados de cada animal (*Mis casos*) o desde *Hogares
+El chat se abre con **Conversar** desde la sección Interesados de cada animal (*Mis animales*) o desde *Hogares
 temporales*; si ya existía, se retoma el mismo (`hooks/useOpenChat.ts`). Enter envía y Shift + Enter agrega una
 línea; el límite es de 1000 caracteres, con contador.
 
@@ -201,7 +201,7 @@ y le hace a la persona las preguntas de *Mi fundación* una a una; en el chat se
 Junto a la persona aparece el avance ("Respondiendo 3 de 8") y, al terminar, **Ver postulación**: un pop-up
 (`components/QuestionnaireDialog.tsx`, `<dialog>` nativo) con las respuestas, las que no cumplen en rojo y los botones
 **Aceptar** / **Rechazar**, que muestran un mensaje predeterminado editable antes de enviarlo por el chat. La tarjeta de
-Mis casos muestra **N por revisar**. Llamadas en `services/adoptionForm.ts`; validación, mensajes y estados en
+Mis animales muestra **N por revisar**. Llamadas en `services/adoptionForm.ts`; validación, mensajes y estados en
 `services/adoptionFormEditor.ts` (pruebas en `tests/adoptionForm.test.mjs`; `npm test` necesita Node 22.6 o más).
 
 ## Modo oscuro

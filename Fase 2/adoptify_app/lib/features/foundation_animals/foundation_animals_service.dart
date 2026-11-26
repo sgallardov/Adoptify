@@ -25,7 +25,7 @@ const animalStatusTabLabels = <String, String>{
 
 /// Mensaje de la pestaña sin animales.
 const animalStatusEmptyMessages = <String, String>{
-  'available': 'No tienes animales disponibles. Publica un caso para que las personas puedan conocerlo.',
+  'available': 'No tienes animales disponibles. Publica un animal para que las personas puedan conocerlo.',
   'in_process': 'Ningún animal en proceso. Aquí verás los animales con una adopción en curso.',
   'adopted': 'Todavía no registras adopciones. Cuando marques un animal como adoptado, aparecerá aquí.',
   'follow_up': 'Ningún animal en seguimiento. Pasa un animal adoptado a Seguimiento para acompañar su adaptación.',

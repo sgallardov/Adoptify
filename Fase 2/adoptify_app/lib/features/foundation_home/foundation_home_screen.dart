@@ -65,13 +65,13 @@ class FoundationHomeScreen extends StatelessWidget {
             _QuickAccess(
               icon: Icons.pets_outlined,
               title: 'Mis animales',
-              description: 'Consulta, edita y actualiza el estado de tus casos publicados.',
+              description: 'Consulta, edita y actualiza el estado de tus animales publicados.',
               onTap: () => context.push('/fundacion/mis-animales'),
             ),
             const SizedBox(height: AdoptifySpacing.md),
             _QuickAccess(
               icon: Icons.chat_bubble_outline,
-              title: 'Conversaciones',
+              title: 'Mensajes',
               description: 'Revisa los mensajes de personas interesadas.',
               onTap: () => context.go('/fundacion/chat'),
             ),

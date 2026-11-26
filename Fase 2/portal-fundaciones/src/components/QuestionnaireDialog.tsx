@@ -10,7 +10,7 @@ import { MAX_DECISION_MESSAGE, defaultDecisionMessage, formatAnswer } from '../s
 
 const dateFormat = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-// Postulación por cuestionario (HU-G3) en un pop-up sobre Mis casos: respuestas, lo que no cumple y la decisión.
+// Postulación por cuestionario (HU-G3) en un pop-up sobre Mis animales: respuestas, lo que no cumple y la decisión.
 // Usa <dialog> nativo: atrapa el foco, cierra con Esc y oscurece el fondo.
 export default function QuestionnaireDialog({ id, onClose, onDecided }: {
   id: number

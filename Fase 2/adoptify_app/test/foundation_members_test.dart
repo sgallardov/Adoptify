@@ -18,12 +18,12 @@ Map<String, dynamic> member(int id, String name, {bool isPublic = false, String?
       'is_public': isPublic,
     };
 
-// Vista de la fundación: pestaña Perfil, con la sección Socios al final de la lista
+// Vista de la fundación: pestaña Mi fundación, con la sección Socios al final de la lista
 Future<FakeApi> openProfile(WidgetTester tester, {List<Map<String, dynamic>> members = const []}) async {
   final api = FakeApi(asFoundation: true)..members.addAll(members);
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Perfil'));
+  await tester.tap(find.text('Mi fundación').last);
   await tester.pumpAndSettle();
   return api;
 }
@@ -165,7 +165,7 @@ void main() {
       final api = FakeApi(asFoundation: true)..membersFail = true;
       await tester.pumpWidget(AdoptifyApp(auth: api.auth));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Perfil'));
+      await tester.tap(find.text('Mi fundación').last);
       await tester.pumpAndSettle();
       await scrollTo(tester, find.text('Reintentar socios'));
       expect(find.text('No se pudo consultar los socios.'), findsOneWidget);
