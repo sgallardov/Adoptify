@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useAnimal } from '../hooks/useAnimal'
 import { statuses, toAnimal, updateAnimal } from '../services/animals'
+import { statusOptions } from '../services/animalStatus'
 import type { AnimalResponse, AnimalStatus } from '../services/animals'
 import { animalError } from '../services/animalErrors'
 import Feedback from '../components/Feedback'
@@ -38,7 +39,8 @@ function StatusEditor({ record, onUpdate }: { record: AnimalResponse; onUpdate: 
     <label htmlFor="animal-status" className="block text-sm font-semibold">Estado de adopción</label>
     <div className="flex flex-wrap gap-3">
       <select id="animal-status" value={status} onChange={event => { setStatus(event.target.value as AnimalStatus); setError('') }} disabled={saving} className="min-w-0 flex-1 rounded-xl border border-base-300 bg-surface px-3 py-2.5">
-        {Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        {/* Seguimiento solo se ofrece a un animal adoptado o ya en seguimiento (HU-Y) */}
+        {statusOptions(record.status).map(value => <option key={value} value={value}>{statuses[value]}</option>)}
       </select>
       <button type="button" onClick={save} disabled={saving || status === record.status} className="button-primary">{saving ? 'Guardando…' : 'Cambiar estado'}</button>
     </div>

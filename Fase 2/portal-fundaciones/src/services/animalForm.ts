@@ -72,7 +72,7 @@ const fieldMessages: Record<string, string> = {
   keeping_place_address: 'Indica el lugar donde se encuentra el animal (máximo 255 caracteres).',
   photo_url: 'Sube una foto válida del animal (máximo 500 caracteres).', latitude: 'Revisa la latitud y la longitud.',
   longitude: 'Revisa la latitud y la longitud.', foundation_id: 'Revisa la fundación asignada.',
-  status: 'Selecciona Disponible, En proceso o Adoptado.',
+  status: 'Selecciona Disponible, En proceso, Adoptado o Seguimiento.',
 }
 
 // Traduce la estructura 422 de Pydantic sin exponer mensajes internos en inglés.

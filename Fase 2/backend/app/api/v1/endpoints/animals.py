@@ -410,6 +410,9 @@ async def update_animal(
     db: AsyncSession = Depends(get_db),
 ):
     animal = await _get_owned_animal(animal_id, current_user, db)
+    # Seguimiento (HU-Y) es la etapa posterior a la adopción: solo se entra desde "adopted"
+    if payload.status == "follow_up" and animal.status not in ("adopted", "follow_up"):
+        raise HTTPException(status_code=400, detail="Solo un animal adoptado puede pasar a Seguimiento.")
     for field, value in payload.model_dump(exclude_unset=True, exclude={"latitude", "longitude"}).items():
         setattr(animal, field, value)
     if "latitude" in payload.model_fields_set:

@@ -92,6 +92,8 @@ class FakeApi {
   int? uploadStatus;
   // Ids marcados con el corazón en el match
   final favorites = <int>{};
+  // Animales que gestiona la fundación: PATCH /animals/{id} los actualiza aquí (pestañas por estado, HU-Y)
+  final managedAnimals = <Map<String, dynamic>>[{...luna}, {...rocky}];
   // Tarjetas extra del match (por ejemplo, una poco compatible)
   final extraMatchCards = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> get _allMatchCards => [..._matchCards, ...extraMatchCards];
@@ -407,7 +409,17 @@ class FakeApi {
       if (request.headers['Authorization'] != 'Bearer $foundationToken') {
         return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
       }
-      return _json(200, {...luna, ...body});
+      final id = int.parse(editAnimal.group(1)!);
+      final index = managedAnimals.indexWhere((animal) => animal['id'] == id);
+      if (index == -1) return _json(200, {...luna, ...body});
+      // Seguimiento solo se entra desde Adoptado, igual que el backend (HU-Y)
+      if (body['status'] == 'follow_up' &&
+          managedAnimals[index]['status'] != 'adopted' &&
+          managedAnimals[index]['status'] != 'follow_up') {
+        return _json(400, {'detail': 'Solo un animal adoptado puede pasar a Seguimiento.'});
+      }
+      managedAnimals[index] = {...managedAnimals[index], ...body};
+      return _json(200, managedAnimals[index]);
     }
 
     if (request.url.path == '/animals/communes') {
@@ -623,7 +635,7 @@ class FakeApi {
         if (request.headers['Authorization'] != 'Bearer $foundationToken') {
           return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});
         }
-        return _json(200, [luna, rocky]);
+        return _json(200, managedAnimals);
       case '/animals/interested':
         if (request.headers['Authorization'] != 'Bearer $foundationToken') {
           return _json(403, {'detail': 'Tu cuenta no puede gestionar animales.'});

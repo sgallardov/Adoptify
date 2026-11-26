@@ -242,7 +242,7 @@ Cada fundación gestiona solo sus propios animales.
 * `PATCH /api/v1/animals/{id}` (requiere token): edición parcial, incluye el cambio de `status` y de ubicación (`latitude` y `longitude` siempre juntas). `404` si no existe y `403` si es de otra fundación.
 * `DELETE /api/v1/animals/{id}` (requiere token): `204`; mismos `403` y `404`.
 * `GET /api/v1/animals` sigue siendo público. Si el token es de una cuenta `foundation`, solo devuelve los animales de su fundación; visitantes, adoptantes y `admin` ven todos. Un token inválido se trata como visitante. `/animals/nearby` no cambia.
-* **Valores válidos:** `species` (`perro`, `gato`), `gender` (`macho`, `hembra`), `size` (`pequeño`, `mediano`, `grande`), `energy_level` (1 a 5), `status` (`available`, `in_process`, `adopted`). Fuera de eso: `422`.
+* **Valores válidos:** `species` (`perro`, `gato`), `gender` (`macho`, `hembra`), `size` (`pequeño`, `mediano`, `grande`), `energy_level` (1 a 5), `status` (`available`, `in_process`, `adopted`, `follow_up`; ver HU-Y). Fuera de eso: `422`.
 * **Roles:** `admin` puede crear, editar y borrar en cualquier fundación; `adopter` recibe `403`.
 * **Lugar de resguardo privado (HU-A):** al crear un animal, la fundación debe indicar `keeping_place_type` (`refugio` o `hogar_temporal`) y `keeping_place_address` (texto de hasta 255 caracteres). Ambos se entregan **solo** por `GET /api/v1/animals/management` y `GET /api/v1/animals/management/{id}` a la fundación dueña o al administrador. No aparecen en `/animals`, `/animals/nearby`, `/foundations` ni en el mapa. Los animales creados antes de esta funcionalidad conservan ambos valores en `null` y el portal muestra “Sin información”. La dirección no se convierte sola en coordenadas: `location` sigue siendo el punto privado de HU-04, pero los formularios la usan como sugerencia del buscador de direcciones (ver abajo).
 * **Buscar dirección (`GET /api/v1/geocode?q=...`):** solo `foundation` y `admin` (`403` para adoptantes). Devuelve hasta 5 lugares de Chile con `label`, `latitude`, `longitude` y `commune` (la comuna del catálogo reconocida en el lugar, comparando sin tildes ni mayúsculas; `null` si no se reconoce), para ubicar al animal sin escribir coordenadas y completar sola su comuna pública. Consulta Nominatim de OpenStreetMap desde el backend (máximo una consulta por segundo, caché en memoria y `User-Agent` de la aplicación, como exige su política de uso). `q` va de 3 a 200 caracteres (`422` fuera de eso); si Nominatim falla, `503`.
@@ -483,6 +483,32 @@ completed, flagged, decision}` (o `null`), y la tarjeta de Mis casos muestra **N
 * **App (adoptante):** en el chat, las preguntas de sí o no y de alternativas se responden con botones (reemplazan
   al campo de texto) y las abiertas escribiendo; "Prefiero no responder" salta las opcionales.
 * **App (fundación):** "Conversar" en los interesados manda `animal_id`. Ver la postulación es solo en el portal.
+
+### Animales por estado y Seguimiento (HU-Y)
+
+La fundación gestiona sus animales en **pestañas por estado**, con el conteo de cada una: **Disponibles**,
+**En proceso**, **Adoptados** y **Seguimiento** (portal: Mis casos; app: Inicio → Mis animales). Cada animal
+aparece en una sola pestaña, la de su estado actual, y al cambiar el estado la tarjeta se mueve de pestaña al
+instante, sin recargar la página ni volver a pedir la lista.
+
+* **Seguimiento es un estado nuevo** (`Animal.status = "follow_up"`), no una vista de los adoptados: la fundación
+  tiene que poder entrar y salir de él, y con `adoption_profile.accepts_follow_up` (una preferencia del adoptante)
+  el animal aparecería en dos pestañas a la vez. La columna `status` es `String(50)` sin restricción en la base,
+  así que **no hace falta migración**: solo cambian el `Literal` de `schemas/animal.py` y las etiquetas.
+* **Solo se entra desde Adoptado:** `PATCH /api/v1/animals/{id}` con `status: "follow_up"` responde `400`
+  ("Solo un animal adoptado puede pasar a Seguimiento.") si el animal no está en `adopted` ni en `follow_up`.
+  De `follow_up` se vuelve a `adopted` (o a cualquier otro estado) sin restricción. `POST /api/v1/animals` rechaza
+  `follow_up` con `422`: una publicación nueva nunca parte en Seguimiento.
+* **Un animal en `follow_up` ya tiene familia:** queda fuera de `/animals/nearby`, de `/animals/match` y del mapa
+  de la app, igual que un adoptado. Sigue apareciendo en `/animals` y en `/animals/management`.
+* **Etiquetas:** el estado de un animal se muestra en singular (Disponible, En proceso, Adoptado, Seguimiento) y la
+  pestaña en plural (Disponibles, En proceso, Adoptados, Seguimiento). Portal: `services/animalStatus.ts`
+  (`statuses`, `tabLabels`, `statusTabs`, `statusOptions`); app: `foundation_animals_service.dart`
+  (`animalStatusLabels`, `animalStatusTabs`, `animalStatusTabLabels`, `animalStatusOptions`). Mantener las dos
+  iguales.
+* **Pruebas:** backend `tests/test_animals_crud.py` (`test_follow_up_only_after_adoption`,
+  `test_create_rejects_follow_up_status`); portal `tests/animalStatus.test.mjs`; app
+  `test/foundation_animal_tabs_test.dart`.
 
 ## 🧪 Ejecución de Pruebas Automatizadas (Testing Suite)
 

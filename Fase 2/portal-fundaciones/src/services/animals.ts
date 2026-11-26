@@ -1,9 +1,10 @@
 import axios from 'axios'
 import { api } from './api'
 import { mediaUrl } from './uploads'
-import type { Animal } from '../data/demo'
+import { statuses } from './animalStatus'
+import type { Animal, AnimalStatus } from '../data/demo'
 
-export type AnimalStatus = 'available' | 'in_process' | 'adopted'
+export type { AnimalStatus }
 
 export type AnimalResponse = {
   id: number
@@ -42,15 +43,13 @@ export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export const statuses: Record<AnimalStatus, string> = {
-  available: 'Disponible', in_process: 'En proceso', adopted: 'Adoptado',
-}
+export { statuses } from './animalStatus'
 
 export function toAnimal(animal: AnimalResponse): Animal {
   return {
     id: animal.id, name: animal.name, species: animal.species,
     age: formatAge(animal.age_months), gender: animal.gender, size: animal.size,
-    energy: animal.energy_level, status: statuses[animal.status] ?? animal.status,
+    energy: animal.energy_level, status: statuses[animal.status] ?? animal.status, statusKey: animal.status,
     photo: mediaUrl(animal.photo_url),
     description: animal.description || 'Sin descripción registrada.',
     foundationName: animal.foundation_name,

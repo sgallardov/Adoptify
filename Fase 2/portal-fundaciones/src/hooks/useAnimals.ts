@@ -19,5 +19,10 @@ export function useAnimals() {
     return () => controller.abort()
   }, [attempt])
 
-  return { animals, loading, error, retry: () => setAttempt(value => value + 1) }
+  return {
+    animals, loading, error,
+    retry: () => setAttempt(value => value + 1),
+    // Reemplaza un animal ya cargado: el cambio de estado se refleja al instante, sin recargar la página (HU-Y)
+    replace: (animal: Animal) => setAnimals(current => current.map(item => (item.id === animal.id ? animal : item))),
+  }
 }

@@ -245,7 +245,7 @@ LatLng? _position(Map<String, dynamic> json) {
   return lat != null && lng != null ? LatLng(lat.toDouble(), lng.toDouble()) : null;
 }
 
-const animalStatuses = {'available': 'Disponible', 'in_process': 'En proceso', 'adopted': 'Adoptado'};
+const animalStatuses = {'available': 'Disponible', 'in_process': 'En proceso', 'adopted': 'Adoptado', 'follow_up': 'Seguimiento'};
 const reportStatuses = {'reported': 'Reportado', 'in_rescue': 'En rescate', 'resolved': 'Resuelto'};
 
 // Opciones del formulario de reporte: valor que guarda la API → texto (igual que reportOptions del portal)

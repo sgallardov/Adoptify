@@ -25,6 +25,15 @@ Future<void> openMyAnimals(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+// Las pestañas por estado de "Mis animales" (HU-Y); la barra se desplaza, así que primero se deja a la vista
+Future<void> openAnimalsTab(WidgetTester tester, String status) async {
+  final tab = find.byKey(ValueKey('tab-$status'));
+  await tester.ensureVisible(tab);
+  await tester.pumpAndSettle();
+  await tester.tap(tab);
+  await tester.pumpAndSettle();
+}
+
 GoRouter routerOf(WidgetTester tester) =>
     tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig! as GoRouter;
 
@@ -60,9 +69,10 @@ void main() {
 
     await openMyAnimals(tester);
     expect(screenTitle('Mis animales'), findsOneWidget);
-    // La card de cada animal muestra cuántos lo marcaron con el corazón
+    // La card de cada animal muestra cuántos lo marcaron con el corazón.
+    // Luna está en la pestaña Disponibles; Rocky, adoptado, está en la suya (HU-Y)
     expect(find.text('2 interesados'), findsOneWidget);
-    expect(find.text('0 interesados'), findsOneWidget);
+    expect(find.text('0 interesados'), findsNothing);
     await tester.tap(find.text('2 interesados'));
     await tester.pumpAndSettle();
 
@@ -83,6 +93,9 @@ void main() {
   testWidgets('un animal sin interesados muestra el estado vacío', (tester) async {
     await openFoundation(tester);
     await openMyAnimals(tester);
+    // Rocky está adoptado: su card vive en la pestaña Adoptados
+    await openAnimalsTab(tester, 'adopted');
+    expect(find.text('0 interesados'), findsOneWidget);
     await tester.tap(find.text('0 interesados'));
     await tester.pumpAndSettle();
 

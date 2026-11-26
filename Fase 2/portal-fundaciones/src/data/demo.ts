@@ -1,3 +1,6 @@
+// Estados de adopción del backend. "follow_up" (Seguimiento) es la etapa posterior a la adopción (HU-Y).
+export type AnimalStatus = 'available' | 'in_process' | 'adopted' | 'follow_up'
+
 export type Animal = {
   id: number
   name: string
@@ -6,7 +9,10 @@ export type Animal = {
   gender: string
   size: string
   energy: number
+  // Estado traducido al español (lo que se muestra)
   status: string
+  // Estado tal como lo guarda el backend; la maqueta no lo tiene
+  statusKey?: AnimalStatus
   photo: string | null
   description: string
   // Datos que solo entrega el backend (la maqueta no los tiene)

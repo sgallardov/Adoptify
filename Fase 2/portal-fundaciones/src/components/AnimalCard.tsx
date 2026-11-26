@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { ArrowUpRight, ClipboardList, Heart, PawPrint } from 'lucide-react'
 import type { Animal } from '../data/demo'
+import AnimalStatusSelect from './AnimalStatusSelect'
 
 export function AnimalPhoto({ animal, large = false }: { animal: Animal; large?: boolean }) {
   const [failed, setFailed] = useState(false)
@@ -14,15 +15,20 @@ export function AnimalPhoto({ animal, large = false }: { animal: Animal; large?:
 }
 
 export function StatusBadge({ status }: { status: Animal['status'] }) {
-  const color = status === 'Disponible' ? 'bg-success-50 text-success-800' : status === 'En proceso' ? 'bg-warning-50 text-warning-800' : 'bg-info-50 text-info-800'
+  const color = status === 'Disponible' ? 'bg-success-50 text-success-800'
+    : status === 'En proceso' ? 'bg-warning-50 text-warning-800'
+    : status === 'Seguimiento' ? 'bg-brand-100 text-brand-800'
+    : 'bg-info-50 text-info-800'
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${color}`}><span className="size-1.5 rounded-full bg-current" />{status}</span>
 }
 
 // interestedCount: personas que lo marcaron con el corazón (undefined mientras no se conoce).
 // toReview: postulaciones respondidas que la fundación todavía no acepta ni rechaza (HU-G3)
-export default function AnimalCard({ animal, interestedCount, toReview = 0 }: { animal: Animal; interestedCount?: number; toReview?: number }) {
+// onStatusChange: si se entrega, la tarjeta deja cambiar el estado sin salir de la lista (HU-Y)
+export default function AnimalCard({ animal, interestedCount, toReview = 0, onStatusChange }: { animal: Animal; interestedCount?: number; toReview?: number; onStatusChange?: (animal: Animal) => void }) {
   return (
-    <Link to={`/animales/${animal.id}`} className="group overflow-hidden rounded-2xl border border-base-200 bg-surface transition-shadow hover:shadow-md">
+    <article className="overflow-hidden rounded-2xl border border-base-200 bg-surface transition-shadow focus-within:shadow-md hover:shadow-md">
+    <Link to={`/animales/${animal.id}`} className="group block">
       <AnimalPhoto animal={animal} />
       <div className="p-5">
         <div className="flex items-center justify-between gap-2"><h3 className="text-xl font-bold tracking-tight">{animal.name}</h3><StatusBadge status={animal.status} /></div>
@@ -36,5 +42,7 @@ export default function AnimalCard({ animal, interestedCount, toReview = 0 }: { 
         </div>
       </div>
     </Link>
+    {onStatusChange && <AnimalStatusSelect animal={animal} onChange={onStatusChange} />}
+    </article>
   )
 }
