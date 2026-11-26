@@ -88,16 +88,14 @@ class _MapScreenState extends State<MapScreen> {
 
   // Capas visibles (botón de capas)
   bool _showReports = true;
-  bool _showFoundations = true;
   bool _showClinics = true;
 
   int? _selectedReportId;
   // Reporte recién publicado desde /reportar (llega como refreshKey): al cargar se muestra y se selecciona
   int? _newReportId;
-  int? _selectedFoundationId;
   int? _selectedClinicId;
 
-  // Sedes de las fundaciones: pines fijos, no dependen del radio ni de tu ubicación
+  // Fundaciones: no tienen pin en el mapa; se cargan para el buscador (al elegir una se abre su perfil)
   List<Foundation> _foundations = [];
   // Veterinarias para emergencias (OpenStreetMap): también pines fijos
   List<VetClinic> _clinics = [];
@@ -242,7 +240,6 @@ class _MapScreenState extends State<MapScreen> {
       if (!_reports.any((r) => r.id == found.id)) _reports = [..._reports, found];
       _showReports = true;
       _selectedReportId = found.id;
-      _selectedFoundationId = null;
       _selectedClinicId = null;
       // Que un encuadre posterior (radio, ubicación) no lo saque de la vista
       _autoFit = false;
@@ -328,11 +325,8 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
     final points = [
-      // HU-R: el encuadre considera reportes y fundaciones, no las mascotas en adopción
+      // HU-R: el encuadre considera los reportes; las mascotas en adopción y las fundaciones no tienen pin
       for (final report in _reports) report.position,
-      if (_showFoundations)
-        for (final foundation in _foundations)
-          if (foundation.position != null) foundation.position!,
       ?_origin,
     ];
     if (points.isEmpty) return;
@@ -363,7 +357,6 @@ class _MapScreenState extends State<MapScreen> {
         _centerOnOrigin = true;
         _autoFit = true;
           _selectedReportId = null;
-        _selectedFoundationId = null;
         _selectedClinicId = null;
         _locating = false;
       });
@@ -387,7 +380,6 @@ class _MapScreenState extends State<MapScreen> {
       _centerOnUser = false;
       _autoFit = true;
       _selectedReportId = null;
-      _selectedFoundationId = null;
       _selectedClinicId = null;
     });
     _load();
@@ -422,8 +414,12 @@ class _MapScreenState extends State<MapScreen> {
         });
         _selectReport(report);
       case final Foundation foundation:
-        setState(() => _showFoundations = true);
-        _selectFoundation(foundation);
+        // Las fundaciones no tienen pin: se abre su perfil, como desde la pestaña Fundaciones
+        context.push(
+          _isFoundationView ? '/fundacion/directorio/${foundation.id}' : '/fundaciones/${foundation.id}',
+          extra: foundation,
+        );
+        return;
       case final VetClinic clinic:
         // Las veterinarias solo se dibujan con zoom cercano: se acerca lo justo para verla
         if (zoom < _clinicsMinZoom) zoom = _clinicsMinZoom;
@@ -449,15 +445,6 @@ class _MapScreenState extends State<MapScreen> {
   void _selectReport(DogReport report) {
     setState(() {
       _selectedReportId = report.id;
-      _selectedFoundationId = null;
-      _selectedClinicId = null;
-    });
-  }
-
-  void _selectFoundation(Foundation foundation) {
-    setState(() {
-      _selectedFoundationId = foundation.id;
-      _selectedReportId = null;
       _selectedClinicId = null;
     });
   }
@@ -466,7 +453,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _selectedClinicId = clinic.id;
       _selectedReportId = null;
-      _selectedFoundationId = null;
     });
   }
 
@@ -490,7 +476,6 @@ class _MapScreenState extends State<MapScreen> {
     _searchFocus.unfocus();
     setState(() {
       _selectedReportId = null;
-      _selectedFoundationId = null;
       _selectedClinicId = null;
     });
   }
@@ -517,12 +502,12 @@ class _MapScreenState extends State<MapScreen> {
             item: report,
           ),
       for (final foundation in _foundations)
-        if (foundation.position != null && matches('${foundation.name} ${foundation.place}'))
+        if (matches('${foundation.name} ${foundation.place}'))
           _SearchHit(
             kind: _HitKind.foundation,
             title: foundation.name,
             subtitle: foundation.place,
-            position: foundation.position!,
+            position: foundation.position ?? santiago,
             item: foundation,
           ),
       for (final clinic in _clinics)
@@ -569,11 +554,7 @@ class _MapScreenState extends State<MapScreen> {
 
           return _LayersSheet(
             reportsCount: _reports.length,
-            foundationsCount: _foundations
-                .where((f) => f.position != null)
-                .length,
             showReports: _showReports,
-            showFoundations: _showFoundations,
             clinicsCount: _clinics.length,
             clinicsInView: _clinicsInView,
             showClinics: _showClinics,
@@ -581,10 +562,6 @@ class _MapScreenState extends State<MapScreen> {
             onReports: (value) => update(() {
               _showReports = value;
               if (!value) _selectedReportId = null;
-            }),
-            onFoundations: (value) => update(() {
-              _showFoundations = value;
-              if (!value) _selectedFoundationId = null;
             }),
             onClinics: (value) => update(() {
               _showClinics = value;
@@ -601,15 +578,11 @@ class _MapScreenState extends State<MapScreen> {
     final selectedReport = _reports
         .where((report) => report.id == _selectedReportId)
         .firstOrNull;
-    final selectedFoundation = _foundations
-        .where((f) => f.id == _selectedFoundationId)
-        .firstOrNull;
     final selectedClinic = _clinics
         .where((c) => c.id == _selectedClinicId)
         .firstOrNull;
     final hasSelection =
         selectedReport != null ||
-        selectedFoundation != null ||
         selectedClinic != null;
     final searching = _searchFocus.hasFocus && _search.text.trim().isNotEmpty;
 
@@ -714,10 +687,8 @@ class _MapScreenState extends State<MapScreen> {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
             right: AdoptifySpacing.lg,
-            // Las fichas de fundación (foto arriba) y de veterinaria (botones) son más altas que las demás
-            bottom: selectedFoundation != null
-                ? 400
-                : selectedClinic != null
+            // La ficha de veterinaria (con botones) es más alta que la de un reporte
+            bottom: selectedClinic != null
                 ? 340
                 : (hasSelection ? 260 : 96),
             child: Column(
@@ -764,19 +735,6 @@ class _MapScreenState extends State<MapScreen> {
                         report: selectedReport,
                         onClose: _clearSelection,
                         onOpen: () => _openReport(selectedReport),
-                      ),
-                      const SizedBox(height: AdoptifySpacing.md),
-                    ] else if (selectedFoundation != null) ...[
-                      // Misma vista que al tocar la fundación en la pestaña Fundaciones
-                      _FoundationDetailCard(
-                        foundation: selectedFoundation,
-                        onClose: _clearSelection,
-                        onOpen: () => context.push(
-                          _isFoundationView
-                              ? '/fundacion/directorio/${selectedFoundation.id}'
-                              : '/fundaciones/${selectedFoundation.id}',
-                          extra: selectedFoundation,
-                        ),
                       ),
                       const SizedBox(height: AdoptifySpacing.md),
                     ] else if (selectedClinic != null) ...[
@@ -913,17 +871,6 @@ class _MapScreenState extends State<MapScreen> {
                   key: ValueKey('clinic-${clinic.id}'),
                   onTap: () => _selectClinic(clinic),
                 ),
-            if (_showFoundations)
-              for (final foundation in _foundations)
-                if (foundation.position != null)
-                  dropMarker(
-                    foundation.position!,
-                    foundation.id == _selectedFoundationId
-                        ? MapPins.selectedFoundation
-                        : MapPins.foundation,
-                    key: ValueKey('foundation-${foundation.id}'),
-                    onTap: () => _selectFoundation(foundation),
-                  ),
             // Tu ubicación: la del botón o la detectada al abrir el mapa
             if ((_origin ?? _userPosition) != null) mapMarker((_origin ?? _userPosition)!, MapPins.origin),
             // Los avisos van al final para quedar encima de todo (HU-Q): se pueden tocar aunque haya
@@ -1394,28 +1341,22 @@ class _ReportButton extends StatelessWidget {
 class _LayersSheet extends StatelessWidget {
   const _LayersSheet({
     required this.reportsCount,
-    required this.foundationsCount,
     required this.showReports,
-    required this.showFoundations,
     required this.clinicsCount,
     required this.showClinics,
     required this.clinicsInView,
     required this.showOrigin,
     required this.onReports,
-    required this.onFoundations,
     required this.onClinics,
   });
 
   final int reportsCount;
-  final int foundationsCount;
   final bool showReports;
-  final bool showFoundations;
   final int clinicsCount;
   final bool showClinics;
   final bool clinicsInView;
   final bool showOrigin;
   final ValueChanged<bool> onReports;
-  final ValueChanged<bool> onFoundations;
   final ValueChanged<bool> onClinics;
 
   @override
@@ -1453,15 +1394,6 @@ class _LayersSheet extends StatelessWidget {
               secondary: dot(colors.report),
               title: Text(
                 'Mascotas reportadas ($reportsCount)',
-                style: textTheme.bodyMedium,
-              ),
-            ),
-            SwitchListTile(
-              value: showFoundations,
-              onChanged: onFoundations,
-              secondary: dot(colors.foundation),
-              title: Text(
-                'Fundaciones ($foundationsCount)',
                 style: textTheme.bodyMedium,
               ),
             ),
@@ -1609,119 +1541,11 @@ class _LegendSheet extends StatelessWidget {
             row(MapPins.reportFor('gato'), 'Gato reportado', 'Un vecino lo vio en ese lugar.'),
             row(MapPins.reportFor(null), 'Otra mascota reportada', 'Conejos, aves y otras especies.'),
             row(MapPins.reportFor('perro', taken: true), 'Caso tomado', 'Una fundación ya está atendiendo a esta mascota.'),
-            row(MapPins.foundation, 'Fundación', 'Sede de la organización. Crece al tocarla.'),
             row(MapPins.clinic, 'Veterinaria', 'Aparecen al acercar el mapa. Crece al tocarla.'),
             row(MapPins.origin, 'Tu ubicación', 'Solo si diste permiso para usarla.'),
           ],
         ),
       ),
-    );
-  }
-}
-
-// Ficha al tocar el pin de una fundación: foto de perfil, nombre y descripción
-class _FoundationDetailCard extends StatelessWidget {
-  const _FoundationDetailCard({
-    required this.foundation,
-    required this.onClose,
-    required this.onOpen,
-  });
-
-  final Foundation foundation;
-  final VoidCallback onClose;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final textTheme = Theme.of(context).textTheme;
-    // Centrada y apilada: la foto sobresale por arriba del rectángulo, luego nombre y descripción
-    const photoSize = 112.0;
-    const overhang = photoSize / 2;
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: overhang),
-          decoration: mapSurface(context),
-          child: Stack(
-            children: [
-              InkWell(
-                onTap: onOpen,
-                borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AdoptifySpacing.xl,
-                    overhang + AdoptifySpacing.md,
-                    AdoptifySpacing.xl,
-                    AdoptifySpacing.lg,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        foundation.name,
-                        style: textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        foundation.place,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colors.textMuted,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AdoptifySpacing.sm),
-                      Text(
-                        foundation.description ?? 'Esta fundación aún no ha compartido una descripción de su labor.',
-                        style: textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AdoptifySpacing.sm),
-                      Text(
-                        'Ver fundación',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: colors.primaryDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                top: AdoptifySpacing.xs,
-                right: AdoptifySpacing.xs,
-                child: IconButton(
-                  onPressed: onClose,
-                  icon: const Icon(Icons.close, size: 20),
-                  tooltip: 'Cerrar',
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Foto con borde del color de la ficha y sombra, para que se despegue del mapa
-        GestureDetector(
-          onTap: onOpen,
-          child: Container(
-            padding: const EdgeInsets.all(AdoptifySpacing.xs),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(AdoptifyRadius.lg),
-              boxShadow: AdoptifyShadows.soft,
-            ),
-            child: FoundationAvatar(
-              name: foundation.name,
-              photoUrl: foundation.photoUrl,
-              size: photoSize,
-              color: colors.foundation,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

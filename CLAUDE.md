@@ -43,7 +43,7 @@ Fase 2/portal-fundaciones/src/
   App.tsx                  # rutas; RequireAuth por rol
   services/                # api.ts (axios + Bearer desde localStorage), auth, animals, reports, uploads (multipart), photo (validación y mediaUrl)
   hooks/                   # useAnimals, useMapAnimals, useNearbyReports, useAuth
-  components/              # Layout (sidebar), ReportLocationPicker, PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon)
+  components/              # Layout (sidebar), ReportLocationPicker, ReportsMap (mapa de /reportes: reportes + veterinarias, sin fundaciones), PhotoPicker, mapTiles.ts (OSM, SANTIAGO, dotIcon, reportIcon = MapPins.reportFor)
   pages/                   # Login, Dashboard, Animals, AnimalDetail, Foundation, NotFound
   data/demo.ts             # tipos (Animal) y datos de maqueta
 Fase 2/adoptify_app/lib/   # app Flutter (HU-08)

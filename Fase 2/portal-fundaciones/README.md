@@ -39,6 +39,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
 - `/animales` (Mis animales): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre, filtro por especie y **pestañas por estado** (HU-Y).
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de compatibilidad, "83 % compatible"; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
+- `/reportes` (Reportes cercanos): **mapa de reportes** con los mismos avisos que ve el adoptante en la app (no resueltos, 100 km alrededor de Santiago; pin rojo con huella si es perro o gato e insignia verde si una fundación tomó el caso) y las veterinarias (`components/ReportsMap.tsx`; las fundaciones no tienen pin). "Ver reporte" en el popup lleva a su tarjeta, donde se toma el caso o se deshace la toma (HU-T).
 - `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
 - `/fundacion`: perfil de la organización de ejemplo, sección **Preguntas de adopción** (HU-G3: parte con 8 sugeridas; texto, sí/no o alternativas, con la respuesta que no cumple) y sección **Socios** (HU-F): listar, agregar, editar, borrar y marcar cuáles se muestran en la ficha pública "Nuestros socios" (`services/members.ts`, `components/MembersSection.tsx`). El aporte es privado y no hay cobros; un admin solo ve el listado.
 - Sidebar en escritorio y menú desplegable en pantallas pequeñas.

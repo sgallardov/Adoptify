@@ -30,6 +30,35 @@ export const PLACE_PIN_SELECTED_SIZE = 40
 // Las mascotas se dibujan sobre cualquier otro pin (zIndexOffset de Leaflet)
 export const PET_Z_OFFSET = 1000
 
+// Huella (PawPrint de lucide) y visto en blanco, para dibujarlos dentro de los pines HTML
+const PAW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>'
+const CHECK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
+
+const reportIcons = new Map<string, L.DivIcon>()
+
+// Pin de un reporte, igual que MapPins.reportFor en la app: círculo rojo con la huella si es perro o gato
+// (punto liso si es otra especie) e insignia verde con un visto si una fundación ya tomó el caso.
+// Se guarda cada ícono para que volver a dibujar la página no reemplace el pin (y no cierre su popup).
+export function reportIcon(species: string | null, taken = false) {
+  const key = `${species === 'perro' || species === 'gato' ? 'paw' : 'dot'}-${taken}`
+  let icon = reportIcons.get(key)
+  if (!icon) {
+    const paw = key.startsWith('paw') ? PAW_SVG : ''
+    const badge = taken
+      ? `<span class="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border-[1.5px] border-on-accent bg-success-strong text-on-accent">${CHECK_SVG}</span>`
+      : ''
+    icon = L.divIcon({
+      className: '',
+      html: `<span class="relative flex items-center justify-center rounded-full border-[3px] border-on-accent bg-danger-600 text-on-accent shadow-md" style="width:${PET_PIN_SIZE}px;height:${PET_PIN_SIZE}px">${paw}${badge}</span>`,
+      iconSize: [PET_PIN_SIZE, PET_PIN_SIZE],
+      iconAnchor: [PET_PIN_SIZE / 2, PET_PIN_SIZE / 2],
+      popupAnchor: [0, -PET_PIN_SIZE / 2],
+    })
+    reportIcons.set(key, icon)
+  }
+  return icon
+}
+
 // Pin de veterinaria: cruz blanca sobre el rojo de emergencias, chico y con menos contraste
 export function clinicIcon(selected = false) {
   const size = selected ? PLACE_PIN_SELECTED_SIZE : PLACE_PIN_SIZE

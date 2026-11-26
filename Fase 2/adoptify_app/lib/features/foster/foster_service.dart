@@ -2,6 +2,9 @@ import '../../core/api_client.dart';
 
 // Opciones de la postulación: [valor que guarda la API, texto que ve el usuario].
 // Mismos valores que schemas/foster_application.py del backend.
+// Radio en el que las fundaciones ven la postulación (HU-AA); el backend aplica el mismo (FOSTER_RADIUS_KM)
+const fosterRadiusKm = 10;
+
 typedef FosterOption = (String, String);
 
 const fosterSpecies = <FosterOption>[('perro', 'Perros'), ('gato', 'Gatos'), ('ambos', 'Ambos')];
@@ -27,6 +30,8 @@ class FosterApplication {
     required this.availability,
     required this.phone,
     required this.address,
+    this.latitude,
+    this.longitude,
     this.status = 'pending',
   });
 
@@ -39,6 +44,8 @@ class FosterApplication {
         availability: json['availability'] as String,
         phone: json['phone'] as String,
         address: json['address'] as String,
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
         status: json['status'] as String,
       );
 
@@ -50,10 +57,15 @@ class FosterApplication {
   final String availability;
   final String phone;
   final String address;
+  // Ubicación del hogar (HU-AA). Nula en postulaciones anteriores: hay que volver a marcarla
+  final double? latitude;
+  final double? longitude;
   // 'pending' | 'approved' | 'rejected': un solo estado para todas las fundaciones
   final String status;
 
   bool get isPending => status == 'pending';
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   String get statusLabel => switch (status) {
         'approved' => 'Aprobada',
@@ -71,6 +83,8 @@ class FosterApplication {
         'availability': availability,
         'phone': phone,
         'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 }
 

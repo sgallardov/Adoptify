@@ -314,7 +314,7 @@ void main() {
   });
 
   testWidgets(
-    'el buscador encuentra fundaciones sin importar tildes y las muestra en el mapa',
+    'el buscador encuentra fundaciones sin importar tildes y abre su perfil',
     (tester) async {
       final api = FakeApi();
       await openMap(tester, api);
@@ -324,9 +324,10 @@ void main() {
       expect(find.widgetWithText(ListTile, 'Fundación Patitas'), findsOneWidget);
 
       await tapAndSettle(tester, find.widgetWithText(ListTile, 'Fundación Patitas'));
-      // Se cierra la búsqueda y aparece la ficha de la fundación
-      expect(find.text('Rescatamos perros y gatos de la calle.'), findsOneWidget);
-      expect(find.byTooltip('Cerrar'), findsOneWidget);
+      // Las fundaciones no tienen pin en el mapa: se abre su perfil, como desde la pestaña Fundaciones
+      expect(find.text('Contacto de la fundación'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'zzzz');
       await tester.pumpAndSettle();
@@ -350,8 +351,6 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('report-1')), findsNothing);
-    final keys = [for (final layer in tester.widgetList<MarkerLayer>(find.byType(MarkerLayer))) for (final m in layer.markers) m.key];
-    expect(keys, contains(const ValueKey('foundation-1')));
   });
 
   testWidgets('con tu ubicación busca por cercanía y muestra la distancia', (
@@ -416,54 +415,31 @@ void main() {
     expect(camera().center.longitude, closeTo(-70.6505, 0.0001));
     expect(camera().zoom, 16);
 
-    // Al cambiar el radio se encuadran los resultados
+    // Al cambiar el radio se encuadran los resultados: el mapa deja de estar centrado solo en ti
     await tapAndSettle(tester, find.text('Radio 10 km'));
     await tapAndSettle(tester, find.text('Radio 25 km').last);
-    expect(camera().zoom, lessThan(16));
+    expect(camera().center.latitude, isNot(closeTo(-33.4378, 0.0001)));
   });
 
-  testWidgets(
-    'las fundaciones son pines fijos que abren su ficha y su perfil',
-    (tester) async {
-      await openMap(tester, FakeApi());
+  testWidgets('las fundaciones no tienen pin, ni capa, ni lugar en la leyenda', (tester) async {
+    await openMap(tester, FakeApi());
 
-      // Solo las fundaciones con ubicación tienen pin (Fundación Patitas y Patitas de Cerro)
-      final markers = tester
-          .widget<MarkerLayer>(find.byType(MarkerLayer))
-          .markers;
-      final foundations = markers
-          .where((m) => '${m.key}'.contains('foundation-'))
-          .toList();
-      expect(foundations.length, 2);
-      expect(foundations.first.point, const LatLng(-33.43, -70.61));
-      // La punta de la gota apunta a la sede: el pin queda sobre el punto
-      expect(foundations.first.alignment, Alignment.topCenter);
+    // Fundación Patitas y Patitas de Cerro tienen sede, pero el mapa solo marca reportes (y veterinarias de cerca)
+    final keys = [
+      for (final layer in tester.widgetList<MarkerLayer>(find.byType(MarkerLayer)))
+        for (final m in layer.markers) '${m.key}',
+    ];
+    expect(keys.where((key) => key.contains('foundation-')), isEmpty);
+    expect(find.byKey(const ValueKey('report-1')), findsOneWidget);
 
-      // Se centra el mapa bajo la sede para que el buscador no tape el pin
-      tester
-          .widget<FlutterMap>(find.byType(FlutterMap))
-          .mapController!
-          .move(const LatLng(-33.428, -70.61), 15);
-      await tester.pumpAndSettle();
-      await tapAndSettle(tester, find.byKey(const ValueKey('foundation-1')));
-      expect(find.text('Fundación Patitas'), findsOneWidget);
-      expect(
-        find.text('Rescatamos perros y gatos de la calle.'),
-        findsOneWidget,
-      );
-      expect(find.text('Ver fundación'), findsOneWidget);
+    await tapAndSettle(tester, find.byTooltip('Capas'));
+    expect(find.textContaining('Fundaciones ('), findsNothing);
+    Navigator.of(tester.element(find.text('Capas del mapa'))).pop();
+    await tester.pumpAndSettle();
 
-      // Tocar la ficha abre la misma vista que la pestaña Fundaciones
-      await tapAndSettle(tester, find.text('Ver fundación'));
-      expect(find.text('Contacto de la fundación'), findsOneWidget);
-      // Ni el perfil ni la ficha de sus animales muestran mapa
-      expect(find.byType(FlutterMap), findsNothing);
-      await tester.ensureVisible(find.text('Luna').last);
-      await tapAndSettle(tester, find.text('Luna').last);
-      expect(find.text('Zona aproximada: Ñuñoa'), findsWidgets);
-      expect(find.byType(FlutterMap), findsNothing);
-    },
-  );
+    await tapAndSettle(tester, find.byTooltip('Leyenda del mapa'));
+    expect(find.descendant(of: find.byKey(const ValueKey('map-legend')), matching: find.text('Fundación')), findsNothing);
+  });
 
   testWidgets('el pin del reporte lleva la huella de su especie', (
     tester,
@@ -530,7 +506,6 @@ void main() {
       );
       expect(clinic.point, const LatLng(-33.455, -70.605));
       expect(clinic.alignment, Alignment.topCenter);
-      expect(MapPins.clinic.width, MapPins.foundation.width);
       expect(MapPins.clinic.kind, DropKind.clinic);
     },
   );
@@ -538,11 +513,10 @@ void main() {
   testWidgets(
     'HU-Q: las mascotas son los pines más grandes y quedan encima de las veterinarias',
     (tester) async {
-      // Jerarquía de tamaños: reportes > en adopción > fundaciones y veterinarias (que crecen al seleccionarlas)
+      // Jerarquía de tamaños: reportes > en adopción > veterinarias (que crecen al seleccionarlas)
       expect(MapPins.reportSize, greaterThan(MapPins.animal.size));
       expect(MapPins.animal.size, greaterThan(MapPins.clinic.width));
       expect(MapPins.selectedClinic.width, greaterThan(MapPins.clinic.width));
-      expect(MapPins.selectedFoundation.width, greaterThan(MapPins.foundation.width));
 
       await openMap(tester, FakeApi());
       final map = tester
@@ -614,14 +588,6 @@ void main() {
     await tapAndSettle(tester, find.byTooltip('Capas'));
     await tapAndSettle(tester, find.text('Veterinarias (2)'));
     expect(find.byKey(const ValueKey('clinic-1')), findsNothing);
-  });
-
-  testWidgets('las fundaciones se pueden ocultar desde Capas', (tester) async {
-    await openMap(tester, FakeApi());
-
-    await tapAndSettle(tester, find.byTooltip('Capas'));
-    await tapAndSettle(tester, find.text('Fundaciones (2)'));
-    expect(find.byKey(const ValueKey('foundation-1')), findsNothing);
   });
 
   testWidgets('muestra el error de ubicación sin romper el mapa', (

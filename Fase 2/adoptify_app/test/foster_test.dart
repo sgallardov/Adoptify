@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:adoptify_app/app/app.dart';
+import 'package:adoptify_app/core/location_service.dart';
 
 import 'fake_api.dart';
 
@@ -20,6 +22,8 @@ const pendingApplication = {
   'availability': 'Fines de semana',
   'phone': '+56 9 8765 4321',
   'address': 'Av. Grecia 1234, Ñuñoa',
+  'latitude': -33.4569,
+  'longitude': -70.5976,
   'status': 'pending',
 };
 
@@ -57,7 +61,11 @@ Future<void> enterVisible(WidgetTester tester, Finder finder, String text) async
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    LocationService.instance = FakeLocation(position: const LatLng(-33.4569, -70.5976));
+  });
+  tearDown(() => LocationService.instance = LocationService());
 
   testWidgets('el Perfil invita a postular y el formulario usa el nombre y correo de la cuenta', (tester) async {
     final api = FakeApi();
@@ -81,7 +89,7 @@ void main() {
 
     // Junto al botón, todos los pendientes (los errores de arriba quedan fuera de la pantalla)
     expect(
-      find.text('Revisa: Teléfono, Dirección, Tipo de mascota, Tamaño, Días máximos, Espacio, Disponibilidad.'),
+      find.text('Revisa: Teléfono, Dirección, Ubicación, Tipo de mascota, Tamaño, Días máximos, Espacio, Disponibilidad.'),
       findsOneWidget,
     );
     expect(find.text('Cuéntanos tu disponibilidad.'), findsOneWidget);
@@ -94,6 +102,8 @@ void main() {
 
     await enterVisible(tester, field('Teléfono *'), '+56 9 1234 5678');
     await enterVisible(tester, field('Dirección *'), 'Av. Grecia 1234, Ñuñoa');
+    await tapVisible(tester, find.byKey(const ValueKey('foster-location')));
+    expect(find.textContaining('Ubicación marcada'), findsOneWidget);
     await tapVisible(tester, find.text('Ambos'));
     await tapVisible(tester, find.text('Grande'));
     await tapVisible(tester, find.text('Pequeño'));
@@ -113,12 +123,41 @@ void main() {
       'availability': 'Desde ya',
       'phone': '+56 9 1234 5678',
       'address': 'Av. Grecia 1234, Ñuñoa',
+      'latitude': -33.4569,
+      'longitude': -70.5976,
     });
     // De vuelta en el Perfil, la tarjeta muestra el estado
     expect(find.widgetWithText(AppBar, 'Perfil'), findsOneWidget);
     await tester.ensureVisible(find.text('Hogar temporal'));
     expect(find.text('En revisión'), findsOneWidget);
     expect(find.textContaining('Hasta 2 a la vez · máx. 30 días'), findsOneWidget);
+  });
+
+  testWidgets('sin la ubicación del hogar no se puede enviar y avisa el radio de 10 km', (tester) async {
+    LocationService.instance = FakeLocation(error: 'No diste permiso para usar tu ubicación.');
+    final api = FakeApi();
+    await openForm(tester, api);
+
+    expect(find.textContaining('a 10 km o menos'), findsWidgets);
+    await tapVisible(tester, find.byKey(const ValueKey('foster-location')));
+    expect(find.text('No diste permiso para usar tu ubicación.'), findsOneWidget);
+    await tapVisible(tester, find.text('Enviar postulación'));
+
+    expect(find.textContaining('Ubicación'), findsWidgets);
+    expect(api.requests.where((r) => r.method == 'POST' && r.url.path == '/foster-applications'), isEmpty);
+  });
+
+  testWidgets('una postulación anterior sin ubicación avisa que ninguna fundación la ve', (tester) async {
+    final api = FakeApi()..fosterApplication = {...pendingApplication}..fosterApplication!.remove('latitude');
+    api.fosterApplication!.remove('longitude');
+    await openForm(tester, api);
+
+    expect(find.textContaining('no tiene ubicación, así que ninguna fundación la ve'), findsOneWidget);
+    await tapVisible(tester, find.byKey(const ValueKey('foster-location')));
+    await tapVisible(tester, find.text('Guardar cambios'));
+
+    final put = api.requests.lastWhere((r) => r.method == 'PUT' && r.url.path == '/foster-applications/me');
+    expect(jsonDecode(put.body)['latitude'], -33.4569);
   });
 
   testWidgets('mientras está en revisión se puede editar', (tester) async {

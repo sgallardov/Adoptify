@@ -68,7 +68,7 @@ diseño (`shared/widgets/app_shell.dart`).
 - **Mi fundación** (`/fundacion/perfil`), descrito abajo. Se llama igual que en el portal web.
 
 **Publicar animal** (`/fundacion/agregar`, desde Inicio; al editar el título es *Editar a &lt;nombre&gt;*, igual que el portal). La ubicación privada del animal se marca con **Buscar dirección** (`GET /geocode`, parte con el texto del lugar de resguardo), con **Usar mi ubicación actual** o tocando el mapa; nunca se escriben coordenadas (`AnimalLocationPicker`). La comuna pública se completa sola con la dirección elegida o se escribe con sugerencias (`CommuneField`, `GET /animals/communes`).
-- **Mi fundación** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven al tocar el pin de la fundación en el mapa. También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
+- **Mi fundación** (`/fundacion/perfil`): foto de perfil (cámara o galería, se sube con `POST /uploads`) y descripción **obligatoria** de al menos 20 caracteres, que se guardan con `PUT /foundations/me` y los adoptantes ven en el perfil de la fundación (pestaña Fundaciones o buscador del mapa). También permite cerrar sesión y cambiar entre modo claro y oscuro con una luna / sol arriba a la derecha (el mismo `ThemeController` que la tarjeta Apariencia del Perfil de adoptante).
 
 Cada rol solo ve su vista: una fundación que intente abrir el mapa vuelve a la suya, y un adoptante que
 intente abrir `/fundacion/...` vuelve al mapa. Un adoptante no ve ninguna pista de que existen cuentas de fundación.
@@ -139,10 +139,10 @@ los íconos naranjos y rojos que trae OpenStreetMap.
     el mapa) porque lleva del conteo al aviso en un toque, sin pantalla nueva y ocupando menos mapa que la
     tarjeta anterior. El radio queda fijo en 5 km (`_alertsRadiusKm`); el mapa ya tiene su propio selector;
   - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
-  - **Veterinarias**: gota roja con una cruz roja sobre blanco, del mismo tamaño que la de fundaciones (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
-  - **Fundaciones**: pin fijo calipso en forma de gota con una huella en la sede de cada fundación con ubicación (no depende del radio). Al tocarlo aparece una ficha con su foto de perfil, nombre, comuna y descripción; al tocar la ficha se abre `/fundaciones/:id`, la misma vista que desde la pestaña Fundaciones;
+  - **Veterinarias**: gota roja chica con una cruz roja sobre blanco (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
+  - **Fundaciones**: no tienen pin (ni capa ni lugar en la leyenda) en el mapa del adoptante ni en el de la fundación. El buscador las sigue encontrando y al elegir una abre su perfil (`/fundaciones/:id`, o `/fundacion/directorio/:id` en la vista de fundación);
   - **Leyenda** (botón de información, arriba de Capas): qué significa cada pin, con los mismos dibujos del mapa;
-  - **Capas**: opción de mostrar u ocultar mascotas, reportes, fundaciones y veterinarias;
+  - **Capas**: opción de mostrar u ocultar los reportes y las veterinarias;
   - **Al abrir el mapa** (por ejemplo, después de iniciar sesión) se pide la ubicación y la cámara se centra en ti a nivel de
     barrio (zoom 14), con tu punto azul y sin filtrar por radio. Mientras llega no se encuadra todo el país (evita el salto);
     sin permiso, se encuadran las mascotas y reportes. Si mueves el mapa con el dedo, deja de reencuadrarse solo;
