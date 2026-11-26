@@ -2,6 +2,14 @@
 // Tomado por otra fundación o resuelto: sin acciones.
 export type ReportAction = 'take' | 'untake' | null
 
+// Quien tomó el caso (y solo esa fundación) puede cerrarlo cuando el rescate terminó
+export function canResolve(
+  report: { status: string; taken_by_foundation_id: number | null },
+  myFoundationId: number | null,
+): boolean {
+  return report.status === 'in_rescue' && myFoundationId !== null && report.taken_by_foundation_id === myFoundationId
+}
+
 export function reportAction(
   report: { status: string; taken_by_foundation_id: number | null },
   myFoundationId: number | null,

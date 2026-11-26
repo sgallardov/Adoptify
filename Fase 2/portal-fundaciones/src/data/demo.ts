@@ -24,12 +24,3 @@ export const animals: Animal[] = [
   { id: 4, name: 'Thor', species: 'perro', age: '2 años', gender: 'Macho', size: 'Grande', energy: 5, status: 'En proceso', photo: 'https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?auto=format&fit=crop&w=900&q=80', description: 'Thor es un compañero activo y protector. Disfruta de los espacios amplios y de paseos largos.' },
   { id: 5, name: 'Nina', species: 'gato', age: '3 años', gender: 'Hembra', size: 'Pequeño', energy: 2, status: 'Adoptado', photo: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80', description: 'Nina encontró una familia que comparte su gusto por las tardes tranquilas. Su historia nos recuerda por qué seguimos adelante.' },
 ]
-
-export const foundation = {
-  name: 'Fundación Garras y Patas',
-  rut: '76.452.189-3',
-  email: 'contacto@garrasypatas.cl',
-  phone: '+56 9 2233 4455',
-  city: 'Providencia, Santiago, Región Metropolitana',
-  description: 'Acompañamos a animales rescatados en su camino hacia una nueva familia. Trabajamos por su bienestar, su recuperación y una adopción responsable, con el cariño y el compromiso de nuestra comunidad.',
-}
