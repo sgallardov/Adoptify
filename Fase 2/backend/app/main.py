@@ -50,9 +50,12 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 # Configuración de CORS para permitir solicitudes de Frontend Web y App Móvil
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=settings.cors_origins,
+    # En desarrollo el puerto de la app web o del portal puede cambiar; fuera de development solo valen los listados
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?" if settings.ENVIRONMENT == "development" else None,
+    # La autenticación es Bearer, sin cookies: no hacen falta credenciales
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

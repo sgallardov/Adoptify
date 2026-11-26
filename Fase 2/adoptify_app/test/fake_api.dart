@@ -273,7 +273,7 @@ class FakeApi {
     final loggedIn = request.headers['Authorization'] == 'Bearer $validToken';
 
     // Lectura de un reporte y acciones de la fundación (HU-C), con los mismos errores que el backend
-    final mark = RegExp(r'^/reports/(\d+)(?:/(seen|taken))?$').firstMatch(request.url.path);
+    final mark = RegExp(r'^/reports/(\d+)(?:/(seen|taken|status))?$').firstMatch(request.url.path);
     if (mark != null) {
       final index = reports.indexWhere((report) => report['id'] == int.parse(mark.group(1)!));
       if (index == -1) return _json(404, {'detail': 'Reporte no encontrado.'});
@@ -286,7 +286,10 @@ class FakeApi {
         return _json(409, {'detail': 'Un reporte resuelto no admite nuevas marcas.'});
       }
       final owner = report['taken_by_foundation_id'];
-      if (mark.group(2) == 'seen') {
+      if (mark.group(2) == 'status') {
+        if (owner != 1) return _json(403, {'detail': 'Solo la fundación que tomó el caso puede resolverlo.'});
+        reports[index] = {...report, 'status': 'resolved'};
+      } else if (mark.group(2) == 'seen') {
         reports[index] = {...report, 'seen_at': '2026-11-03T10:00:00Z'};
       } else if (request.method == 'PUT') {
         if (owner != null && owner != 1) return _json(409, {'detail': 'Otra fundación ya tomó este reporte.'});

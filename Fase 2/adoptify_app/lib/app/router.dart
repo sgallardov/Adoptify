@@ -28,6 +28,7 @@ import '../features/messages/messages_screen.dart';
 import '../features/messages/messages_service.dart';
 import '../features/report/report_screen.dart';
 import '../shared/widgets/app_shell.dart';
+import '../core/api_client.dart';
 import '../shared/widgets/detail_loader.dart';
 
 const _loading = '/cargando';
@@ -58,6 +59,36 @@ String? sessionRedirect(AuthController auth, String location) {
 // Los detalles reciben el objeto por `extra` al abrirse desde una lista; al recargar la página o abrir el
 // enlace directo no hay `extra` y se pide por id (GET /reports|animals|foundations/{id}).
 int _id(GoRouterState state) => int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+
+// Las pantallas que antes exigían el objeto por `extra` (editar mascota, chat, postular) tampoco fallan al
+// recargar: sin `extra` lo buscan en la API, y si ya no existe muestran el aviso de DetailLoader.
+Future<T> _find<T>(Future<List<T>> Function() list, bool Function(T) match) async {
+  for (final item in await list()) {
+    if (match(item)) return item;
+  }
+  throw ApiException(statusCode: 404);
+}
+
+Widget _editAnimal(GoRouterState state) => DetailLoader<ManagedAnimal>(
+  key: ValueKey('editar-${_id(state)}'),
+  initial: state.extra as ManagedAnimal?,
+  load: (api) => _find(FoundationAnimalsService(api).list, (a) => a.id == _id(state)),
+  builder: (context, animal) => AddAnimalScreen(animal: animal),
+);
+
+Widget _chat(GoRouterState state) => DetailLoader<Conversation>(
+  key: ValueKey('chat-${_id(state)}'),
+  initial: state.extra as Conversation?,
+  load: (api) => _find(MessagesService(api).fetchConversations, (c) => c.id == _id(state)),
+  builder: (context, conversation) => ChatScreen(conversation: conversation),
+);
+
+Widget _apply(GoRouterState state) => DetailLoader<Animal>(
+  key: ValueKey('postular-${_id(state)}'),
+  initial: state.extra as Animal?,
+  load: (api) => MapService(api).fetchAnimal(_id(state)),
+  builder: (context, animal) => ApplicationFormScreen(animal: animal),
+);
 
 Widget _reportDetail(GoRouterState state) => DetailLoader<DogReport>(
   key: ValueKey('reporte-${_id(state)}'),
@@ -174,7 +205,7 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(
       path: '/fundacion/mis-animales/:id/editar',
-      builder: (context, state) => AddAnimalScreen(animal: state.extra as ManagedAnimal),
+      builder: (context, state) => _editAnimal(state),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
@@ -233,14 +264,14 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     // Chat con una fundación (HU-G2), desde la pestaña Mensajes; la conversación viaja en `extra`
     GoRoute(
       path: '/mensajes/:id',
-      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
+      builder: (context, state) => _chat(state),
     ),
     // Antes la pestaña Conecta se llamaba Match: los enlaces viejos siguen funcionando
     GoRoute(path: '/match', redirect: (context, state) => '/conecta'),
     // Chat de la fundación con un adoptante, desde su pestaña Chat
     GoRoute(
       path: '/fundacion/mensajes/:id',
-      builder: (context, state) => ChatScreen(conversation: state.extra as Conversation),
+      builder: (context, state) => _chat(state),
     ),
     // Se abre con el corazón de la pestaña Conecta
     GoRoute(
@@ -267,7 +298,7 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     ),
     GoRoute(
       path: '/animales/:id/postular',
-      builder: (context, state) => ApplicationFormScreen(animal: state.extra as Animal),
+      builder: (context, state) => _apply(state),
     ),
     GoRoute(
       path: '/reportes/:id',

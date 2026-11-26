@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
+from pydantic import model_validator
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Adoptify API"
     VERSION: str = "1.0.0"
@@ -19,6 +21,14 @@ class Settings(BaseSettings):
     DB_SSL: bool = False
     # Las pruebas escriben datos: por defecto usan el Postgres local (DB_*), nunca la BD compartida
     TEST_DATABASE_URL: Optional[str] = None
+
+    # Orígenes web que pueden llamar a la API desde un navegador (portal, app web, dominio de despliegue),
+    # separados por coma. En development también se aceptan localhost y 127.0.0.1 en cualquier puerto.
+    # La app móvil nativa no usa CORS.
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5000"
+
+    # Un reporte deja de aparecer en el mapa pasados estos días desde que se creó
+    REPORT_TTL_DAYS: int = 30
 
     # Autenticación JWT
     SECRET_KEY: str = "cambiar-esta-clave-en-produccion"
@@ -66,6 +76,27 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def _require_real_secrets_outside_development(self) -> "Settings":
+        """Fuera de development no se arranca con las claves de ejemplo que están publicadas en el repositorio."""
+        if self.ENVIRONMENT == "development":
+            return self
+        defaults = {
+            name: Settings.model_fields[name].default
+            for name in ("SECRET_KEY", "RUT_ENCRYPTION_KEY", "RUT_HASH_KEY")
+        }
+        unsafe = [name for name, default in defaults.items() if getattr(self, name) == default]
+        if unsafe:
+            raise ValueError(
+                f"ENVIRONMENT={self.ENVIRONMENT}: {', '.join(unsafe)} sigue con el valor de ejemplo. "
+                "Define claves propias en el .env antes de arrancar."
+            )
+        return self
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip().rstrip("/") for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     @property
     def async_database_url(self) -> str:

@@ -177,6 +177,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   void _untake() => _run(() => _service.untakeReport(report.id), 'Deshiciste la toma del caso.',
       'No pudimos deshacer la toma.');
 
+  void _resolve() => _run(() => _service.resolveReport(report.id), 'Marcaste el caso como resuelto.',
+      'No pudimos marcar el caso como resuelto.');
+
   @override
   void dispose() {
     _comment.dispose();
@@ -300,6 +303,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                               mine: report.takenByFoundationId != null && report.takenByFoundationId == _myFoundationId,
                               onTake: _take,
                               onUntake: _untake,
+                              canResolve: report.status == 'in_rescue',
+                              onResolve: _resolve,
                             ),
                             const SizedBox(height: AdoptifySpacing.md),
                           ],
@@ -370,6 +375,8 @@ class _FoundationActions extends StatelessWidget {
     required this.mine,
     required this.onTake,
     required this.onUntake,
+    required this.canResolve,
+    required this.onResolve,
   });
 
   final bool busy;
@@ -377,6 +384,8 @@ class _FoundationActions extends StatelessWidget {
   final bool mine;
   final VoidCallback onTake;
   final VoidCallback onUntake;
+  final bool canResolve;
+  final VoidCallback onResolve;
 
   // HU-T: una sola acción. Libre: "Lo tomamos"; mío: "Deshacer toma"; de otra fundación: nada.
   @override
@@ -398,6 +407,13 @@ class _FoundationActions extends StatelessWidget {
             onPressed: busy ? null : onUntake,
             icon: const Icon(Icons.undo),
             label: const Text('Deshacer toma'),
+          ),
+        if (mine && canResolve)
+          FilledButton.icon(
+            key: const ValueKey('resolve-report'),
+            onPressed: busy ? null : onResolve,
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Marcar como resuelto'),
           ),
       ],
     );

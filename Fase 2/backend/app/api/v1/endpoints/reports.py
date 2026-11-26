@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
@@ -8,11 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.endpoints.auth import get_current_user, get_optional_user
+from app.core.config import settings
 from app.db.database import get_db
 from app.models.report import AbandonedDogReport
 from app.models.report_social import ReportComment, ReportLike
 from app.models.user import User
-from app.schemas.report import NearbyReportResponse, ReportCreate, ReportResponse
+from app.schemas.report import NearbyReportResponse, ReportCreate, ReportResponse, ReportStatusUpdate
 from app.schemas.report_social import CommentCreate, CommentResponse, LikesResponse
 
 router = APIRouter()
@@ -106,6 +109,8 @@ async def list_nearby_reports(
         )
         .where(
             AbandonedDogReport.status != "resolved",
+            # Un aviso viejo deja de ser un caso activo
+            AbandonedDogReport.created_at >= datetime.now(timezone.utc) - timedelta(days=settings.REPORT_TTL_DAYS),
             func.ST_DWithin(report_location, origin, radius_km * 1000),
         )
         .order_by(distance_m, AbandonedDogReport.id)
@@ -167,6 +172,37 @@ async def take_report(report_id: int, current_user: User = Depends(get_current_u
         except SQLAlchemyError as exc:
             await db.rollback()
             raise HTTPException(status_code=503, detail="No se pudo tomar el reporte.") from exc
+    return await _report_with_foundations(report_id, db)
+
+
+@router.patch(
+    "/{report_id}/status",
+    response_model=ReportResponse,
+    summary="Cerrar un rescate (marcar el reporte como resuelto)",
+    description="Solo la fundación que tomó el caso (o un admin) puede resolverlo, y solo si está en rescate.",
+    responses={403: {"description": "No eres la fundación responsable"}, 409: {"description": "El reporte no está en rescate"}},
+)
+async def update_report_status(
+    report_id: int,
+    payload: ReportStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != "admin":
+        _require_foundation(current_user)
+    report = await _report_with_foundations(report_id, db)
+    if report.status == "resolved":
+        raise HTTPException(status_code=409, detail="Este reporte ya está resuelto.")
+    if report.status != "in_rescue":
+        raise HTTPException(status_code=409, detail="Primero hay que tomar el caso para poder resolverlo.")
+    if current_user.role != "admin" and report.taken_by_foundation_id != current_user.foundation_id:
+        raise HTTPException(status_code=403, detail="Solo la fundación que tomó el caso puede resolverlo.")
+    report.status = payload.status
+    try:
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo resolver el reporte.") from exc
     return await _report_with_foundations(report_id, db)
 
 

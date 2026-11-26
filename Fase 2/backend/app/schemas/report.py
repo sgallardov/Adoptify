@@ -7,7 +7,7 @@ from app.services import storage
 
 ReportSpecies = Literal["perro", "gato", "otro"]
 ReportSize = Literal["pequeño", "mediano", "grande"]
-# Mismas opciones que reportOptions (portal) y map_service.dart (app)
+# Mismas opciones que map_service.dart (app); si el portal las necesita, mantenerlas iguales
 ReportCondition = Literal[
     "bien", "desnutrido", "deshidratado", "herido", "sangrando", "cojea", "atropellado", "no_se_mueve",
     "enfermo", "problemas_piel", "parasitos", "problemas_ojos", "prenada", "con_crias", "deplorable",
@@ -57,6 +57,11 @@ class ReportCreate(BaseModel):
             value = value.strip()
             return value or None
         return value
+
+
+class ReportStatusUpdate(BaseModel):
+    """Cierre de un rescate. Hoy el único estado que se puede pedir es 'resolved'."""
+    status: Literal["resolved"]
 
 
 class ReportResponse(BaseModel):

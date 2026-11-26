@@ -345,6 +345,10 @@ class MapService {
 
   Future<DogReport> untakeReport(int reportId) async => _reportAction(await _api.delete('/reports/$reportId/taken'));
 
+  // Cierra el rescate: el reporte pasa a 'resolved' y sale del mapa
+  Future<DogReport> resolveReport(int reportId) async =>
+      _reportAction(await _api.patch('/reports/$reportId/status', {'status': 'resolved'}));
+
   DogReport _reportAction(Object? data) => DogReport.fromJson(data as Map<String, dynamic>);
 
   Future<List<ReportComment>> fetchComments(int reportId) async {

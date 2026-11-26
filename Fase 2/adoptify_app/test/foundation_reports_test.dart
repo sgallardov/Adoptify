@@ -13,6 +13,7 @@ const _reportText = '“Perro café con collar rojo cerca del paradero”';
 final _follow = find.byKey(const ValueKey('follow-report'));
 final _take = find.byKey(const ValueKey('take-report'));
 final _untake = find.byKey(const ValueKey('untake-report'));
+final _resolve = find.byKey(const ValueKey('resolve-report'));
 
 // Ruta visible, también cuando se abrió con push (routeInformationProvider solo refleja go)
 String _path(WidgetTester tester) {
@@ -170,6 +171,21 @@ void main() {
     expect(find.text('Mascota reportada'), findsOneWidget);
     expect(_follow, findsNothing);
     expect(_take, findsNothing);
+    expect(_untake, findsNothing);
+  });
+
+  testWidgets('quien tomó el caso lo puede marcar como resuelto', (tester) async {
+    final api = FakeApi(asFoundation: true);
+    await _open(tester, api, report: true);
+
+    expect(_resolve, findsNothing);
+    await _tap(tester, _take);
+    expect(_resolve, findsOneWidget);
+
+    await _tap(tester, _resolve);
+    expect(api.requests.any((r) => r.method == 'PATCH' && r.url.path == '/reports/1/status'), isTrue);
+    expect(find.text('Resuelto'), findsOneWidget);
+    expect(_resolve, findsNothing);
     expect(_untake, findsNothing);
   });
 }

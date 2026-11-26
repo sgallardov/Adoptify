@@ -4,7 +4,7 @@ import uuid
 import pytest
 from geoalchemy2.elements import WKTElement
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -84,3 +84,42 @@ async def test_permissions_and_resolved_conflict(async_client, report_world, db_
     await db_session.commit()
     assert (await async_client.post(f"/api/v1/reports/{report.id}/seen", headers=report_world["headers"]["a"])).status_code == 409
     assert (await async_client.put(f"/api/v1/reports/{report.id}/taken", headers=report_world["headers"]["a"])).status_code == 409
+
+
+async def test_only_the_foundation_that_took_it_can_resolve(async_client, report_world):
+    report_id = report_world["report"].id
+    headers = report_world["headers"]
+    url = f"/api/v1/reports/{report_id}/status"
+    body = {"status": "resolved"}
+    # Sin tomar el caso no se puede resolver
+    assert (await async_client.patch(url, json=body, headers=headers["a"])).status_code == 409
+    await async_client.put(f"/api/v1/reports/{report_id}/taken", headers=headers["a"])
+    assert (await async_client.patch(url, json=body, headers=headers["b"])).status_code == 403
+    assert (await async_client.patch(url, json=body, headers=headers["adopter"])).status_code == 403
+    assert (await async_client.patch(url, json={"status": "reported"}, headers=headers["a"])).status_code == 422
+    resolved = await async_client.patch(url, json=body, headers=headers["a"])
+    assert resolved.status_code == 200
+    assert resolved.json()["status"] == "resolved"
+    # Ya resuelto: no se repite ni se puede deshacer la toma
+    assert (await async_client.patch(url, json=body, headers=headers["a"])).status_code == 409
+    assert (await async_client.delete(f"/api/v1/reports/{report_id}/taken", headers=headers["a"])).status_code == 409
+
+
+async def test_resolved_and_expired_reports_leave_the_map(async_client, db_session, report_world):
+    report = report_world["report"]
+    headers = report_world["headers"]
+    params = {"lat": -45.58, "lng": -72.07, "radius_km": 5}
+
+    async def ids():
+        return [item["id"] for item in (await async_client.get("/api/v1/reports/nearby", params=params)).json()]
+
+    assert report.id in await ids()
+    await async_client.put(f"/api/v1/reports/{report.id}/taken", headers=headers["a"])
+    await async_client.patch(f"/api/v1/reports/{report.id}/status", json={"status": "resolved"}, headers=headers["a"])
+    assert report.id not in await ids()
+    # Vencido: más viejo que REPORT_TTL_DAYS
+    await db_session.execute(text(
+        "update abandoned_dog_reports set status='reported', created_at = now() - interval '31 days' where id = :id"
+    ), {"id": report.id})
+    await db_session.commit()
+    assert report.id not in await ids()
