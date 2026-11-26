@@ -117,7 +117,8 @@ cuenta de prueba `matias.adopter@gmail.com` / `Adoptante2026`.
 
 ## Mapa y reportes (HU-15)
 Mismo proveedor (OpenStreetMap, con `flutter_map`) y mismos colores de pines que el portal:
-naranjo = mascota en adopción, rojo = mascota reportada, azul = tu ubicación. Los pines de mascotas llevan un
+naranjo = mascota en adopción, café = mascota reportada (antes rojo: se confundía con las veterinarias),
+rojo = veterinaria, azul = tu ubicación. Los pines de mascotas llevan un
 corazón blanco y borde blanco, y el mapa base va un poco menos saturado (60 %) en modo claro: así no se confunden con
 los íconos naranjos y rojos que trae OpenStreetMap.
 - **Mapa** (`/mapa`): a pantalla completa. Sin ubicación muestra todas las mascotas disponibles (`GET /animals`)
@@ -138,7 +139,7 @@ los íconos naranjos y rojos que trae OpenStreetMap.
     *Decisión de diseño:* se eligió la lista desplegable (frente a una pantalla de avisos con filtros o a enfocar
     el mapa) porque lleva del conteo al aviso en un toque, sin pantalla nueva y ocupando menos mapa que la
     tarjeta anterior. El radio queda fijo en 5 km (`_alertsRadiusKm`); el mapa ya tiene su propio selector;
-  - **Reportes**: el pin cambia según la especie: perro y gato son un círculo rojo con una patita de perro o una manito de gato en blanco; "otro" es el punto rojo (`MapPins.reportFor`);
+  - **Reportes**: el pin cambia según la especie: perro y gato son un círculo café con una patita de perro o una manito de gato en blanco; "otro" es el punto café (`MapPins.reportFor`). El café (`alert` en `app/theme.dart`) es solo de los avisos de mascotas —pines, leyenda y títulos—; el rojo (`report`) quedó para el botón "Reportar mascota", las veterinarias y los errores;
   - **Veterinarias**: gota roja chica con una cruz roja sobre blanco (`GET /veterinary-clinics`). Solo se muestran con el mapa acercado (zoom 13 o más), porque son cientos. Su ficha trae nombre, dirección, "Urgencias 24 h" u horario, **Cómo llegar** (ruta en Google Maps) y **Llamar** si hay teléfono, con `url_launcher`;
   - **Fundaciones**: no tienen pin (ni capa ni lugar en la leyenda) en el mapa del adoptante ni en el de la fundación. El buscador las sigue encontrando y al elegir una abre su perfil (`/fundaciones/:id`, o `/fundacion/directorio/:id` en la vista de fundación);
   - **Leyenda** (botón de información, arriba de Capas): qué significa cada pin, con los mismos dibujos del mapa;

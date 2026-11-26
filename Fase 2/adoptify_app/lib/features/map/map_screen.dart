@@ -16,9 +16,8 @@ import '../foundations/foundation_service.dart';
 import 'clinic_service.dart';
 import 'map_service.dart';
 
-const _radiusOptions = [5, 10, 25, 50, 100];
-// Sin tu ubicación, los reportes se buscan alrededor de Santiago con el radio máximo (igual que la web)
-const _defaultReportsRadiusKm = 100;
+// Las opciones de radio, el radio por defecto y qué hacer sin ubicación son el criterio común con el
+// portal de fundaciones (HU-Z): están en map_service.dart (reportSearchArea).
 // Radio de la tarjeta "avisos cerca tuyo"
 const _alertsRadiusKm = 5;
 // Espacio que ocupan el buscador (arriba) y el botón de reportar (abajo), para encuadrar los pines entre ellos
@@ -59,12 +58,12 @@ class _MapScreenState extends State<MapScreen> {
   );
 
   LatLng? _origin;
-  int _radiusKm = 10;
+  int _radiusKm = defaultReportRadiusKm;
   bool _locating = false;
   // Tras "Usar mi ubicación" el mapa queda centrado en ti en vez de encuadrar todos los pines,
   // hasta que cambies el radio o vuelvas a ver todas
   bool _centerOnOrigin = false;
-  // Al abrir, el mapa se centra en tu ubicación (sin filtrar por radio) en vez de encuadrar todo el país
+  // Al abrir, el mapa se centra en tu ubicación en vez de encuadrar todo el país
   bool _centerOnUser = false;
   // Si moviste el mapa con el dedo, deja de reencuadrarse solo cuando llegan datos nuevos
   bool _autoFit = true;
@@ -126,7 +125,9 @@ class _MapScreenState extends State<MapScreen> {
   // Si falla, el buscador sigue con lo que muestra el mapa
   Future<void> _loadSearchData() async {
     try {
-      final reports = await _service.fetchNearbyReports(_userPosition ?? santiago, _defaultReportsRadiusKm);
+      // El buscador alcanza más lejos que el mapa: desde tu ubicación con el radio máximo
+      final area = reportSearchArea(_userPosition, noLocationReportRadiusKm);
+      final reports = await _service.fetchNearbyReports(area.origin, area.radiusKm);
       if (mounted) setState(() => _searchReports = reports);
     } catch (_) {}
     try {
@@ -151,16 +152,19 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {}
   }
 
-  // Al abrir el mapa se pide la ubicación real para centrarlo ahí y buscar lo cercano con el radio
-  // elegido. El mapa ya quedó cargado en Santiago desde _load(), así que esto solo recentra al llegar.
-  // Sin permiso o sin señal, se queda en Santiago y aparece un aviso para reintentar.
+  // Al abrir el mapa se pide la ubicación real para centrarlo ahí y buscar los reportes a tu alrededor
+  // con el radio por defecto (HU-Z: el mismo criterio que el portal con la sede de la fundación).
+  // El mapa ya quedó cargado en Santiago desde _load(), así que esto recentra y vuelve a buscar al llegar.
+  // Sin permiso o sin señal, se queda en Santiago con 100 km y aparece un aviso para reintentar.
   Future<void> _detectInitialLocation() async {
     try {
       final position = await currentLocation();
       if (!mounted) return;
       _centerOnUser = true;
       _setUserPosition(position);
+      setState(() => _origin = position);
       _fitToPoints();
+      _load();
     } on LocationException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -268,15 +272,15 @@ class _MapScreenState extends State<MapScreen> {
     });
 
 
+    // Criterio común con el portal (HU-Z): tu ubicación con el radio elegido; sin ubicación, Santiago a 100 km
+    final area = reportSearchArea(origin, _radiusKm);
+
     // Las veterinarias se consultan por cercanía igual que reportes y mascotas.
     // Si fallan, el resto del mapa sigue funcionando.
-    _loadClinics(origin ?? santiago, origin != null ? _radiusKm : _defaultReportsRadiusKm);
+    _loadClinics(area.origin, area.radiusKm);
 
     try {
-      final reports = await _service.fetchNearbyReports(
-        origin ?? santiago,
-        origin != null ? _radiusKm : _defaultReportsRadiusKm,
-      );
+      final reports = await _service.fetchNearbyReports(area.origin, area.radiusKm);
       if (!mounted || request != _request) return;
       setState(() {
         _reports = reports;
@@ -320,7 +324,8 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
     final user = _userPosition;
-    if (_centerOnUser && _origin == null && user != null) {
+    // Al abrir, el mapa se centra en tu ubicación aunque la búsqueda ya esté filtrada a tu alrededor
+    if (_centerOnUser && user != null) {
       _mapController.move(user, _userZoom);
       return;
     }
@@ -391,6 +396,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _radiusKm = km;
       _centerOnOrigin = false;
+      _centerOnUser = false;
       _autoFit = true;
     });
     _load();
@@ -1391,7 +1397,7 @@ class _LayersSheet extends StatelessWidget {
             SwitchListTile(
               value: showReports,
               onChanged: onReports,
-              secondary: dot(colors.report),
+              secondary: dot(colors.alert),
               title: Text(
                 'Mascotas reportadas ($reportsCount)',
                 style: textTheme.bodyMedium,
@@ -1446,7 +1452,7 @@ class _RadiusSelector extends StatelessWidget {
         borderRadius: BorderRadius.circular(AdoptifyRadius.md),
         focusColor: Colors.transparent,
         items: [
-          for (final km in _radiusOptions)
+          for (final km in reportRadiusOptions)
             DropdownMenuItem(value: km, child: Text('Radio $km km')),
         ],
       ),
@@ -1695,7 +1701,7 @@ class _ReportDetailCard extends StatelessWidget {
         Text(
           'Mascota reportada',
           style: textTheme.titleMedium?.copyWith(
-            color: context.colors.reportText,
+            color: context.colors.alert,
           ),
         ),
         const SizedBox(height: AdoptifySpacing.xs),
@@ -1732,7 +1738,7 @@ class _ReportDetailCard extends StatelessWidget {
           Text(
             'A ${formatKm(report.distanceKm!)} km',
             style: textTheme.labelLarge?.copyWith(
-              color: context.colors.reportText,
+              color: context.colors.alert,
             ),
           ),
       ],

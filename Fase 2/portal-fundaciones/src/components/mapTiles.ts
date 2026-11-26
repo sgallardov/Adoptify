@@ -1,9 +1,10 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-export type LatLng = { lat: number; lng: number }
+export type { LatLng } from '../services/reportArea'
 
-export const SANTIAGO: LatLng = { lat: -33.4489, lng: -70.6693 }
+// La define el criterio común de reportes (HU-Z); se reexporta para los mapas que la usan como centro
+export { SANTIAGO } from '../services/reportArea'
 
 // Mosaicos públicos de OpenStreetMap: gratis, sin API key, con política de uso justo.
 // Si el tráfico crece, basta con cambiar esta URL por la de un proveedor de mosaicos.
@@ -36,7 +37,7 @@ const CHECK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10
 
 const reportIcons = new Map<string, L.DivIcon>()
 
-// Pin de un reporte, igual que MapPins.reportFor en la app: círculo rojo con la huella si es perro o gato
+// Pin de un reporte, igual que MapPins.reportFor en la app: círculo café con la huella si es perro o gato
 // (punto liso si es otra especie) e insignia verde con un visto si una fundación ya tomó el caso.
 // Se guarda cada ícono para que volver a dibujar la página no reemplace el pin (y no cierre su popup).
 export function reportIcon(species: string | null, taken = false) {
@@ -49,7 +50,7 @@ export function reportIcon(species: string | null, taken = false) {
       : ''
     icon = L.divIcon({
       className: '',
-      html: `<span class="relative flex items-center justify-center rounded-full border-[3px] border-on-accent bg-danger-600 text-on-accent shadow-md" style="width:${PET_PIN_SIZE}px;height:${PET_PIN_SIZE}px">${paw}${badge}</span>`,
+      html: `<span class="relative flex items-center justify-center rounded-full border-[3px] border-on-accent bg-alert text-on-accent shadow-md" style="width:${PET_PIN_SIZE}px;height:${PET_PIN_SIZE}px">${paw}${badge}</span>`,
       iconSize: [PET_PIN_SIZE, PET_PIN_SIZE],
       iconAnchor: [PET_PIN_SIZE / 2, PET_PIN_SIZE / 2],
       popupAnchor: [0, -PET_PIN_SIZE / 2],
@@ -59,7 +60,8 @@ export function reportIcon(species: string | null, taken = false) {
   return icon
 }
 
-// Pin de veterinaria: cruz blanca sobre el rojo de emergencias, chico y con menos contraste
+// Pin de veterinaria: cruz blanca sobre el rojo de emergencias (el café es de los avisos), chico y con
+// menos contraste
 export function clinicIcon(selected = false) {
   const size = selected ? PLACE_PIN_SELECTED_SIZE : PLACE_PIN_SIZE
   return L.divIcon({

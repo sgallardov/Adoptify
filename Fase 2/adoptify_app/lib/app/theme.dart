@@ -20,6 +20,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     required this.report,
     required this.reportStrong,
     required this.reportText,
+    required this.alert,
     required this.origin,
     required this.success,
     required this.successSoft,
@@ -41,9 +42,13 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
   final Color background; // fondo de las pantallas
   final Color text; // texto principal
   final Color textMuted; // texto secundario
-  final Color report; // pines y botón de reportes (red-600)
+  final Color report; // botón Reportar, veterinarias y errores (red-600)
   final Color reportStrong; // fondo del botón Reportar activo (red-700)
-  final Color reportText; // texto de reportes y errores
+  final Color reportText; // texto de errores y de veterinarias
+  // Avisos de mascotas: pines, leyenda y títulos. Café para no confundirlos con el rojo de las
+  // veterinarias. Sirve de fondo solo en los pines, que siempre usan el valor claro (5,8:1 con blanco);
+  // como texto se lee en los dos modos porque el oscuro aclara el café.
+  final Color alert;
   final Color origin; // pin de tu ubicación (sky)
   final Color success; // texto de éxito
   final Color successSoft; // fondo de mensajes de éxito
@@ -70,6 +75,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     report: Color(0xFFDC2626),
     reportStrong: Color(0xFFB91C1C),
     reportText: Color(0xFFB91C1C),
+    alert: Color(0xFF8B5A2B),
     origin: Color(0xFF0284C7),
     success: Color(0xFF14532D),
     successSoft: Color(0xFFF0FDF4),
@@ -95,6 +101,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
     report: Color(0xFFDC2626),
     reportStrong: Color(0xFFB91C1C),
     reportText: Color(0xFFF87171),
+    alert: Color(0xFFC08552),
     origin: Color(0xFF0EA5E9),
     success: Color(0xFF86EFAC),
     successSoft: Color(0xFF052E16),
@@ -130,6 +137,7 @@ class AdoptifyColors extends ThemeExtension<AdoptifyColors> {
       report: mix(report, other.report),
       reportStrong: mix(reportStrong, other.reportStrong),
       reportText: mix(reportText, other.reportText),
+      alert: mix(alert, other.alert),
       origin: mix(origin, other.origin),
       success: mix(success, other.success),
       successSoft: mix(successSoft, other.successSoft),
