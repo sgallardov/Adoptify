@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { capacityLabel, phoneHref, sizesLabel, spaceLabel, speciesLabel, statusLabels } from '../src/services/fosterLabels.ts'
+import { capacityLabel, distanceLabel, phoneHref, sizesLabel, spaceLabel, speciesLabel, statusLabels } from '../src/services/fosterLabels.ts'
 
 test('los tamaños quedan en orden y en español', () => {
   assert.equal(sizesLabel(['grande', 'pequeño']), 'Pequeño y grande')
@@ -18,4 +18,9 @@ test('especie, espacio y estado en español', () => {
 })
 test('el enlace de teléfono deja solo + y dígitos', () => {
   assert.equal(phoneHref('+56 9 1234-5678'), 'tel:+56912345678')
+})
+test('la distancia usa coma decimal y avisa cuando es menos de 1 km', () => {
+  assert.equal(distanceLabel(3.5), 'a 3,5 km')
+  assert.equal(distanceLabel(10), 'a 10 km')
+  assert.equal(distanceLabel(0.4), 'a menos de 1 km')
 })

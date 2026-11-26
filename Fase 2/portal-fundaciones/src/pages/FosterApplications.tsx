@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarDays, Check, Lock, Mail, MessageCircle, Phone, RotateCcw, X } from 'lucide-react'
 import { decideFosterApplication, fetchFosterApplications } from '../services/fosterApplications'
 import type { FosterApplication, FosterStatus } from '../services/fosterApplications'
-import { capacityLabel, phoneHref, sizesLabel, spaceLabel, speciesLabel, statusLabels } from '../services/fosterLabels'
+import { capacityLabel, distanceLabel, phoneHref, sizesLabel, spaceLabel, speciesLabel, statusLabels } from '../services/fosterLabels'
 import { errorMessage } from '../services/api'
 import Feedback from '../components/Feedback'
 import PageHeading from '../components/PageHeading'
@@ -93,7 +93,7 @@ export default function FosterApplications() {
       <Feedback
         kind="empty"
         title={filter === 'pending' ? 'No hay postulaciones pendientes' : 'No hay postulaciones aquí'}
-        description="Cuando alguien postule desde la app, aparecerá en este listado."
+        description="Cuando alguien a 10 km o menos de tu sede postule desde la app, aparecerá en este listado."
       />
     )}
 
@@ -113,7 +113,7 @@ export default function FosterApplications() {
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex items-center gap-2"><dt className="sr-only">Correo</dt><Mail size={15} aria-hidden="true" className="text-base-400" /><dd><a href={`mailto:${application.email}`} className="text-brand-600 hover:text-brand-700">{application.email}</a></dd></div>
             <div className="flex items-center gap-2"><dt className="sr-only">Teléfono</dt><Phone size={15} aria-hidden="true" className="text-base-400" /><dd><a href={phoneHref(application.phone)} className="text-brand-600 hover:text-brand-700">{application.phone}</a></dd></div>
-            <div className="flex items-start gap-2"><dt className="sr-only">Dirección privada</dt><Lock size={15} aria-hidden="true" className="mt-0.5 text-base-400" /><dd>{application.address}<span className="block text-xs text-base-500">Dirección privada: solo la ven las fundaciones.</span></dd></div>
+            <div className="flex items-start gap-2"><dt className="sr-only">Dirección privada</dt><Lock size={15} aria-hidden="true" className="mt-0.5 text-base-400" /><dd>{application.address}<span className="block text-xs text-base-500">Dirección privada: solo la ven las fundaciones · {distanceLabel(application.distance_km)} de tu sede.</span></dd></div>
           </dl>
 
           <div className="mt-4 rounded-xl bg-base-50 p-4 text-sm leading-6 text-base-700">

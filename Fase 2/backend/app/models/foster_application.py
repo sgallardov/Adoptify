@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
+from geoalchemy2 import Geometry
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,6 +34,8 @@ class FosterApplication(Base):
     availability: Mapped[str] = mapped_column(String(120), nullable=False)  # texto corto: "desde ya", "fines de semana"
     phone: Mapped[str] = mapped_column(String(30), nullable=False)
     address: Mapped[str] = mapped_column(String(255), nullable=False)  # privada: solo fundaciones
+    # Ubicación del hogar (SRID 4326, igual que las fundaciones). Privada. Nula en las postulaciones anteriores a HU-AA
+    location = mapped_column(Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=True)
 
     # Estado global (decisión documentada en el README): una sola decisión, y qué fundación la tomó
     status: Mapped[str] = mapped_column(String(10), default="pending", server_default="pending", nullable=False)

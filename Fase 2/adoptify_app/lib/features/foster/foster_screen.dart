@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
+import 'package:latlong2/latlong.dart';
+
 import '../../core/api_client.dart';
+import '../../core/location_service.dart';
 import '../../shared/widgets/content_width.dart';
 import '../../shared/widgets/message_box.dart';
 import '../auth/auth_controller.dart';
@@ -37,6 +40,10 @@ class _FosterScreenState extends State<FosterScreen> {
   final Set<String> _sizes = {};
   String? _space;
   int _maxAnimals = 1;
+  // Ubicación del hogar (HU-AA): decide qué fundaciones (a 10 km o menos) ven la postulación
+  LatLng? _home;
+  bool _locating = false;
+  String? _locationError;
 
   bool _saving = false;
   String? _error;
@@ -81,6 +88,7 @@ class _FosterScreenState extends State<FosterScreen> {
           _availability.text = application.availability;
           _phone.text = application.phone;
           _address.text = application.address;
+          if (application.hasLocation) _home = LatLng(application.latitude!, application.longitude!);
         }
       });
     } catch (error) {
@@ -99,6 +107,7 @@ class _FosterScreenState extends State<FosterScreen> {
     final missing = <String>[
       if (_validatePhone(_phone.text) != null) 'Teléfono',
       if (_validateAddress(_address.text) != null) 'Dirección',
+      if (_home == null) 'Ubicación',
       if (_species == null) 'Tipo de mascota',
       if (_sizes.isEmpty) 'Tamaño',
       if (_validateMaxDays(_maxDays.text) != null) 'Días máximos',
@@ -123,6 +132,8 @@ class _FosterScreenState extends State<FosterScreen> {
           availability: _availability.text.trim(),
           phone: _phone.text.trim(),
           address: _address.text.trim(),
+          latitude: _home!.latitude,
+          longitude: _home!.longitude,
         ),
         exists: _application != null,
       );
@@ -131,7 +142,7 @@ class _FosterScreenState extends State<FosterScreen> {
         SnackBar(
           content: Text(
             _application == null
-                ? 'Postulación enviada. Las fundaciones la revisarán.'
+                ? 'Postulación enviada. Las fundaciones cercanas la revisarán.'
                 : 'Guardamos los cambios de tu postulación.',
           ),
         ),
@@ -142,6 +153,28 @@ class _FosterScreenState extends State<FosterScreen> {
       setState(() {
         _saving = false;
         _error = errorMessage(error, 'No pudimos guardar tu postulación. Inténtalo nuevamente.');
+      });
+    }
+  }
+
+  // Toma la ubicación del teléfono: hay que pulsarlo estando en casa
+  Future<void> _useMyLocation() async {
+    setState(() {
+      _locating = true;
+      _locationError = null;
+    });
+    try {
+      final position = await LocationService.instance.current();
+      if (!mounted) return;
+      setState(() {
+        _home = position;
+        _locating = false;
+      });
+    } on LocationException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _locationError = error.message;
+        _locating = false;
       });
     }
   }
@@ -229,7 +262,7 @@ class _FosterScreenState extends State<FosterScreen> {
         children: [
           Text(
             'Recibe en tu casa a un animal rescatado mientras encuentra una familia. Tu postulación la verán '
-            'todas las fundaciones, y la que te necesite te contactará.',
+            'las fundaciones a $fosterRadiusKm km o menos de tu hogar, y la que te necesite te contactará.',
             style: textTheme.bodyMedium,
           ),
           if (application != null) ...[
@@ -264,6 +297,14 @@ class _FosterScreenState extends State<FosterScreen> {
               prefixIcon: Icon(Icons.lock_outline, size: 20),
             ),
             validator: _validateAddress,
+          ),
+          const SizedBox(height: AdoptifySpacing.md),
+          _LocationField(
+            located: _home != null,
+            locating: _locating,
+            error: _locationError,
+            outdated: _application != null && !_application!.hasLocation,
+            onPressed: _editable && !_locating ? _useMyLocation : null,
           ),
           const _Section('Qué puedes recibir'),
           _Choices(
@@ -365,6 +406,62 @@ class _FosterScreenState extends State<FosterScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+// Ubicación del hogar (HU-AA): se toma del GPS y decide qué fundaciones ven la postulación
+class _LocationField extends StatelessWidget {
+  const _LocationField({
+    required this.located,
+    required this.locating,
+    required this.error,
+    required this.outdated,
+    required this.onPressed,
+  });
+
+  final bool located;
+  final bool locating;
+  final String? error;
+  // Postulación anterior a HU-AA, sin ubicación: ninguna fundación la ve hasta marcarla
+  final bool outdated;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          key: const ValueKey('foster-location'),
+          onPressed: onPressed,
+          icon: Icon(located ? Icons.check_circle_outline : Icons.my_location, size: 20),
+          label: Text(
+            locating
+                ? 'Buscando tu ubicación…'
+                : located
+                    ? 'Ubicación marcada · volver a usar mi ubicación'
+                    : 'Usar mi ubicación actual *',
+          ),
+        ),
+        const SizedBox(height: AdoptifySpacing.xs),
+        Text(
+          'Estando en tu hogar, toca el botón. Tu postulación solo la ven las fundaciones a $fosterRadiusKm km o '
+          'menos; la ubicación exacta no se muestra.',
+          style: textTheme.bodySmall,
+        ),
+        if (outdated && !located) ...[
+          const SizedBox(height: AdoptifySpacing.sm),
+          const MessageBox.error(
+            message: 'Tu postulación no tiene ubicación, así que ninguna fundación la ve. Márcala y guarda los cambios.',
+          ),
+        ],
+        if (error != null) ...[
+          const SizedBox(height: AdoptifySpacing.sm),
+          MessageBox.error(message: error!),
+        ],
+      ],
     );
   }
 }
