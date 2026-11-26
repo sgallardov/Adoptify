@@ -47,7 +47,7 @@ export default function Reports() {
   }, [attempt, radiusKm])
   async function action(id: number, run: (id: number) => Promise<Report>) {
     setBusy(id); setError('')
-    try { const updated = await run(id); setReports(items => items?.map(item => item.id === id ? { ...item, ...updated } : item) ?? null) }
+    try { const updated = await run(id); setReports(items => updated.status === 'resolved' ? items?.filter(item => item.id !== id) ?? null : items?.map(item => item.id === id ? { ...item, ...updated } : item) ?? null) }
     catch (cause) { setError(errorMessage(cause, 'No se pudo actualizar el reporte.')) }
     finally { setBusy(null) }
   }
