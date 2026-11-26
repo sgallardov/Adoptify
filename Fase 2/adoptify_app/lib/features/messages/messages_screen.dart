@@ -104,7 +104,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final items = _items;
     final isFoundation = _isFoundation;
     return Scaffold(
-      appBar: AppBar(title: Text(isFoundation ? 'Chat' : 'Mensajes')),
+      appBar: AppBar(title: const Text('Mensajes')),
       body: _error != null && items == null
           ? ListView(children: [
               ComingSoon(icon: Icons.cloud_off, title: 'No pudimos cargar', message: _error!),

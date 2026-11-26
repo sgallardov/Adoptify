@@ -22,7 +22,7 @@ const _luna = ManagedAnimal(
   keepingPlaceAddress: 'Av. Grecia 100, Ñuñoa',
 );
 
-// Abre "Editar mascota" de Luna con la sesión de la fundación y baja hasta la ubicación
+// Abre "Editar a Luna" con la sesión de la fundación y baja hasta la ubicación
 Future<FakeApi> openEditor(WidgetTester tester) async {
   final api = FakeApi(asFoundation: true);
   await tester.pumpWidget(AdoptifyApp(auth: api.auth));

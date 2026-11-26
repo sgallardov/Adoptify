@@ -161,6 +161,31 @@ async def test_update_rejects_null_required_fields_and_bad_status(async_client, 
     assert (await async_client.patch(url, json={"latitude": -45.0}, headers=headers)).status_code == 422
 
 
+async def test_follow_up_only_after_adoption(async_client, world):
+    """Seguimiento (HU-Y): solo se entra desde Adoptado y se puede volver a Adoptado."""
+    url = f"/api/v1/animals/{world['animals'][0].id}"
+    headers = world["headers"]["a"]
+
+    rejected = await async_client.patch(url, json={"status": "follow_up"}, headers=headers)
+    assert rejected.status_code == 400
+    assert rejected.json()["detail"] == "Solo un animal adoptado puede pasar a Seguimiento."
+
+    assert (await async_client.patch(url, json={"status": "adopted"}, headers=headers)).status_code == 200
+    to_follow_up = await async_client.patch(url, json={"status": "follow_up"}, headers=headers)
+    assert to_follow_up.status_code == 200
+    assert to_follow_up.json()["status"] == "follow_up"
+    # Y de Seguimiento se vuelve a Adoptado
+    back = await async_client.patch(url, json={"status": "adopted"}, headers=headers)
+    assert back.status_code == 200
+    assert back.json()["status"] == "adopted"
+
+
+async def test_create_rejects_follow_up_status(async_client, world):
+    body = {**NEW_ANIMAL, "status": "follow_up"}
+    response = await async_client.post("/api/v1/animals", json=body, headers=world["headers"]["a"])
+    assert response.status_code == 422
+
+
 async def test_foundation_cannot_edit_or_delete_another_foundations_animal(async_client, world):
     other = world["animals"][1]
     headers = world["headers"]["a"]

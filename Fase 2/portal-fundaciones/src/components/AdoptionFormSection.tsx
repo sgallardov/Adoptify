@@ -97,7 +97,7 @@ export default function AdoptionFormSection() {
     <h2 id="adoption-form-title" className="flex items-center gap-2 text-xl font-bold"><ClipboardList size={22} aria-hidden="true" />Preguntas de adopción</h2>
     <p className="mt-2 max-w-2xl text-sm leading-6 text-base-600">
       Cuando aprietas Conversar junto a una persona interesada, el chat le hace estas preguntas una a una. Sus respuestas quedan en
-      la postulación (Mis casos → Interesados → Ver postulación), con las que no cumplen marcadas en rojo. Tú decides si aceptas o rechazas.
+      la postulación (Mis animales → Interesados → Ver postulación), con las que no cumplen marcadas en rojo. Tú decides si aceptas o rechazas.
     </p>
     {drafts && !customized && <p className="mt-4 rounded-2xl bg-brand-50 px-4 py-3 text-sm text-brand-800">Estas son las preguntas sugeridas por Adoptify. Puedes cambiarlas, quitar o agregar las que quieras.</p>}
     <div className="mt-6">

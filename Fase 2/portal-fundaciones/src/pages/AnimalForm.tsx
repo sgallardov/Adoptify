@@ -116,7 +116,7 @@ function Editor({ animal }: { animal?: AnimalResponse }) {
   }
 
   return <>
-    <Link to={back} className="mb-6 inline-flex items-center gap-2 text-sm text-base-600 hover:text-brand-700"><ArrowLeft size={17} />Volver {animal ? 'a la ficha' : 'a Mis casos'}</Link>
+    <Link to={back} className="mb-6 inline-flex items-center gap-2 text-sm text-base-600 hover:text-brand-700"><ArrowLeft size={17} />Volver {animal ? 'a la ficha' : 'a Mis animales'}</Link>
     <PageHeading eyebrow="Cada historia importa" title={animal ? `Editar a ${animal.name}` : 'Publicar animal'} description="Completa su historia y marca dónde se encuentra. Los campos con * son obligatorios." />
     <form onSubmit={submit} noValidate className="space-y-6" aria-busy={saving}>
       {message && <div ref={errorSummary} tabIndex={-1}><Feedback kind="error" title={message} /></div>}

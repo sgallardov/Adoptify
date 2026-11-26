@@ -44,7 +44,7 @@ class FoundationDetailScreen extends StatelessWidget {
             ContentWidth(
               child: Text(
                 animals.isEmpty
-                    ? 'Esta fundación no tiene casos publicados por ahora.'
+                    ? 'Esta fundación no tiene animales publicados por ahora.'
                     : 'Conoce a los animales disponibles y revisa su zona aproximada.',
                 style: textTheme.bodyMedium?.copyWith(
                   color: context.colors.textMuted,
@@ -309,7 +309,7 @@ class _NoCases extends StatelessWidget {
         Icon(Icons.pets_outlined, size: 32, color: context.colors.placeholder),
         const SizedBox(height: AdoptifySpacing.sm),
         Text(
-          'No hay casos publicados',
+          'No hay animales publicados',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: AdoptifySpacing.xs),

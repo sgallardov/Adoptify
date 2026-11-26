@@ -17,6 +17,8 @@ class FoundationAnimalsScreen extends StatefulWidget {
 
 class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
   Future<_AnimalsOverview>? _animals;
+  // Copia editable de la lista cargada: al cambiar un estado la tarjeta salta de pestaña sin recargar (HU-Y)
+  List<ManagedAnimal>? _items;
   String? _updatingId;
 
   @override
@@ -30,11 +32,15 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
     final service = FoundationAnimalsService(AuthScope.of(context).api);
     final animals = await service.list();
     final interested = await service.interested();
+    _items = animals;
     return _AnimalsOverview(animals: animals, interested: interested);
   }
 
   Future<void> _reload() async {
-    setState(() => _animals = _load());
+    setState(() {
+      _items = null;
+      _animals = _load();
+    });
     await _animals;
   }
 
@@ -51,13 +57,21 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
             children: [
               Text('Estado de ${animal.name}', style: Theme.of(sheetContext).textTheme.titleLarge),
               const SizedBox(height: AdoptifySpacing.sm),
-              for (final entry in animalStatusLabels.entries)
+              for (final status in animalStatusOptions(animal.status))
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,
-                  value: entry.key,
+                  value: status,
                   groupValue: animal.status,
-                  title: Text(entry.value),
+                  title: Text(animalStatusLabels[status] ?? status),
                   onChanged: (value) => Navigator.pop(sheetContext, value),
+                ),
+              if (animal.status != 'adopted' && animal.status != 'follow_up')
+                Padding(
+                  padding: const EdgeInsets.only(top: AdoptifySpacing.xs),
+                  child: Text(
+                    'Seguimiento se activa cuando el animal ya está adoptado.',
+                    style: Theme.of(sheetContext).textTheme.bodySmall,
+                  ),
                 ),
             ],
           ),
@@ -69,8 +83,14 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
     try {
       await FoundationAnimalsService(AuthScope.of(context).api).updateStatus(animal.id, status);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Estado actualizado correctamente.')));
-      _reload();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${animal.name} ahora está en ${animalStatusLabels[status] ?? status}.')),
+      );
+      // La tarjeta se mueve de pestaña al instante, sin volver a pedir la lista
+      setState(() => _items = [
+            for (final item in _items ?? const <ManagedAnimal>[])
+              if (item.id == animal.id) item.copyWith(status: status) else item,
+          ]);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,60 +102,146 @@ class _FoundationAnimalsScreenState extends State<FoundationAnimalsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Mis animales')),
-        body: ContentWidth(
-          child: FutureBuilder<_AnimalsOverview>(
-            future: _animals,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return ListView(
-                  padding: const EdgeInsets.all(AdoptifySpacing.xl),
+  Widget build(BuildContext context) => DefaultTabController(
+        length: animalStatusTabs.length,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Mis animales')),
+          body: ContentWidth(
+            child: FutureBuilder<_AnimalsOverview>(
+              future: _animals,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return ListView(
+                    padding: const EdgeInsets.all(AdoptifySpacing.xl),
+                    children: [
+                      MessageBox.error(message: errorMessage(snapshot.error!, 'No pudimos cargar tus animales.')),
+                      const SizedBox(height: AdoptifySpacing.md),
+                      OutlinedButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
+                    ],
+                  );
+                }
+                final overview = snapshot.data;
+                final animals = _items ?? overview?.animals ?? const <ManagedAnimal>[];
+                if (animals.isEmpty) return _EmptyAnimals(onPublish: () => context.push('/fundacion/agregar'));
+                // Cada animal aparece en una sola pestaña: la de su estado actual (HU-Y)
+                final byStatus = <String, List<ManagedAnimal>>{
+                  for (final status in animalStatusTabs)
+                    status: [for (final animal in animals) if (animal.status == status) animal],
+                };
+                return Column(
                   children: [
-                    MessageBox.error(message: errorMessage(snapshot.error!, 'No pudimos cargar tus animales.')),
-                    const SizedBox(height: AdoptifySpacing.md),
-                    OutlinedButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
+                    TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      tabs: [
+                        for (final status in animalStatusTabs)
+                          Tab(
+                            key: ValueKey('tab-$status'),
+                            text: '${animalStatusTabLabels[status]} (${byStatus[status]!.length})',
+                          ),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          for (final status in animalStatusTabs)
+                            _StatusTab(
+                              status: status,
+                              animals: byStatus[status]!,
+                              overview: overview,
+                              updatingId: _updatingId,
+                              onReload: _reload,
+                              onEdit: (animal) => context.push('/fundacion/mis-animales/${animal.id}/editar', extra: animal),
+                              onStatus: _changeStatus,
+                              onInterested: (animal) => context.push('/fundacion/interesados?animal_id=${animal.id}'),
+                              onApplications: (animal) => context.push('/fundacion/postulaciones?animal_id=${animal.id}'),
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
                 );
-              }
-              final overview = snapshot.data;
-              final animals = overview?.animals ?? const <ManagedAnimal>[];
-              if (animals.isEmpty) return _EmptyAnimals(onPublish: () => context.push('/fundacion/agregar'));
-              return RefreshIndicator(
-                onRefresh: _reload,
-                child: ListView(
-                  padding: const EdgeInsets.all(AdoptifySpacing.xl),
+              },
+            ),
+          ),
+        ),
+      );
+}
+
+/// Contenido de una pestaña: los animales de ese estado o el mensaje de la pestaña vacía.
+class _StatusTab extends StatelessWidget {
+  const _StatusTab({
+    required this.status,
+    required this.animals,
+    required this.overview,
+    required this.updatingId,
+    required this.onReload,
+    required this.onEdit,
+    required this.onStatus,
+    required this.onInterested,
+    required this.onApplications,
+  });
+
+  final String status;
+  final List<ManagedAnimal> animals;
+  final _AnimalsOverview? overview;
+  final String? updatingId;
+  final Future<void> Function() onReload;
+  final void Function(ManagedAnimal) onEdit;
+  final void Function(ManagedAnimal) onStatus;
+  final void Function(ManagedAnimal) onInterested;
+  final void Function(ManagedAnimal) onApplications;
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+        onRefresh: onReload,
+        child: ListView(
+          padding: const EdgeInsets.all(AdoptifySpacing.xl),
+          children: [
+            if (animals.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AdoptifySpacing.xl),
+                child: Column(
                   children: [
-                    Text('Tus animales publicados', style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: AdoptifySpacing.xs),
-                    Text('${animals.length} caso${animals.length == 1 ? '' : 's'} en gestión.', style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: AdoptifySpacing.lg),
-                    for (final animal in animals) ...[
-                      _AnimalCard(
-                        animal: animal,
-                        updating: _updatingId == '${animal.id}',
-                        onEdit: () => context.push('/fundacion/mis-animales/${animal.id}/editar', extra: animal),
-                        onStatus: () => _changeStatus(animal),
-                        interestCount: overview?.interestCount(animal.id) ?? 0,
-                        onInterested: () => context.push('/fundacion/interesados?animal_id=${animal.id}'),
-                        onApplications: () => context.push('/fundacion/postulaciones?animal_id=${animal.id}'),
-                      ),
-                      const SizedBox(height: AdoptifySpacing.md),
-                    ],
-                    const SizedBox(height: AdoptifySpacing.sm),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/fundacion/agregar'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Publicar otro animal'),
+                    Icon(Icons.pets_outlined, size: 40, color: context.colors.primaryDark),
+                    const SizedBox(height: AdoptifySpacing.md),
+                    Text(
+                      animalStatusEmptyMessages[status] ?? 'Esta pestaña no tiene animales.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
-              );
-            },
-          ),
+              )
+            else ...[
+              Text(
+                '${animals.length} ${animals.length == 1 ? 'animal' : 'animales'} en ${animalStatusTabLabels[status]}.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AdoptifySpacing.lg),
+              for (final animal in animals) ...[
+                _AnimalCard(
+                  animal: animal,
+                  updating: updatingId == '${animal.id}',
+                  onEdit: () => onEdit(animal),
+                  onStatus: () => onStatus(animal),
+                  interestCount: overview?.interestCount(animal.id) ?? 0,
+                  onInterested: () => onInterested(animal),
+                  onApplications: () => onApplications(animal),
+                ),
+                const SizedBox(height: AdoptifySpacing.md),
+              ],
+            ],
+            const SizedBox(height: AdoptifySpacing.sm),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/fundacion/agregar'),
+              icon: const Icon(Icons.add),
+              label: const Text('Publicar otro animal'),
+            ),
+          ],
         ),
       );
 }

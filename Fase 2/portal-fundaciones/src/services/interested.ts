@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { QuestionnaireSummary } from './adoptionForm'
+import type { AnimalStatus } from '../data/demo'
 
 export type InterestedPerson = {
   user_id: number
@@ -14,7 +15,7 @@ export type InterestedPerson = {
 export type AnimalInterested = {
   animal_id: number
   animal_name: string
-  animal_status: 'available' | 'in_process' | 'adopted'
+  animal_status: AnimalStatus
   interested: InterestedPerson[]
 }
 

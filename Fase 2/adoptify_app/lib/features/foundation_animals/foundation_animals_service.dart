@@ -8,7 +8,33 @@ const animalStatusLabels = <String, String>{
   'available': 'En adopción',
   'in_process': 'En proceso',
   'adopted': 'Adoptado',
+  // Seguimiento (HU-Y): etapa posterior a la adopción
+  'follow_up': 'Seguimiento',
 };
+
+/// Pestañas de la gestión, en orden: primero los que buscan hogar, al final el seguimiento (HU-Y).
+const animalStatusTabs = <String>['available', 'in_process', 'adopted', 'follow_up'];
+
+/// Título de cada pestaña (en plural, a diferencia de la etiqueta de un animal).
+const animalStatusTabLabels = <String, String>{
+  'available': 'Disponibles',
+  'in_process': 'En proceso',
+  'adopted': 'Adoptados',
+  'follow_up': 'Seguimiento',
+};
+
+/// Mensaje de la pestaña sin animales.
+const animalStatusEmptyMessages = <String, String>{
+  'available': 'No tienes animales disponibles. Publica un animal para que las personas puedan conocerlo.',
+  'in_process': 'Ningún animal en proceso. Aquí verás los animales con una adopción en curso.',
+  'adopted': 'Todavía no registras adopciones. Cuando marques un animal como adoptado, aparecerá aquí.',
+  'follow_up': 'Ningún animal en seguimiento. Pasa un animal adoptado a Seguimiento para acompañar su adaptación.',
+};
+
+/// Seguimiento es la etapa posterior a la adopción: solo se ofrece a un animal adoptado o ya en seguimiento.
+List<String> animalStatusOptions(String current) => current == 'adopted' || current == 'follow_up'
+    ? animalStatusTabs
+    : [for (final status in animalStatusTabs) if (status != 'follow_up') status];
 
 class ManagedAnimal {
   const ManagedAnimal({
@@ -63,6 +89,23 @@ class ManagedAnimal {
   final LatLng? position;
   // Comuna que ve el público
   final String? publicCommune;
+
+  ManagedAnimal copyWith({String? status}) => ManagedAnimal(
+        id: id,
+        name: name,
+        species: species,
+        gender: gender,
+        size: size,
+        energyLevel: energyLevel,
+        status: status ?? this.status,
+        ageMonths: ageMonths,
+        description: description,
+        photoUrl: photoUrl,
+        keepingPlaceType: keepingPlaceType,
+        keepingPlaceAddress: keepingPlaceAddress,
+        position: position,
+        publicCommune: publicCommune,
+      );
 
   String get statusLabel => animalStatusLabels[status] ?? status;
   String get summary => '${_capitalize(species)} · ${_capitalize(size)}';

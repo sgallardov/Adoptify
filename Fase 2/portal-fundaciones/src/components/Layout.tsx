@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 
 const navigation = [
   { to: '/', label: 'Inicio', icon: House },
-  { to: '/animales', label: 'Mis casos', icon: PawPrint },
+  { to: '/animales', label: 'Mis animales', icon: PawPrint },
   { to: '/reportes', label: 'Reportes', icon: Siren },
   { to: '/hogares-temporales', label: 'Hogares temporales', icon: HousePlus },
   { to: '/mensajes', label: 'Mensajes', icon: MessageCircle },
@@ -35,7 +35,7 @@ export default function Layout() {
   const isAnimalsPage = location.pathname.startsWith('/animales')
   const isReportsPage = location.pathname.startsWith('/reportes')
   const isMessagesPage = location.pathname.startsWith('/mensajes')
-  const title = isAnimalsPage ? 'Mis casos' : isReportsPage ? 'Reportes' : isMessagesPage ? 'Mensajes' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
+  const title = isAnimalsPage ? 'Mis animales' : isReportsPage ? 'Reportes' : isMessagesPage ? 'Mensajes' : location.pathname === '/fundacion' ? 'Mi fundación' : 'Inicio'
 
   return (
     <div className="min-h-screen lg:pl-64">

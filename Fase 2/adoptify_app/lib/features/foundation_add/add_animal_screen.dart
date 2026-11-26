@@ -174,7 +174,7 @@ class _AddAnimalScreenState extends State<AddAnimalScreen> {
   Widget build(BuildContext context) {
     final busy = _saving || _uploading;
     return Scaffold(
-      appBar: AppBar(title: Text(_editing ? 'Editar mascota' : 'Agregar mascota')),
+      appBar: AppBar(title: Text(_editing ? 'Editar a ${widget.animal!.name}' : 'Publicar animal')),
       body: ContentWidth(
         child: Form(
           key: _formKey,

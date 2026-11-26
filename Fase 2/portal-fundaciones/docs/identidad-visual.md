@@ -62,5 +62,5 @@ La API de prueba no forma parte de la aplicación ni queda configurada en `.env`
 
 Se comprobó igualdad de fuente, fondo y origen del logo mediante los estilos
 calculados del navegador. Se revisó login con error y carga, lista vacía de
-usuario, error del portal con reintento, y lista vacía de Mis casos.
+usuario, error del portal con reintento, y lista vacía de Mis animales.
 Compilar con `npm run build` antes de integrar los cambios.

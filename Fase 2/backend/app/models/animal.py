@@ -37,7 +37,7 @@ class Animal(Base):
     size: Mapped[str] = mapped_column(String(50), nullable=False)  # 'pequeño', 'mediano', 'grande'
     energy_level: Mapped[int] = mapped_column(Integer, nullable=False, default=3)  # Escala 1 a 5
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="available", nullable=False)  # 'available', 'adopted', 'in_process'
+    status: Mapped[str] = mapped_column(String(50), default="available", nullable=False)  # 'available', 'in_process', 'adopted', 'follow_up'
     photo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     tags: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True, default=dict)
 

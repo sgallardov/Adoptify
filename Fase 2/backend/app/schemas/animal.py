@@ -10,7 +10,8 @@ from app.schemas.adoption_form import QuestionnaireSummary
 Species = Literal["perro", "gato"]
 Gender = Literal["macho", "hembra"]
 Size = Literal["pequeño", "mediano", "grande"]
-AnimalStatus = Literal["available", "adopted", "in_process"]
+# "follow_up" (Seguimiento) es la etapa posterior a la adopción: se entra y se sale solo desde "adopted" (HU-Y)
+AnimalStatus = Literal["available", "adopted", "in_process", "follow_up"]
 KeepingPlaceType = Literal["refugio", "hogar_temporal"]
 
 
@@ -146,6 +147,14 @@ class AnimalCreate(CommuneInput):
         if not clean:
             raise ValueError("El nombre no puede estar vacío")
         return clean
+
+    @field_validator("status")
+    @classmethod
+    def reject_follow_up_on_create(cls, value: str) -> str:
+        # Seguimiento es la etapa posterior a la adopción: una publicación nueva nunca parte ahí
+        if value == "follow_up":
+            raise ValueError("Un animal nuevo no puede quedar en Seguimiento")
+        return value
 
     @field_validator("keeping_place_address")
     @classmethod

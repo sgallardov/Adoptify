@@ -131,7 +131,8 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {}
     try {
       final animals = await _service.fetchAnimals();
-      if (mounted) setState(() => _animals = [for (final a in animals) if (a.status != 'adopted') a]);
+      // Un animal adoptado o en seguimiento ya tiene familia: no se muestra en el mapa de adopción
+      if (mounted) setState(() => _animals = [for (final a in animals) if (a.status != 'adopted' && a.status != 'follow_up') a]);
     } catch (_) {}
   }
 

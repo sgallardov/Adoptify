@@ -37,7 +37,7 @@ el servidor debe devolver `index.html` para rutas como `/animales/1`.
 - `/login`: inicio de sesión de fundaciones (sin registro). La vista de usuario (mapa, reportes, adopción) vive solo en la app móvil.
 - Las rutas siguientes requieren una cuenta `foundation` o `admin`; sin sesión redirigen a `/login`.
 - `/`: bienvenida, estadísticas calculadas desde la API y animales disponibles.
-- `/animales` (Mis casos): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre y filtros por especie y estado.
+- `/animales` (Mis animales): tarjetas de PostgreSQL con el número de interesados, búsqueda por nombre, filtro por especie y **pestañas por estado** (HU-Y).
 - `/animales/:id`: ficha de cada animal, con la sección **Interesados** (nombre, fecha del favorito y % de compatibilidad, "83 % compatible"; `GET /animals/:id/interested`); IDs desconocidos muestran página no encontrada.
 - `/reportes` (Reportes cercanos): **mapa de reportes** con los mismos avisos que ve el adoptante en la app (no resueltos, 100 km alrededor de Santiago; pin rojo con huella si es perro o gato e insignia verde si una fundación tomó el caso) y las veterinarias (`components/ReportsMap.tsx`; las fundaciones no tienen pin). "Ver reporte" en el popup lleva a su tarjeta, donde se toma el caso o se deshace la toma (HU-T).
 - `/mensajes` y `/mensajes/:id`: chat con interesados y postulados (HU-G2).
@@ -133,9 +133,9 @@ una fundación existente. La migración no asigna automáticamente las cuentas
 antiguas: esa vinculación corresponde al administrador. Para cuentas nuevas,
 el comando `python -m app.db.create_user` de HU-12 admite `--foundation-id`.
 
-- En **Mis casos → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
+- En **Mis animales → Publicar animal** (`/animales/nuevo`) se abre el formulario de alta.
 - En la ficha, **Editar animal** (`/animales/:id/editar`) carga los valores guardados.
-- **Estado de adopción → Cambiar estado** permite Disponible, En proceso o Adoptado.
+- **Estado de adopción → Cambiar estado** permite Disponible, En proceso, Adoptado y Seguimiento (ver HU-Y).
 - **Buscar dirección** (`AddressSearch`, `GET /geocode`) mueve el marcador al lugar elegido;
   parte con el texto del lugar de resguardo y, al elegir un resultado, completa la comuna pública.
   La comuna se escribe con sugerencias (`datalist`); "aysen" se guarda como "Aysén" y un texto que
@@ -160,6 +160,23 @@ sesión o permisos se muestran sin perder los datos escritos. Guardar bloquea
 envíos duplicados; cancelar no escribe en el backend. Editar datos no envía
 `status`, para no sobrescribir un cambio de estado hecho desde otra sesión.
 
+## Animales por estado (HU-Y)
+
+**Mis animales** (`/animales`) separa los animales en pestañas con el conteo de cada una: **Disponibles (N)**,
+**En proceso (N)**, **Adoptados (N)** y **Seguimiento (N)**. Cada animal aparece en una sola pestaña, la de su
+estado actual, y la pestaña vacía explica qué va en ella. La búsqueda por nombre y el filtro por especie se
+aplican antes de contar, así que los números coinciden con lo que hay dentro.
+
+- Cada tarjeta trae **Estado de \<nombre\>**: al elegir otro estado se manda `PATCH /animals/{id}` y la tarjeta
+  se mueve de pestaña al instante, sin recargar la página (`useAnimals().replace`). El estado también se cambia
+  desde la ficha del animal.
+- **Seguimiento** es la etapa posterior a la adopción: el desplegable solo la ofrece a un animal **Adoptado** o ya
+  en Seguimiento, igual que el backend (`400` en cualquier otro caso). De Seguimiento se vuelve a Adoptados.
+- Accesibilidad: las pestañas son `role="tablist"` con `aria-selected` y `aria-controls`; se usan con mouse, toque
+  y teclado (Tab para entrar, ← → para moverse, Inicio/Fin para los extremos) y cada panel es un `role="tabpanel"`.
+- Código: `components/AnimalStatusTabs.tsx` (pestañas), `components/AnimalStatusSelect.tsx` (cambio de estado),
+  `services/animalStatus.ts` (etiquetas, orden, conteo y estados permitidos) y `tests/animalStatus.test.mjs`.
+
 ## Hogares temporales (HU-B)
 `/hogares-temporales` (ítem del menú) lista las postulaciones de adoptantes que ofrecen su hogar
 (`GET /foster-applications`): nombre, correo y teléfono enlazados, dirección privada, qué pueden recibir
@@ -172,7 +189,7 @@ decidió, se muestra quién y no hay botones. **Conversar** abre el chat con el 
 ## Mensajes (HU-G2)
 `/mensajes` (ítem del menú) muestra a la izquierda las conversaciones de la fundación, con el último mensaje, y a la
 derecha el chat elegido (`/mensajes/:id`). En pantallas pequeñas se ve una cosa a la vez, con botón para volver.
-El chat se abre con **Conversar** desde la sección Interesados de cada animal (*Mis casos*) o desde *Hogares
+El chat se abre con **Conversar** desde la sección Interesados de cada animal (*Mis animales*) o desde *Hogares
 temporales*; si ya existía, se retoma el mismo (`hooks/useOpenChat.ts`). Enter envía y Shift + Enter agrega una
 línea; el límite es de 1000 caracteres, con contador.
 
@@ -185,7 +202,7 @@ y le hace a la persona las preguntas de *Mi fundación* una a una; en el chat se
 Junto a la persona aparece el avance ("Respondiendo 3 de 8") y, al terminar, **Ver postulación**: un pop-up
 (`components/QuestionnaireDialog.tsx`, `<dialog>` nativo) con las respuestas, las que no cumplen en rojo y los botones
 **Aceptar** / **Rechazar**, que muestran un mensaje predeterminado editable antes de enviarlo por el chat. La tarjeta de
-Mis casos muestra **N por revisar**. Llamadas en `services/adoptionForm.ts`; validación, mensajes y estados en
+Mis animales muestra **N por revisar**. Llamadas en `services/adoptionForm.ts`; validación, mensajes y estados en
 `services/adoptionFormEditor.ts` (pruebas en `tests/adoptionForm.test.mjs`; `npm test` necesita Node 22.6 o más).
 
 ## Modo oscuro
