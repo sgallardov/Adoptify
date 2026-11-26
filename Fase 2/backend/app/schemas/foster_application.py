@@ -27,6 +27,9 @@ class FosterApplicationIn(BaseModel):
     availability: str = Field(..., max_length=120, description="Texto corto: 'desde ya', 'fines de semana'…")
     phone: str = Field(..., max_length=30)
     address: str = Field(..., max_length=255, description="Privada: solo la ven las fundaciones")
+    # Ubicación del hogar (HU-AA): solo las fundaciones a 10 km o menos ven la postulación
+    latitude: float = Field(..., ge=-90, le=90, description="Latitud del hogar")
+    longitude: float = Field(..., ge=-180, le=180, description="Longitud del hogar")
 
     @field_validator("sizes")
     @classmethod
@@ -69,6 +72,9 @@ class FosterApplicationOut(BaseModel):
     availability: str
     phone: str
     address: str
+    # Nulas en postulaciones anteriores a HU-AA: la app pide volver a marcar la ubicación
+    latitude: float | None = None
+    longitude: float | None = None
     status: FosterStatus
     created_at: datetime
     updated_at: datetime
@@ -92,6 +98,8 @@ class FosterApplicationForFoundation(BaseModel):
     max_animals: int
     max_days: int
     availability: str
+    # Distancia del hogar a la sede de la fundación que consulta (siempre dentro del radio)
+    distance_km: float
     status: FosterStatus
     decided_by_foundation_name: str | None
     decided_at: datetime | None

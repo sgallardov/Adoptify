@@ -35,3 +35,9 @@ export function capacityLabel(application: Pick<FosterApplication, 'max_animals'
 
 // Teléfono para enlaces tel: solo + y dígitos
 export const phoneHref = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`
+
+// Distancia del hogar a la sede, con coma decimal: "3,5 km" ("menos de 1 km" bajo el kilómetro)
+export function distanceLabel(km: number): string {
+  if (km < 1) return 'a menos de 1 km'
+  return `a ${km.toLocaleString('es-CL', { maximumFractionDigits: 1 })} km`
+}

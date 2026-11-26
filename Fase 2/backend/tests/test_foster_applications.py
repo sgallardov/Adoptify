@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from geoalchemy2.elements import WKTElement
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +23,20 @@ VALID = {
     "availability": "Desde ya, todos los días",
     "phone": "+56 9 1234 5678",
     "address": "Av. Grecia 1234, Ñuñoa",
+    # Ñuñoa (Santiago)
+    "latitude": -33.4569,
+    "longitude": -70.5976,
 }
+
+
+def point(latitude: float, longitude: float) -> WKTElement:
+    return WKTElement(f"POINT({longitude} {latitude})", srid=4326)
+
+
+# Sedes de prueba respecto del hogar de VALID (Ñuñoa): Providencia ~3,5 km, Las Condes ~8 km, Puente Alto ~17 km
+PROVIDENCIA = point(-33.4263, -70.6110)
+LAS_CONDES = point(-33.4083, -70.5675)
+PUENTE_ALTO = point(-33.6117, -70.5758)
 
 
 @pytest.fixture
@@ -95,6 +109,8 @@ async def test_todos_los_campos_son_obligatorios(async_client: AsyncClient, acco
         {"availability": "   "},
         {"phone": "123"},
         {"address": "abc"},
+        {"latitude": 91},
+        {"longitude": -181},
     ],
 )
 async def test_rechaza_valores_invalidos(async_client: AsyncClient, accounts, change):
@@ -166,10 +182,12 @@ async def test_editar_o_retirar_sin_postulacion(async_client: AsyncClient, accou
 async def foundations_world(async_client: AsyncClient, db_session: AsyncSession):
     """Dos fundaciones con su cuenta, un adoptante con su postulación y un admin; se borran al terminar."""
     tag = uuid.uuid4().hex[:8]
+    # 1 y 2 están cerca del hogar; 3 está a ~17 km; 4 no tiene ubicación registrada
+    locations = {"1": PROVIDENCIA, "2": LAS_CONDES, "3": PUENTE_ALTO, "4": None}
     foundations = [
         Foundation(name=f"Test Hogar {n} {tag}", rut=f"{random.randint(60_000_000, 99_999_999)}-{n}",
-                   email=f"test_hogar_f{n}_{tag}@adoptify.cl")
-        for n in ("1", "2")
+                   email=f"test_hogar_f{n}_{tag}@adoptify.cl", location=location)
+        for n, location in locations.items()
     ]
     db_session.add_all(foundations)
     await db_session.flush()
@@ -186,6 +204,8 @@ async def foundations_world(async_client: AsyncClient, db_session: AsyncSession)
         "adopter": user("postulante", "adopter"),
         "a": user("fa", "foundation", foundations[0].id),
         "b": user("fb", "foundation", foundations[1].id),
+        "far": user("flejos", "foundation", foundations[2].id),
+        "noloc": user("fsinubicacion", "foundation", foundations[3].id),
         "admin": user("admin", "admin"),
     }
     db_session.add_all(users.values())
@@ -296,3 +316,94 @@ async def test_decidir_una_postulacion_retirada(async_client: AsyncClient, found
     )
 
     assert response.status_code == 404
+
+
+# --- HU-AA: solo las fundaciones a 10 km o menos ven y deciden la postulación ---
+
+async def test_la_postulacion_guarda_la_ubicacion_del_hogar(async_client: AsyncClient, accounts):
+    headers = accounts["headers"]["adopter"]
+    created = (await async_client.post(URL, json=VALID, headers=headers)).json()
+
+    assert created["latitude"] == pytest.approx(VALID["latitude"])
+    assert created["longitude"] == pytest.approx(VALID["longitude"])
+    moved = await async_client.put(f"{URL}/me", json={**VALID, "latitude": -33.5, "longitude": -70.7}, headers=headers)
+    assert moved.json()["latitude"] == pytest.approx(-33.5)
+    assert (await async_client.get(f"{URL}/me", headers=headers)).json()["longitude"] == pytest.approx(-70.7)
+
+
+async def test_la_ubicacion_exacta_no_se_muestra_a_las_fundaciones(async_client: AsyncClient, foundations_world):
+    item = find_application(
+        (await async_client.get(URL, headers=foundations_world["headers"]["a"])).json(),
+        foundations_world["application"]["id"],
+    )
+
+    assert "latitude" not in item and "longitude" not in item
+    assert item["distance_km"] == pytest.approx(3.5, abs=0.5)
+
+
+async def test_una_fundacion_cercana_ve_la_postulacion(async_client: AsyncClient, foundations_world):
+    app_id = foundations_world["application"]["id"]
+    for key in ("a", "b"):
+        items = (await async_client.get(URL, headers=foundations_world["headers"][key])).json()
+        assert app_id in [item["id"] for item in items]
+
+
+async def test_una_fundacion_a_mas_de_10_km_no_la_ve(async_client: AsyncClient, foundations_world):
+    app_id = foundations_world["application"]["id"]
+
+    response = await async_client.get(URL, headers=foundations_world["headers"]["far"])
+
+    assert response.status_code == 200
+    assert app_id not in [item["id"] for item in response.json()]
+
+
+async def test_una_fundacion_lejana_no_puede_decidir(async_client: AsyncClient, foundations_world):
+    url = f"{URL}/{foundations_world['application']['id']}"
+
+    response = await async_client.patch(url, json={"status": "approved"}, headers=foundations_world["headers"]["far"])
+
+    assert response.status_code == 403
+    assert "10 km" in response.json()["detail"]
+    mine = await async_client.get(f"{URL}/me", headers=foundations_world["headers"]["adopter"])
+    assert mine.json()["status"] == "pending"
+
+
+async def test_fundacion_sin_ubicacion_recibe_un_aviso(async_client: AsyncClient, foundations_world):
+    headers = foundations_world["headers"]["noloc"]
+
+    listing = await async_client.get(URL, headers=headers)
+    decision = await async_client.patch(
+        f"{URL}/{foundations_world['application']['id']}", json={"status": "approved"}, headers=headers
+    )
+
+    assert listing.status_code == 409 and "ubicación" in listing.json()["detail"]
+    assert decision.status_code == 409
+
+
+async def test_una_postulacion_sin_ubicacion_no_la_ve_ninguna_fundacion(
+    async_client: AsyncClient, db_session: AsyncSession, foundations_world
+):
+    app_id = foundations_world["application"]["id"]
+    application = await db_session.get(FosterApplication, app_id)
+    application.location = None
+    await db_session.commit()
+
+    items = (await async_client.get(URL, headers=foundations_world["headers"]["a"])).json()
+    assert app_id not in [item["id"] for item in items]
+    mine = (await async_client.get(f"{URL}/me", headers=foundations_world["headers"]["adopter"])).json()
+    assert mine["latitude"] is None and mine["longitude"] is None
+
+
+async def test_el_limite_es_de_10_km(async_client: AsyncClient, foundations_world):
+    """Mover el hogar cerca de la fundación lejana (Puente Alto) hace que ella la vea y las demás no."""
+    headers = foundations_world["headers"]
+    await async_client.put(
+        f"{URL}/me", json={**VALID, "latitude": -33.6000, "longitude": -70.5800}, headers=headers["adopter"]
+    )
+    app_id = foundations_world["application"]["id"]
+
+    far = (await async_client.get(URL, headers=headers["far"])).json()
+    near = (await async_client.get(URL, headers=headers["a"])).json()
+
+    assert app_id in [item["id"] for item in far]
+    assert app_id not in [item["id"] for item in near]

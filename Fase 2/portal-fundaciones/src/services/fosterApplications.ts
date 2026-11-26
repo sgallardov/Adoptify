@@ -1,6 +1,7 @@
 import { api } from './api'
 
-// Postulaciones a hogar temporal (HU-B). Estado global: lo ven todas las fundaciones y queda quién decidió.
+// Postulaciones a hogar temporal (HU-B). Estado global y queda quién decidió. Cada fundación solo ve las de hogares
+// a 10 km o menos de su sede (HU-AA).
 export type FosterStatus = 'pending' | 'approved' | 'rejected'
 
 export type FosterApplication = {
@@ -16,6 +17,8 @@ export type FosterApplication = {
   max_animals: number
   max_days: number
   availability: string
+  // Distancia del hogar a la sede de la fundación: solo se ven postulaciones a 10 km o menos (HU-AA)
+  distance_km: number
   status: FosterStatus
   decided_by_foundation_name: string | null
   decided_at: string | null
