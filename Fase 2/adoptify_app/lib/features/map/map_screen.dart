@@ -1397,7 +1397,7 @@ class _LayersSheet extends StatelessWidget {
             SwitchListTile(
               value: showReports,
               onChanged: onReports,
-              secondary: dot(colors.report),
+              secondary: dot(colors.alert),
               title: Text(
                 'Mascotas reportadas ($reportsCount)',
                 style: textTheme.bodyMedium,
@@ -1701,7 +1701,7 @@ class _ReportDetailCard extends StatelessWidget {
         Text(
           'Mascota reportada',
           style: textTheme.titleMedium?.copyWith(
-            color: context.colors.reportText,
+            color: context.colors.alert,
           ),
         ),
         const SizedBox(height: AdoptifySpacing.xs),
@@ -1738,7 +1738,7 @@ class _ReportDetailCard extends StatelessWidget {
           Text(
             'A ${formatKm(report.distanceKm!)} km',
             style: textTheme.labelLarge?.copyWith(
-              color: context.colors.reportText,
+              color: context.colors.alert,
             ),
           ),
       ],

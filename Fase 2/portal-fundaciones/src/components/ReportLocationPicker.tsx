@@ -3,7 +3,7 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-lea
 import type { LatLng } from './mapTiles'
 import { dotIcon, OSM_ATTRIBUTION, OSM_TILES, PET_PIN_SIZE, PET_Z_OFFSET, SANTIAGO } from './mapTiles'
 
-const reportIcon = dotIcon('bg-danger-600', PET_PIN_SIZE)
+const reportIcon = dotIcon('bg-alert', PET_PIN_SIZE)
 
 type Props = { value: LatLng | null; onChange: (position: LatLng) => void; markerLabel?: string }
 

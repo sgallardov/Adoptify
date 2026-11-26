@@ -197,10 +197,11 @@ class MapPins {
   // HU-Q: las mascotas son los pines más grandes del mapa (reportes 36); las veterinarias van chicas (24)
   // y atenuadas, y crecen al seleccionarlas. Las fundaciones no tienen pin en el mapa.
   static const animal = AnimalPin(size: 32);
-  static final report = MapDot(color: AdoptifyColors.light.report, size: reportSize);
-  static final reportPicker = MapDot(color: AdoptifyColors.light.report, size: 22);
+  static final report = MapDot(color: AdoptifyColors.light.alert, size: reportSize);
+  static final reportPicker = MapDot(color: AdoptifyColors.light.alert, size: 22);
   static final origin = MapDot(color: AdoptifyColors.dark.origin, size: 16, halo: true);
-  // Reporte según la especie: perro y gato llevan su huella en blanco sobre el mismo rojo; "otro" es el punto
+  // Reporte según la especie: perro y gato llevan su huella en blanco sobre el mismo café (el rojo queda
+  // para las veterinarias, que antes se confundían con los avisos); "otro" es el punto
   // taken: una fundación tomó el caso; el pin lleva una insignia verde con un visto
   static Widget reportFor(String? species, {bool taken = false}) {
     final Widget pin = switch (species) {
@@ -319,7 +320,7 @@ class ReportPin extends StatelessWidget {
       height: MapPins.reportSize,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: AdoptifyColors.light.report,
+        color: AdoptifyColors.light.alert,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 2.5),
         boxShadow: const [

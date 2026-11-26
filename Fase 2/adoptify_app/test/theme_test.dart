@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:adoptify_app/app/app.dart';
 import 'package:adoptify_app/app/theme.dart';
 import 'package:adoptify_app/features/account/account_screen.dart';
+import 'package:adoptify_app/shared/map/map_style.dart';
 
 import 'fake_api.dart';
 
@@ -51,5 +52,16 @@ void main() {
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await openProfile(tester);
     expect(brightnessOf(tester), Brightness.dark);
+  });
+
+  // Los avisos de mascotas son café y las veterinarias rojas: antes compartían el mismo rojo
+  test('el café de los avisos no se confunde con el rojo de las veterinarias', () {
+    for (final palette in [AdoptifyColors.light, AdoptifyColors.dark]) {
+      expect(palette.alert, isNot(palette.report));
+      expect(palette.alert, isNot(palette.reportText));
+    }
+    // Los pines usan siempre el valor claro, con ícono y borde blancos encima
+    expect(MapPins.report.color, AdoptifyColors.light.alert);
+    expect(MapPins.reportPicker.color, AdoptifyColors.light.alert);
   });
 }

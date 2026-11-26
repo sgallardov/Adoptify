@@ -273,7 +273,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                               Expanded(
                                 child: Text(
                                   'Mascota reportada',
-                                  style: textTheme.headlineSmall?.copyWith(color: colors.reportText),
+                                  style: textTheme.headlineSmall?.copyWith(color: colors.alert),
                                 ),
                               ),
                               // Me enteré y comentarios: arriba, a la derecha del título
@@ -287,7 +287,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: AdoptifySpacing.sm),
-                          _StatusChip(label: report.statusLabel, background: colors.primarySoft, foreground: colors.reportText),
+                          _StatusChip(label: report.statusLabel, background: colors.primarySoft, foreground: colors.alert),
                           const SizedBox(height: AdoptifySpacing.md),
                           if (report.foundationName != null) ...[
                             _IconLine(icon: Icons.volunteer_activism_outlined, text: '${report.foundationName} tomó este caso'),
@@ -330,7 +330,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             const SizedBox(height: AdoptifySpacing.sm),
                             Text(
                               'A ${formatKm(report.distanceKm!)} km',
-                              style: textTheme.labelLarge?.copyWith(color: colors.reportText),
+                              style: textTheme.labelLarge?.copyWith(color: colors.alert),
                             ),
                           ],
                           const SizedBox(height: AdoptifySpacing.xl),

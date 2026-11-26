@@ -30,6 +30,8 @@
   --color-success-950: #022c22;
   --color-warning-50: #fffbeb;
   --color-warning-800: #92400e;
+  /* Avisos de mascotas (pines y leyenda): café, para no confundirlos con el rojo de las veterinarias */
+  --color-alert: #8b5a2b;
   --color-danger-50: #fef2f2;
   --color-danger-200: #fecaca;
   --color-danger-600: #b91c1c;
@@ -77,6 +79,7 @@
   --color-success-950: #d1fae5;
   --color-warning-50: #33240a;
   --color-warning-800: #fcd34d;
+  --color-alert: #c08552;
   --color-danger-50: #3a1414;
   --color-danger-200: #7f1d1d;
   --color-danger-600: #dc2626;

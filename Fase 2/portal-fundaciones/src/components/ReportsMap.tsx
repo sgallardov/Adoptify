@@ -66,7 +66,7 @@ export default function ReportsMap({ reports, center = SANTIAGO, onShowReport }:
       </Marker>)}
     </MapContainer>
     <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-base-600" aria-label="Qué significa cada pin">
-      <li className="flex items-center gap-2"><span className="inline-block size-3.5 rounded-full bg-danger-600" aria-hidden="true" />Mascota reportada</li>
+      <li className="flex items-center gap-2"><span className="inline-block size-3.5 rounded-full bg-alert" aria-hidden="true" />Mascota reportada</li>
       <li className="flex items-center gap-2"><span className="inline-block size-3.5 rounded-full bg-success-strong" aria-hidden="true" />Caso tomado por una fundación</li>
       <li className="flex items-center gap-2"><span className="inline-flex size-3.5 items-center justify-center rounded-full bg-danger-600 text-[10px] font-bold leading-none text-on-accent opacity-80" aria-hidden="true">+</span>Veterinaria</li>
     </ul>
