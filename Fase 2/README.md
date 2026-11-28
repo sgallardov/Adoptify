@@ -406,10 +406,10 @@ Todos requieren Bearer token y viven bajo `/api/v1/animals`:
 | `GET` | `/interested` | Solo fundación o administrador: devuelve por cada animal propio los interesados (`user_id`, `full_name`, `favorited_at`, `match_score`), sin correo, teléfono ni RUT. |
 | `GET` | `/{animal_id}/interested` | Igual, para un solo animal. Otra fundación o un adoptante reciben `403`; un id inexistente, `404`. |
 | `POST` | `/adoption-applications/animals/{animal_id}` | Adoptante: envía una postulación con una copia de su ficha “Quiero adoptar” y un mensaje opcional. Un favorito no crea una candidatura. |
-| `GET` | `/adoption-applications/mine` | Adoptante: consulta el estado de sus propias postulaciones. |
-| `DELETE` | `/adoption-applications/{id}` | Adoptante: retira una postulación abierta. |
-| `GET` | `/adoption-applications/foundation` | Fundación: ve solo las postulaciones a sus animales, sin correo, teléfono ni RUT. |
-| `PATCH` | `/adoption-applications/{id}/status` | Fundación: revisa, rechaza, preselecciona o invita a conversar a una candidatura propia. |
+| `GET` | `/adoption-applications/mine` | Adoptante: consulta el estado de sus propias postulaciones (más reciente primero, sin las retiradas); incluye `animal_photo_url`. |
+| `DELETE` | `/adoption-applications/{id}` | Adoptante: retira una postulación en revisión o rechazada (pasa a `withdrawn`, sin borrar la fila). `404` si es ajena o ya retirada; `409` si está aprobada. Puede volver a postular al mismo animal. |
+| `GET` | `/adoption-applications/foundation` | Fundación: ve solo las postulaciones a sus animales (sin las retiradas), sin correo, teléfono ni RUT. |
+| `PATCH` | `/adoption-applications/{id}/status` | Fundación: revisa, rechaza, preselecciona o invita a conversar a una candidatura propia. Si ya la retiraron: `404` «La postulación ya no existe; quizá la retiraron.». |
 
 Los favoritos se guardan en la tabla `animal_favorites` (migración `0008`).
 En la app móvil, la pestaña **Conecta** (`/conecta`; `/match` redirige ahí) muestra las tarjetas (deslizar a la derecha

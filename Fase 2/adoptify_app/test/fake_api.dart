@@ -79,6 +79,9 @@ class FakeApi {
   bool twoFactor = false;
   // Postulación a hogar temporal de Matías (HU-B): null hasta que postula, como en el backend
   Map<String, dynamic>? fosterApplication;
+  // Postulaciones de adopción del adoptante (HU-AC), de la más reciente a la más antigua
+  List<Map<String, dynamic>> myApplications = [];
+  bool withdrawFails = false;
   // Perfil que edita la fundación con sesión (GET y PUT /foundations/me)
   String? foundationDescription = 'Rescatamos perros y gatos de la calle.';
   String? foundationPhoto;
@@ -403,6 +406,17 @@ class FakeApi {
           return http.Response('', 204);
       }
       return _json(200, [for (final m in members) if (m['foundation_id'] == 1) m]);
+    }
+
+    if (request.url.path == '/adoption-applications/mine') {
+      return _json(200, myApplications);
+    }
+    final withdrawApplication = RegExp(r'^/adoption-applications/(\d+)$').firstMatch(request.url.path);
+    if (withdrawApplication != null && request.method == 'DELETE') {
+      if (withdrawFails) return _json(503, {'detail': 'No se pudo retirar la postulación.'});
+      final id = int.parse(withdrawApplication.group(1)!);
+      myApplications.removeWhere((a) => a['id'] == id);
+      return http.Response('', 204);
     }
 
     final editAnimal = RegExp(r'^/animals/(\d+)$').firstMatch(request.url.path);

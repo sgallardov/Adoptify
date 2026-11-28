@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +38,13 @@ def _foundation_response(application: AdoptionApplication, animal: Animal, adopt
     )
 
 
+def _my_response(application: AdoptionApplication, animal: Animal, foundation: Foundation) -> MyApplicationResponse:
+    return MyApplicationResponse(
+        id=application.id, animal_id=animal.id, animal_name=animal.name, animal_photo_url=animal.photo_url,
+        foundation_name=foundation.name, status=application.status, created_at=application.created_at,
+    )
+
+
 @router.post("/animals/{animal_id}", response_model=MyApplicationResponse, status_code=status.HTTP_201_CREATED)
 async def create_application(
     animal_id: int,
@@ -55,14 +62,28 @@ async def create_application(
     foundation = await db.get(Foundation, animal.foundation_id)
     if foundation is None:
         raise HTTPException(status_code=409, detail="La fundación del animal no está disponible.")
-    application = AdoptionApplication(
-        animal_id=animal.id,
-        foundation_id=animal.foundation_id,
-        adopter_id=current_user.id,
-        profile_snapshot=payload.profile.model_dump(),
-        message=payload.message,
-    )
-    db.add(application)
+    application = (await db.execute(
+        select(AdoptionApplication).where(
+            AdoptionApplication.animal_id == animal.id, AdoptionApplication.adopter_id == current_user.id
+        )
+    )).scalar_one_or_none()
+    if application is None:
+        application = AdoptionApplication(
+            animal_id=animal.id,
+            foundation_id=animal.foundation_id,
+            adopter_id=current_user.id,
+            profile_snapshot=payload.profile.model_dump(),
+            message=payload.message,
+        )
+        db.add(application)
+    elif application.status == "withdrawn":
+        # Quien retiró su postulación puede volver a postular: la fila se reutiliza (hay una sola por animal y persona)
+        application.status = "submitted"
+        application.profile_snapshot = payload.profile.model_dump()
+        application.message = payload.message
+        application.created_at = func.now()
+    else:
+        raise HTTPException(status_code=409, detail="Ya enviaste una postulación para este animal.")
     try:
         await db.commit()
         await db.refresh(application)
@@ -72,10 +93,7 @@ async def create_application(
     except SQLAlchemyError as exc:
         await db.rollback()
         raise HTTPException(status_code=503, detail="No se pudo enviar la postulación.") from exc
-    return MyApplicationResponse(
-        id=application.id, animal_id=animal.id, animal_name=animal.name,
-        foundation_name=foundation.name, status=application.status, created_at=application.created_at,
-    )
+    return _my_response(application, animal, foundation)
 
 
 @router.get("/mine", response_model=list[MyApplicationResponse])
@@ -86,25 +104,26 @@ async def my_applications(current_user: User = Depends(get_current_user), db: As
         select(AdoptionApplication, Animal, Foundation)
         .join(Animal, Animal.id == AdoptionApplication.animal_id)
         .join(Foundation, Foundation.id == AdoptionApplication.foundation_id)
-        .where(AdoptionApplication.adopter_id == current_user.id)
+        .where(AdoptionApplication.adopter_id == current_user.id, AdoptionApplication.status != "withdrawn")
         .order_by(AdoptionApplication.created_at.desc())
     )).all()
-    return [MyApplicationResponse(id=item.id, animal_id=animal.id, animal_name=animal.name,
-                                  foundation_name=foundation.name, status=item.status, created_at=item.created_at)
-            for item, animal, foundation in rows]
+    return [_my_response(item, animal, foundation) for item, animal, foundation in rows]
 
 
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def withdraw_application(application_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     application = await db.get(AdoptionApplication, application_id)
-    if application is None:
+    # Una ajena responde igual que una inexistente: no se revela que existe
+    if application is None or current_user.role != "adopter" or application.adopter_id != current_user.id             or application.status == "withdrawn":
         raise HTTPException(status_code=404, detail="Postulación no encontrada.")
-    if current_user.role != "adopter" or application.adopter_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No puedes retirar esta postulación.")
-    if application.status in {"approved", "rejected", "withdrawn"}:
-        raise HTTPException(status_code=409, detail="Esta postulación ya no se puede retirar.")
+    if application.status == "approved":
+        raise HTTPException(status_code=409, detail="Una postulación aprobada no se puede retirar. Contacta a la fundación.")
     application.status = "withdrawn"
-    await db.commit()
+    try:
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="No se pudo retirar la postulación.") from exc
 
 
 @router.get("/foundation", response_model=list[FoundationApplicationResponse])
@@ -114,7 +133,7 @@ async def foundation_applications(current_user: User = Depends(get_current_user)
         select(AdoptionApplication, Animal, User)
         .join(Animal, Animal.id == AdoptionApplication.animal_id)
         .join(User, User.id == AdoptionApplication.adopter_id)
-        .where(AdoptionApplication.foundation_id == current_user.foundation_id)
+        .where(AdoptionApplication.foundation_id == current_user.foundation_id, AdoptionApplication.status != "withdrawn")
         .order_by(AdoptionApplication.created_at.desc())
     )).all()
     return [_foundation_response(application, animal, adopter) for application, animal, adopter in rows]
@@ -139,7 +158,9 @@ async def update_application_status(
     application, animal, adopter = row
     if application.foundation_id != current_user.foundation_id:
         raise HTTPException(status_code=403, detail="Esta postulación pertenece a otra fundación.")
-    if application.status in {"withdrawn", "rejected", "approved"}:
+    if application.status == "withdrawn":
+        raise HTTPException(status_code=404, detail="La postulación ya no existe; quizá la retiraron.")
+    if application.status in {"rejected", "approved"}:
         raise HTTPException(status_code=409, detail="Esta postulación ya está cerrada.")
     application.status = payload.status
     # Aprobar a una persona reserva el caso; todavía no significa adopción definitiva.

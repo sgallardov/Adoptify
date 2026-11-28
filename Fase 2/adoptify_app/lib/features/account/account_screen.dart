@@ -5,6 +5,7 @@ import '../../app/theme.dart';
 import '../../app/theme_controller.dart';
 import '../../shared/widgets/coming_soon.dart';
 import '../../shared/widgets/content_width.dart';
+import '../adoption_applications/my_applications_card.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_service.dart';
 import '../auth/two_factor_card.dart';
@@ -135,6 +136,8 @@ class _Profile extends StatelessWidget {
             ),
             const SizedBox(height: AdoptifySpacing.lg),
             const AdoptionCard(),
+            const SizedBox(height: AdoptifySpacing.lg),
+            const MyApplicationsCard(),
             const SizedBox(height: AdoptifySpacing.lg),
             const FosterCard(),
             const SizedBox(height: AdoptifySpacing.lg),

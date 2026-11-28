@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/account/account_screen.dart';
 import '../features/adoption_applications/application_form_screen.dart';
+import '../features/adoption_applications/my_applications_screen.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/session_loading_screen.dart';
@@ -277,6 +278,11 @@ GoRouter _buildRouter(AuthController auth) => GoRouter(
     GoRoute(
       path: '/favoritos',
       builder: (context, state) => const FavoritesScreen(),
+    ),
+    // Postulaciones de adopción del adoptante (HU-AC), desde su Perfil
+    GoRoute(
+      path: '/mis-postulaciones',
+      builder: (context, state) => const MyApplicationsScreen(),
     ),
     // Postulación a hogar temporal (HU-B), desde la tarjeta del Perfil del adoptante
     GoRoute(
