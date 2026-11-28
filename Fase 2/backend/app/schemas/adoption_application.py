@@ -48,6 +48,7 @@ class MyApplicationResponse(BaseModel):
     id: int
     animal_id: int
     animal_name: str
+    animal_photo_url: str | None = None
     foundation_name: str
     status: ApplicationStatus
     created_at: datetime

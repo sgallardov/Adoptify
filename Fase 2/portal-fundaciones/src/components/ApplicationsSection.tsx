@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { ClipboardList, MessageCircle, UserRound } from 'lucide-react'
 import Feedback from './Feedback'
@@ -18,7 +19,11 @@ export default function ApplicationsSection({ animalId }: { animalId: number }) 
   async function setStatus(item: AdoptionApplication, status: 'reviewing' | 'invited_to_chat' | 'rejected' | 'approved') {
     setSaving(item.id)
     try { const updated = await updateApplicationStatus(item.id, status); setItems(list => list?.map(value => value.id === item.id ? updated : value) ?? null) }
-    catch (e) { setError(errorMessage(e, 'No pudimos actualizar la postulación.')) }
+    catch (e) {
+      setError(errorMessage(e, 'No pudimos actualizar la postulación.'))
+      // Si la retiraron, ya no existe: se saca de la lista al mostrar el aviso
+      if (axios.isAxiosError(e) && e.response?.status === 404) setItems(list => list?.filter(value => value.id !== item.id) ?? null)
+    }
     finally { setSaving(null) }
   }
   return <section className="mt-6 border-t border-base-100 pt-6" aria-labelledby="applications-title">
